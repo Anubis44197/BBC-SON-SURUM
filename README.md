@@ -1,10 +1,15 @@
-# BBC — Bitter Brain Context v8.3
+# 🧠 BBC — Bitter Brain Context v8.3
 
 > **The smart context engine that makes AI assistants understand your project with zero hallucinations.**
 
+[![BBC CI](https://github.com/Anubis44197/BBC_MASTER_BBCMath/actions/workflows/ci.yml/badge.svg)](https://github.com/Anubis44197/BBC_MASTER_BBCMath/actions)
+[![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-v8.3%20STABLE-green)](https://github.com/Anubis44197/BBC)
+
 ---
 
-## What is BBC?
+## 📌 What is BBC?
 
 **BBC (Bitter Brain Context)** is a developer tool that prevents AI coding assistants (GitHub Copilot, Cursor, Continue, etc.) from **hallucinating** — generating code that references functions, classes, or variables that don't actually exist in your project.
 
@@ -19,7 +24,7 @@ With BBC     →   14,000 tokens  →  90% faster, zero hallucinations
 
 ---
 
-## Installation — One Step
+## ⚡ Installation — One Step
 
 ### Requirements
 - [Python 3.8+](https://python.org/downloads/)
@@ -45,7 +50,7 @@ Your AI assistants now fully understand your codebase
 
 ---
 
-## Commands
+## 🛠️ Commands
 
 You can also run `bbc.bat` from the **Command Prompt (CMD)**:
 
@@ -62,11 +67,12 @@ You can also run `bbc.bat` from the **Command Prompt (CMD)**:
 | `bbc.bat audit C:\MyProject` | Audit which files BBC has injected |
 | `bbc.bat install C:\MyProject` | Install BBC engine into a target project |
 | `bbc.bat serve` | Start REST API + MCP server on port 3333 |
+| `bbc.bat menu C:\MyProject` | Open interactive BBC menu |
 | `bbc.bat purge C:\MyProject` | Remove all BBC files from a project |
 
 ---
 
-## What Does BBC Do?
+## 🔍 What Does BBC Do?
 
 When BBC runs, it automatically performs these steps:
 
@@ -125,7 +131,7 @@ BBC runs a background watcher (`bbc_daemon`). If you edit your code after an AI 
 
 ---
 
-## Adaptive Mode (STRICT / RELAXED)
+## 🧠 Adaptive Mode (STRICT / RELAXED)
 
 BBC operates in two intelligent modes depending on how well your project's context matches the current question:
 
@@ -143,7 +149,7 @@ This ensures AI tools never invent APIs that don't exist.
 
 ---
 
-## Built-In Verifier
+## ✅ Built-In Verifier
 
 BBC includes a structural integrity verifier that runs automatically at the end of every analysis:
 
@@ -163,7 +169,7 @@ bbc.bat verify C:\MyProject
 
 ---
 
-## Supported AI Tools
+## 🤖 Supported AI Tools
 
 BBC auto-detects and configures **30+ AI coding tools** across all major IDEs:
 
@@ -205,7 +211,7 @@ BBC auto-detects and configures **30+ AI coding tools** across all major IDEs:
 
 ---
 
-## Supported Project Types
+## 📦 Supported Project Types
 
 BBC works with any codebase — it uses language-agnostic AST analysis:
 
@@ -213,7 +219,7 @@ BBC works with any codebase — it uses language-agnostic AST analysis:
 
 ---
 
-## REST API & MCP Server
+## 🌐 REST API & MCP Server
 
 BBC can run as an HTTP server, exposing its context engine to external tools via REST API and the **MCP (Model Context Protocol)**.
 
@@ -243,6 +249,13 @@ BBC's `/mcp` endpoint implements the **Model Context Protocol**, allowing AI too
 - `get_stats` — System statistics
 - `symbol_radius` — Calculate impact radius of a symbol
 
+```bash
+# List available tools
+curl -X POST http://localhost:3333/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"type": "list_tools"}'
+```
+
 **Claude Desktop config** (`claude_desktop_config.json`):
 ```json
 {
@@ -258,7 +271,7 @@ BBC's `/mcp` endpoint implements the **Model Context Protocol**, allowing AI too
 
 ---
 
-## Where Does BBC Install?
+## 📂 Where Does BBC Install?
 
 BBC installs **once** on your system:
 
@@ -283,7 +296,7 @@ All `.bbc/` contents are automatically added to `.gitignore` — they never poll
 
 ---
 
-## Troubleshooting
+## 🔧 Troubleshooting
 
 **Python not found:**
 → Download Python 3.8+ from [python.org](https://python.org/downloads/). During installation, check **"Add Python to PATH"**.
@@ -307,7 +320,27 @@ All `.bbc/` contents are automatically added to `.gitignore` — they never poll
 
 ---
 
-## License
+## 📐 Architecture
+
+BBC's core is the **HMPU (Hybrid Mathematical Processing Unit)**, which provides mathematically grounded confidence scores rather than arbitrary percentages:
+
+$$\kappa(A) = \|A\| \cdot \|A^{-1}\|$$
+
+$$C = \frac{1}{1 + \log_{10}(\kappa)}$$
+
+| Condition Number | Status | AI Confidence |
+|---|---|---|
+| κ ≈ 1.0 | 💎 STABLE | ~90%+ |
+| κ = 2.38 | 💎 STABLE | ~73% |
+| κ > 20.0 | ⚠️ WEAK | <50% |
+
+For the full technical reference: [BBC\_TECHNICAL\_REFERENCE\_EN.md](https://github.com/Anubis44197/BBC_MASTER_BBCMath/blob/main/BBC_TECHNICAL_REFERENCE_EN.md)
+
+For the architecture manifest: [BBC\_MASTER\_MANIFEST.md](https://github.com/Anubis44197/BBC_MASTER_BBCMath/blob/main/BBC_MASTER_MANIFEST.md)
+
+---
+
+## 📄 License
 
 MIT License — Free to use.
 
