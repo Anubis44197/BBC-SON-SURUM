@@ -9,7 +9,7 @@ REM ============================================================
 setlocal enabledelayedexpansion
 
 REM --- YAPILANDIRMA ---
-set "BBC_REPO=https://github.com/Anubis44197/BBC.git"
+set "BBC_REPO=https://github.com/Anubis44197/BBC_MASTER_BBCMath.git"
 set "BBC_INSTALL_DIR=%APPDATA%\BBC"
 set "BBC_HOME=%BBC_INSTALL_DIR%\BBC_MASTER_BBCMath"
 
