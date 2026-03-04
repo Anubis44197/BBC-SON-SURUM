@@ -86,7 +86,12 @@ REM ============================================================
 if /i "%1"=="update" (
     echo  [BBC] Updating BBC...
     cd /d "%BBC_HOME%"
-    git pull
+    git fetch origin main
+    if !errorlevel! neq 0 (
+        echo  [BBC] ERROR: Could not reach GitHub. Check your internet connection.
+        exit /b 1
+    )
+    git reset --hard origin/main
     echo  [BBC] Update complete.
     exit /b 0
 )
@@ -98,7 +103,7 @@ REM ============================================================
 REM No argument: connect current directory
 if "%1"=="" (
     python "%BBC_HOME%\bbc.py" start "%CD%"
-    exit /b %errorlevel%
+    exit /b !errorlevel!
 )
 
 REM --- Commands routed to bbc.py ---
@@ -108,17 +113,17 @@ if /i "%1"=="start" (
     ) else (
         python "%BBC_HOME%\bbc.py" start %2 %3 %4 %5
     )
-    exit /b %errorlevel%
+    exit /b !errorlevel!
 )
 
 if /i "%1"=="stop" (
     python "%BBC_HOME%\bbc.py" stop
-    exit /b %errorlevel%
+    exit /b !errorlevel!
 )
 
 if /i "%1"=="status" (
     python "%BBC_HOME%\bbc.py" status
-    exit /b %errorlevel%
+    exit /b !errorlevel!
 )
 
 if /i "%1"=="menu" (
@@ -127,12 +132,12 @@ if /i "%1"=="menu" (
     ) else (
         python "%BBC_HOME%\bbc.py" menu %2 %3 %4 %5
     )
-    exit /b %errorlevel%
+    exit /b !errorlevel!
 )
 
 if /i "%1"=="serve" (
     python "%BBC_HOME%\bbc.py" serve %2 %3
-    exit /b %errorlevel%
+    exit /b !errorlevel!
 )
 
 if /i "%1"=="verify" (
@@ -141,7 +146,7 @@ if /i "%1"=="verify" (
     ) else (
         python "%BBC_HOME%\bbc.py" verify %2 %3 %4 %5
     )
-    exit /b %errorlevel%
+    exit /b !errorlevel!
 )
 
 if /i "%1"=="audit" (
@@ -150,7 +155,7 @@ if /i "%1"=="audit" (
     ) else (
         python "%BBC_HOME%\bbc.py" audit %2 %3 %4 %5
     )
-    exit /b %errorlevel%
+    exit /b !errorlevel!
 )
 
 if /i "%1"=="purge" (
@@ -159,12 +164,12 @@ if /i "%1"=="purge" (
     ) else (
         python "%BBC_HOME%\bbc.py" purge %2 %3 %4 %5
     )
-    exit /b %errorlevel%
+    exit /b !errorlevel!
 )
 
 if /i "%1"=="install" (
     python "%BBC_HOME%\bbc_installer.py" install %2
-    exit /b %errorlevel%
+    exit /b !errorlevel!
 )
 
 REM --- Commands routed to run_bbc.py (bootstrap, analyze, inject) ---
