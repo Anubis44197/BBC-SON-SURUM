@@ -125,7 +125,7 @@ if /i "%1"=="menu" (
     if "%2"=="" (
         python "%BBC_HOME%\bbc.py" menu "%CD%"
     ) else (
-        python "%BBC_HOME%\bbc.py" menu %2
+        python "%BBC_HOME%\bbc.py" menu %2 %3 %4 %5
     )
     exit /b %errorlevel%
 )
@@ -139,7 +139,7 @@ if /i "%1"=="verify" (
     if "%2"=="" (
         python "%BBC_HOME%\bbc.py" verify "%CD%"
     ) else (
-        python "%BBC_HOME%\bbc.py" verify %2
+        python "%BBC_HOME%\bbc.py" verify %2 %3 %4 %5
     )
     exit /b %errorlevel%
 )
@@ -148,7 +148,7 @@ if /i "%1"=="audit" (
     if "%2"=="" (
         python "%BBC_HOME%\bbc.py" audit "%CD%"
     ) else (
-        python "%BBC_HOME%\bbc.py" audit %2
+        python "%BBC_HOME%\bbc.py" audit %2 %3 %4 %5
     )
     exit /b %errorlevel%
 )
@@ -157,7 +157,7 @@ if /i "%1"=="purge" (
     if "%2"=="" (
         python "%BBC_HOME%\bbc.py" purge "%CD%"
     ) else (
-        python "%BBC_HOME%\bbc.py" purge %2
+        python "%BBC_HOME%\bbc.py" purge %2 %3 %4 %5
     )
     exit /b %errorlevel%
 )
