@@ -1,175 +1,101 @@
 # 🧠 BBC — Bitter Brain Context v8.3
 
-> **The smart context engine that makes AI assistants understand your project with zero hallucinations.**
+> **Zero-Hallucination AI Coding Framework** — Analyzes your project, detects your active IDE, and provides AI assistants with a mathematically sealed context.
 
 [![BBC CI](https://github.com/Anubis44197/BBC_MASTER_BBCMath/actions/workflows/ci.yml/badge.svg)](https://github.com/Anubis44197/BBC_MASTER_BBCMath/actions)
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v8.3%20STABLE-green)](https://github.com/Anubis44197/BBC)
+[![Version](https://img.shields.io/badge/version-v8.3%20STABLE-green)](https://github.com/Anubis44197/BBC_MASTER_BBCMath)
 
 ---
 
 ## 📌 What is BBC?
 
-**BBC (Bitter Brain Context)** is a developer tool that prevents AI coding assistants (GitHub Copilot, Cursor, Continue, etc.) from **hallucinating** — generating code that references functions, classes, or variables that don't actually exist in your project.
+**BBC (Bitter Brain Context)** is a developer infrastructure tool that prevents AI coding assistants (GitHub Copilot, Cursor, Continue, etc.) from **hallucinating** — generating incorrect code based on guesswork instead of your actual codebase.
 
-**The Problem:** AI assistants don't know your codebase. In large projects they invent function names, call non-existent APIs, and write code that simply doesn't work.
-
-**The Solution:** BBC scans your entire project, extracts the real structure (every class, function, import), compresses it into a mathematically sealed context, and injects that context directly into your active AI tool. The AI can then only suggest code that actually exists.
+### How It Works
 
 ```
-Without BBC  →  139,000 tokens  →  Slow, expensive, hallucinations
-With BBC     →   14,000 tokens  →  90% faster, zero hallucinations
+Scan Project  →  Build Sealed Context  →  Detect Active IDE  →  Inject Only Where Needed
 ```
+
+1. **Scan:** Extracts all classes, functions, and imports via AST analysis
+2. **Compress:** Reduces a 100,000-token project to ~10,000 tokens (**89%+ savings**)
+3. **Smart Detect:** Identifies your **currently active IDE and installed AI extensions**
+4. **Inject:** Writes BBC rules only to detected tools — nothing else is touched
 
 ---
 
-## ⚡ Installation — One Step
+## ⚡ Quick Start
 
 ### Requirements
-- [Python 3.8+](https://python.org/downloads/)
-- [Git](https://git-scm.com/downloads)
+- Python 3.8+
+- Git
 
-### How to Use
+### 1. Clone the Repository
 
-1. **Download `bbc.bat`**
-2. **Copy it into your project folder**
-3. **Double-click it**
+```bash
+git clone https://github.com/Anubis44197/BBC_MASTER_BBCMath.git
+cd BBC_MASTER_BBCMath
+```
 
-On first run, BBC installs itself automatically. All subsequent runs start instantly.
+### 2. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Start BBC on Your Project
+
+```bash
+# Windows
+python bbc.py start C:\path\to\your\project
+
+# Linux / macOS
+python3 bbc.py start /path/to/your/project
+
+# Current directory
+python bbc.py start .
+```
+
+> **Tip:** Add `bbc.bat` (Windows) or `bbc.sh` (Linux/macOS) to your PATH to use the shorthand `bbc start` command.
+
+### Alternative: Self-Installing Launcher (End-User Distribution)
+
+If you want to give BBC to someone without requiring a manual clone, use the **self-installing `bbc.bat`** from the distribution repository:
 
 ```
-Double-click bbc.bat
-       ↓
-BBC installs itself (first time only, ~30 seconds)
-       ↓
-Your project is analyzed
-       ↓
-Your AI assistants now fully understand your codebase
+https://github.com/Anubis44197/BBC.git
 ```
+
+The user only receives **`bbc.bat`**. On first run it:
+1. Checks for Python + Git
+2. Clones `BBC_MASTER_BBCMath` into `%APPDATA%\BBC\` automatically
+3. Installs all dependencies
+4. Runs BBC on the current project
+
+No manual setup required on the user's side.
 
 ---
 
-## 🛠️ Commands
+## 🎯 Features
 
-You can also run `bbc.bat` from the **Command Prompt (CMD)**:
+### 🔍 Smart IDE Detection (v8.3)
+BBC automatically detects which IDE and AI extensions you are actively using:
 
-| Command | Description |
+| Active Environment | BBC Writes |
 |---|---|
-| `bbc.bat` | Start BBC on the current folder |
-| `bbc.bat start C:\MyProject` | Connect a specific project to BBC |
-| `bbc.bat status` | Show BBC system status |
-| `bbc.bat stop` | Stop the BBC daemon |
-| `bbc.bat update` | Update BBC to the latest version |
-| `bbc.bat bootstrap C:\MyProject` | Full analysis + AI injection (recommended first run) |
-| `bbc.bat analyze C:\MyProject` | Deep project analysis only (no daemon) |
-| `bbc.bat verify C:\MyProject` | Run structural integrity check on sealed context |
-| `bbc.bat audit C:\MyProject` | Audit which files BBC has injected |
-| `bbc.bat install C:\MyProject` | Install BBC engine into a target project |
-| `bbc.bat serve` | Start REST API + MCP server on port 3333 |
-| `bbc.bat menu C:\MyProject` | Open interactive BBC menu |
-| `bbc.bat purge C:\MyProject` | Remove all BBC files from a project |
+| **Antigravity** | `.antigravity/rules.md` |
+| **Cursor** | `.cursorrules` |
+| **VS Code + GitHub Copilot** | `.github/copilot-instructions.md` |
+| **VS Code + Continue** | `.continue/config.json` |
+| **VS Code + Cline** | `.clinerules` |
+| **Windsurf** | `.windsurf/bbc_rules.md` |
+| **Not detected** | `.bbc/` folder only |
 
----
+> Detection method: environment variables → process tree → VS Code extension directory
 
-## 🔍 What Does BBC Do?
-
-When BBC runs, it automatically performs these steps:
-
-**1. Project Scan**
-
-BBC performs deep AST (Abstract Syntax Tree) analysis on every source file in your project — it extracts every class, function, method, import, and inter-symbol call.
-
-```
-[*] 61 files scanned
-[*] 1,621 symbols | 3,952 calls | 20 critical
-```
-
-**2. Context Compression (HMPU v8.3)**
-
-BBC's mathematical engine (HMPU — Hybrid Mathematical Processing Unit) compresses your project's entire structure into a minimal, semantically complete context. This is not summarization — it is mathematically lossless compression of your code graph.
-
-```
-Source: 139,084 tokens  →  BBC Context: 13,964 tokens
-Token Savings: 90%  |  10x Faster  |  ~$3.75 saved per session
-```
-
-**3. Smart IDE Detection — Writes Only Where Needed**
-
-BBC detects which IDE you are actively using and which AI extensions are installed. It then writes the sealed context **only** to those tools — it never creates config folders for tools you don't have.
-
-```
-[OK] VS Code / GitHub Copilot → .github/copilot-instructions.md
-[OK] Cursor                   → .cursorrules
-[OK] Continue                 → .continue/config.json
-```
-
-> **Ghost Injection Prevention:** Old tools used to blindly create 20+ config folders (`.codiumai/`, `.replit/`, `.tabnine/`, `.pieces/`...) even if you never installed those tools. BBC v8.3 eliminates this entirely. At most 1–3 files are written, only to tools you actually have.
-
-**4. Stability Report**
-
-BBC calculates a mathematical confidence score for your project using linear algebra (condition number of the symbol matrix). This is not a made-up percentage — it is a real stability measurement.
-
-```
-╭──────────────────────────────────────────╮
-│  BBC HMPU v8.3  Aura Insights 💎 STABLE  │
-│  ███████████████████████████░░░  90.0%   │
-│  Saved: 125,120 Tokens | $3.75           │
-│  Stability: STABLE | Confidence: 90%+    │
-╰──────────────────────────────────────────╯
-```
-
-| Stability Status | Meaning |
-|---|---|
-| 💎 STABLE | AI can work with high confidence. Context is clean and complete. |
-| ⚠️ WEAK | High risk of hallucination. Consider refactoring complex areas. |
-| ❌ DEGENERATE | Context is unusable. Run `bbc.bat verify` to diagnose. |
-
-**5. Real-Time Daemon**
-
-BBC runs a background watcher (`bbc_daemon`). If you edit your code after an AI session, the daemon automatically re-analyzes the changed files and re-seals the context. Your AI always sees the current state of your project — never stale data.
-
----
-
-## 🧠 Adaptive Mode (STRICT / RELAXED)
-
-BBC operates in two intelligent modes depending on how well your project's context matches the current question:
-
-| Mode | When It Activates | Behavior |
-|---|---|---|
-| **STRICT** | Context match ≥ 80% | The AI is locked to verified symbols only. Every suggestion comes from `.bbc/bbc_context.json`. Zero hallucination tolerance. |
-| **RELAXED** | Context match < 80% | The AI may use broader knowledge, but BBC emits a warning: `"Symbol not in sealed context"`. |
-
-If a function or class does not exist in your codebase, BBC returns:
-```
-"Information not found in sealed context"
-```
-
-This ensures AI tools never invent APIs that don't exist.
-
----
-
-## ✅ Built-In Verifier
-
-BBC includes a structural integrity verifier that runs automatically at the end of every analysis:
-
-- Checks syntax correctness of all extracted symbols
-- Validates the completeness of the call graph
-- Detects orphaned or unreachable symbols
-- Reports logical issues before they reach your AI
-
-```
-[OK] BBC Verifier: Project structural integrity confirmed.
-```
-
-You can also run it manually:
-```
-bbc.bat verify C:\MyProject
-```
-
----
-
-## 🤖 Supported AI Tools
+### 🤖 Full Supported AI Tools (30+)
 
 BBC auto-detects and configures **30+ AI coding tools** across all major IDEs:
 
@@ -209,6 +135,162 @@ BBC auto-detects and configures **30+ AI coding tools** across all major IDEs:
 
 > BBC only writes to tools you have installed. It never creates folders for tools you don't use.
 
+### 🚫 Ghost Injection Prevention
+Previous versions created config folders for 20+ tools regardless of whether they were installed. v8.3 eliminates this entirely:
+- ❌ **Before:** `.codiumai/`, `.replit/`, `.tabnine/`, `.pieces/`... (20+ folders)
+- ✅ **Now:** Only active IDE + installed extensions (1–3 files maximum)
+
+### 📊 Mathematical Stability Engine (HMPU)
+BBC measures your project's structural health using a **3×3 Aura Matrix**:
+
+```
+Condition Number (κ) < 10  →  💎 STABLE   — AI operates with high confidence
+Condition Number (κ) > 20  →  ⚠️  WEAK    — High risk of AI hallucination
+```
+
+### 💾 Token Savings
+```
+Source: 132,000 tokens  →  Context: 14,000 tokens  |  89% savings  |  9.4x faster
+```
+
+### 🔄 Real-time Re-sealing
+BBC's daemon (`bbc_daemon.py`) watches for file changes. If your code changes after AI interaction, it automatically triggers a re-analysis to prevent stale context.
+
+### 🧠 Adaptive Mode (STRICT / RELAXED)
+BBC operates in two modes depending on context match quality:
+
+| Mode | Trigger | Behavior |
+|---|---|---|
+| **STRICT** | `context_match_ratio ≥ 0.8` | AI only uses verified symbols from `.bbc/bbc_context.json` |
+| **RELAXED** | `context_match_ratio < 0.8` | AI may use broader knowledge with a hallucination warning |
+
+If a symbol is not in the sealed context, BBC returns: `"Information not found in sealed context"`
+
+### ✅ Verifier
+BBC's built-in verifier (`bbc_core/verifier.py`) runs structural integrity checks on the sealed context:
+- Syntax correctness of all extracted symbols
+- Completeness of the call graph
+- Detects orphaned or unreachable symbols
+
+```bash
+bbc verify [path]   # Run structural check manually
+```
+
+Verification also runs automatically at the end of every `bbc start` and `bootstrap` pipeline.
+
+---
+
+## 🛠️ Commands
+
+```bash
+# Full pipeline: Verify + Analyze + Inject + Start Daemon
+bbc start [path]
+
+# Force refresh (use after code changes)
+bbc start -f [path]
+
+# Run daemon in background
+bbc start -b [path]
+
+# Deep project analysis only
+bbc analyze [path]
+
+# Check structural integrity
+bbc verify [path]
+
+# Audit BBC traces in a project
+bbc audit [path]
+
+# Install BBC into a target project (copies engine + runs bootstrap)
+bbc install [target_path]
+
+# Start REST API + MCP server (default port 3333)
+bbc serve
+bbc serve --port 8080
+
+# Show system status
+bbc status
+
+# Stop BBC daemon
+bbc stop
+
+# Remove all BBC files from a project
+bbc purge [path]
+
+# Update BBC to the latest version (self-installing bat only)
+bbc update
+```
+
+---
+
+## 📂 Project Structure
+
+```
+BBC_MASTER_BBCMath/
+├── bbc.py                    # Main CLI entry point
+├── bbc_daemon.py             # Real-time file watcher daemon
+├── bbc_installer.py          # System-level installation engine
+├── run_bbc.py                # Direct execution runner
+├── bbc_core/
+│   ├── agent_adapter.py      # IDE/Extension detection + Context injection
+│   ├── ide_auto_config.py    # Smart IDE/plugin detection system
+│   ├── ide_hooks.py          # IDE lifecycle hooks
+│   ├── native_adapter.py     # Main analysis orchestrator (the bridge)
+│   ├── adapter.py            # Low-level BBC adapter interface
+│   ├── auto_detector.py      # Auto-detect project + start BBC pipeline
+│   ├── symbol_extractor.py   # AST-based symbol extractor (deep scan)
+│   ├── symbol_graph.py       # Dependency call graph builder
+│   ├── context_optimizer.py  # Blast radius & context filter
+│   ├── adaptive_mode.py      # STRICT / RELAXED mode switcher
+│   ├── hmpu_core.py          # Mathematical stability governor
+│   ├── hmpu_engine.py        # HMPU v8.3 pipeline orchestrator
+│   ├── hmpu_indexer.py       # Vector index builder for similarity search
+│   ├── hmpu_quantizer.py     # Token compression & quantization
+│   ├── matrix_ops.py         # Linear algebra operations (Aura Matrix)
+│   ├── bbc_scalar.py         # BBC scalar state logic (STABLE/WEAK/DEGENERATE)
+│   ├── config.py             # Global configuration & paths
+│   ├── state_manager.py      # Session & daemon state manager
+│   ├── telemetry.py          # Operational telemetry & session tracking
+│   ├── verifier.py           # Sealed context integrity checker
+│   ├── attribution_tracer.py # Symbol attribution & call trace
+│   ├── migrator_engine.py    # Legacy context migration engine
+│   ├── ai_integration.py     # External AI API integration helpers
+│   ├── realtime_token_counter.py # Live token usage tracker
+│   ├── terminal_monitor.py   # Terminal output monitor
+│   ├── http_server.py        # REST API + MCP server (FastAPI)
+│   ├── global_menu.py        # Interactive TUI global menu
+│   ├── global_setup.py       # First-run environment setup
+│   ├── bbc_logger.py         # Structured logging system
+│   └── cli.py                # CLI command handler
+├── 01_Engine/
+│   ├── hmpu_api_v53.py       # FastAPI industrial endpoint (v5.3)
+│   ├── hmpu_core.py          # Core HMPU math engine
+│   ├── hmpu_fused_pipeline.py# Fused analysis + quantization pipeline
+│   ├── hmpu_indexer.py       # High-performance vector indexer
+│   ├── hmpu_master_pipeline.py # Master orchestration pipeline
+│   ├── hmpu_quantizer.py     # Token quantizer (production grade)
+│   ├── hmpu_weights.json     # Pre-trained stability weights
+│   ├── analyze_file.py       # Single-file analysis utility
+│   ├── create_recipe.py      # Context recipe builder
+│   └── get_stats.py          # Statistics extractor
+└── tests/                    # Unit tests
+```
+
+### Generated Files (`.bbc/` directory)
+```
+.bbc/
+├── bbc_context.json          # Sealed project context (AI's single source of truth)
+├── BBC_INSTRUCTIONS.md       # AI instruction manifest
+├── bbc_context.md            # Human-readable context summary
+├── bbc_rules.md              # Project coding rules
+├── indices/                  # Vector indices for similarity search
+├── cache/                    # Project snapshot cache
+├── logs/                     # Daemon and session logs
+└── manifest/                 # Injected file registry
+```
+
+All `.bbc/` files are automatically added to `.gitignore` — they never pollute your repository.
+
 ---
 
 ## 📦 Supported Project Types
@@ -219,64 +301,12 @@ BBC works with any codebase — it uses language-agnostic AST analysis:
 
 ---
 
-## 🌐 REST API & MCP Server
-
-BBC can run as an HTTP server, exposing its context engine to external tools via REST API and the **MCP (Model Context Protocol)**.
-
-Start the server:
-```
-bbc.bat serve
-```
-Default port: **3333**
-
-### Available Endpoints
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/health` | Server health and memory usage |
-| `GET` | `/api/project_context` | Full sealed BBC context (JSON) |
-| `GET` | `/api/symbol_analysis` | Symbol graph + critical symbols |
-| `GET` | `/api/stats` | Token savings, stability stats |
-| `POST` | `/api/analyze` | Analyze a single file |
-| `POST` | `/mcp` | MCP gateway for AI tools |
-
-### MCP Integration (Claude Desktop, Cursor, etc.)
-
-BBC's `/mcp` endpoint implements the **Model Context Protocol**, allowing AI tools to query BBC directly.
-
-**Available MCP tools:**
-- `analyze_project` — Full project analysis
-- `get_stats` — System statistics
-- `symbol_radius` — Calculate impact radius of a symbol
-
-```bash
-# List available tools
-curl -X POST http://localhost:3333/mcp \
-  -H "Content-Type: application/json" \
-  -d '{"type": "list_tools"}'
-```
-
-**Claude Desktop config** (`claude_desktop_config.json`):
-```json
-{
-  "mcpServers": {
-    "bbc": {
-      "url": "http://localhost:3333/mcp"
-    }
-  }
-}
-```
-
-> Once running, visit `http://localhost:3333/docs` for the full interactive API documentation.
-
----
-
 ## 📂 Where Does BBC Install?
 
 BBC installs **once** on your system:
 
 ```
-%APPDATA%\BBC\BBC_MASTER_BBCMath\   ← BBC engine (installed automatically)
+%APPDATA%\BBC\BBC_MASTER_BBCMath\   ← BBC engine (installed automatically via bbc.bat)
 ```
 
 For each project, only a small `.bbc/` folder is created in your project root:
@@ -292,31 +322,108 @@ YourProject\
     logs\               ← Daemon and session logs
 ```
 
-All `.bbc/` contents are automatically added to `.gitignore` — they never pollute your repository.
+> All `.bbc/` contents are automatically added to `.gitignore` — they never pollute your repository.
+
+---
+
+## 🌐 REST API & MCP Server
+
+BBC can run as an HTTP server, exposing its context engine via REST API and **MCP (Model Context Protocol)**.
+
+### Start the API Server
+
+```bash
+# Default port 3333
+python bbc.py serve
+
+# Custom port
+python bbc.py serve --port 8080
+
+# With project path
+BBC_PROJECT_ROOT=/path/to/project python -m uvicorn bbc_core.http_server:app --port 3333
+```
+
+### Available Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/health` | Server health + memory usage |
+| `GET` | `/api/project_context` | Full sealed BBC context (JSON) |
+| `GET` | `/api/symbol_analysis` | Symbol graph + critical symbols |
+| `GET` | `/api/stats` | Token savings, stability stats |
+| `POST` | `/api/analyze` | Analyze a single file |
+| `POST` | `/mcp` | MCP gateway for AI tools |
+
+### Example: Health Check
+
+```bash
+curl http://localhost:3333/health
+```
+```json
+{
+  "status": "healthy",
+  "version": "8.3.0",
+  "adapter_ready": true,
+  "memory_mb": 51.11,
+  "uptime_seconds": 16.4
+}
+```
+
+### MCP Integration (Claude Desktop, Cursor, etc.)
+
+BBC's `/mcp` endpoint implements the **Model Context Protocol**, allowing AI tools to query BBC directly.
+
+```bash
+# List available tools
+curl -X POST http://localhost:3333/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"type": "list_tools"}'
+```
+
+**Available MCP tools:**
+- `analyze_project` — Full project analysis
+- `get_stats` — System statistics  
+- `symbol_radius` — Calculate impact radius of a symbol
+
+**Claude Desktop config** (`claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "bbc": {
+      "url": "http://localhost:3333/mcp"
+    }
+  }
+}
+```
+
+> **Interactive Docs:** Once running, visit `http://localhost:3333/docs` for the full Swagger UI.
 
 ---
 
 ## 🔧 Troubleshooting
 
-**Python not found:**
-→ Download Python 3.8+ from [python.org](https://python.org/downloads/). During installation, check **"Add Python to PATH"**.
+**BBC not starting?**
+```bash
+bbc status              # Check daemon state
+python bbc.py verify .  # Run structural check
+python bbc.py start -f .  # Force full refresh
+```
 
-**Git not found:**
-→ Download Git from [git-scm.com](https://git-scm.com/downloads).
+**AI assistant ignoring BBC?**
+```bash
+python bbc.py audit .   # Check which files were injected
+python bbc.py start -f .  # Re-run IDE detection and injection
+# Then restart your IDE
+```
 
-**I want to update BBC:**
-→ Run `bbc.bat update`.
+**View logs:**
+```bash
+# Windows
+type .bbc\logs\daemon.log
 
-**AI still giving wrong suggestions after BBC ran:**
-→ Run `bbc.bat start` again to re-analyze and re-inject.
-→ Then **restart your IDE** so it picks up the new context files.
-
-**BBC reports WEAK or DEGENERATE stability:**
-→ Run `bbc.bat verify C:\MyProject` for a detailed report.
-→ This usually means there are circular imports or orphaned symbols in your codebase.
-
-**Want to remove BBC from a project completely:**
-→ Run `bbc.bat purge C:\MyProject` — removes all `.bbc/` files and IDE config files BBC created.
+# Linux / macOS
+cat .bbc/logs/daemon.log
+```
 
 ---
 
@@ -334,15 +441,15 @@ $$C = \frac{1}{1 + \log_{10}(\kappa)}$$
 | κ = 2.38 | 💎 STABLE | ~73% |
 | κ > 20.0 | ⚠️ WEAK | <50% |
 
-For the full technical reference: [BBC\_TECHNICAL\_REFERENCE\_EN.md](https://github.com/Anubis44197/BBC_MASTER_BBCMath/blob/main/BBC_TECHNICAL_REFERENCE_EN.md)
+For the full technical reference: [`BBC_TECHNICAL_REFERENCE_EN.md`](BBC_TECHNICAL_REFERENCE_EN.md)
 
-For the architecture manifest: [BBC\_MASTER\_MANIFEST.md](https://github.com/Anubis44197/BBC_MASTER_BBCMath/blob/main/BBC_MASTER_MANIFEST.md)
+For the architecture manifest: [`BBC_MASTER_MANIFEST.md`](BBC_MASTER_MANIFEST.md)
 
 ---
 
 ## 📄 License
 
-MIT License — Free to use.
+MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
@@ -351,7 +458,5 @@ MIT License — Free to use.
 **BBC v8.3 STABLE** — Your AI assistants now see your project with mathematical certainty.
 
 *No hallucinations. No guesswork. Only verified context.*
-
-[Source Repository](https://github.com/Anubis44197/BBC_MASTER_BBCMath) · [Report an Issue](https://github.com/Anubis44197/BBC_MASTER_BBCMath/issues)
 
 </div>

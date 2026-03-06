@@ -1,0 +1,42 @@
+BBC v8.3 Installation Instructions
+===================================
+
+WINDOWS USERS:
+-------------
+1. Extract the BBC folder
+2. Open Command Prompt in the BBC folder
+3. Run: python bbc_installer.py install C:\path\to\your\project
+4. Or: python bbc.py start C:\path\to\your\project
+
+LINUX/MAC USERS:
+---------------
+1. Extract the BBC folder
+2. Open terminal in the BBC folder
+3. Run: python3 bbc_installer.py install /path/to/your/project
+4. Or: python3 bbc.py start /path/to/your/project
+
+PIP INSTALL (DEVELOPMENT):
+--------------------------
+1. cd BBC_MASTER_BBCMath
+2. pip install -e .
+3. bbc start /path/to/your/project
+
+FIRST USAGE:
+-----------
+1. Go to your project: cd /path/to/project
+2. Start BBC: bbc start
+3. That's it! Your AI assistants now understand your code.
+
+TROUBLESHOOTING:
+---------------
+- Python not found? Install Python 3.8+ from python.org
+- BBC not found? Make sure you're in the BBC folder
+- AI assistants not working? Run: bbc start -f (force refresh)
+- Check logs: .bbc/logs/
+
+SUPPORT:
+--------
+Documentation: USER_GUIDE.md
+Quick start: QUICK_START.md
+
+Enjoy BBC! 🎉
