@@ -1,0 +1,14 @@
+﻿# bbc_core/requirements_core.txt
+# BBC Core Engine icin minimum bagimliliklar
+
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+sqlalchemy==2.0.23
+pydantic==2.5.0
+python-dotenv==1.0.0
+colorlog==6.7.0
+
+# BBC HMPU Engine spesifik
+numpy==1.24.3
+faiss-cpu==1.7.4
+tiktoken==0.5.1

@@ -1,4 +1,4 @@
-# BBC MASTER .gitignore - v8.3 Clean
+# BBC Distribution Repository .gitignore - v8.3.1
 
 # ─── Python ───
 __pycache__/
@@ -13,7 +13,6 @@ pip-log.txt
 .tox/
 
 # ─── Tests & Coverage ───
-tests/
 .coverage
 .cache
 nosetests.xml
@@ -36,34 +35,21 @@ build/
 *.swo
 .DS_Store
 
-# ─── BBC Runtime Files (proje icinde olusturulan, git'e gitmez) ───
-.bbc/
-.antigravity/
-.continue/
-.windsurf/
-.github/copilot-instructions.md
+# ─── Log & Gecici Dosyalar ───
+*.log
 
-# ─── BBC Eski / Legacy dosyalar ───
+# --- BBC Isolation Shield (No-Trace) ---
+.bbc/
+.bbc/BBC_INSTRUCTIONS.md
+.bbc/bbc_context.md
+.bbc/bbc_rules.md
+.continue/
+.continue/config.json
+.github/copilot-instructions.md
+.windsurf/bbc_rules.md
 BBC_CONTEXT.md
 BBC_INSTRUCTIONS.md
 BBC_README.md
 ai-context.json
 bbc_context.json
 bbc_rules.md
-
-# ─── Log & Gecici Dosyalar ───
-*.log
-firebase-debug.log
-
-# ─── Test Klasoru (CI icin gerekli, git'te tutulur) ───
-# tests/ klasoru GitHub Actions CI tarafindan kullanilir
-
-# --- BBC Isolation Shield (No-Trace) ---
-.antigravity/rules.md
-.bbc/BBC_INSTRUCTIONS.md
-.bbc/bbc_context.md
-.bbc/bbc_rules.md
-.continue/config.json
-
-# --- BBC Isolation Shield (No-Trace) ---
-.windsurf/bbc_rules.md
