@@ -64,3 +64,6 @@ firebase-debug.log
 .bbc/bbc_context.md
 .bbc/bbc_rules.md
 .continue/config.json
+
+# --- BBC Isolation Shield (No-Trace) ---
+.windsurf/bbc_rules.md

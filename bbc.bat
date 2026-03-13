@@ -70,7 +70,15 @@ if not exist "%BBC_HOME%\bbc.py" (
     echo  [BBC] Installing dependencies...
     python -m pip install -r "%BBC_HOME%\requirements.txt" -q
     if errorlevel 1 (
-        echo  [WARNING] Some dependencies could not be installed, continuing...
+        echo.
+        echo  [BBC] ERROR: Dependencies could not be installed.
+        echo  [BBC] This may happen if the process was interrupted (Ctrl+C^).
+        echo  [BBC] Please run this command again to retry:
+        echo.
+        echo       bbc.bat
+        echo.
+        pause
+        exit /b 1
     )
 
     echo.
@@ -163,6 +171,15 @@ if /i "%1"=="purge" (
         python "%BBC_HOME%\bbc.py" purge "%CD%"
     ) else (
         python "%BBC_HOME%\bbc.py" purge %2 %3 %4 %5
+    )
+    exit /b !errorlevel!
+)
+
+if /i "%1"=="watch" (
+    if "%2"=="" (
+        python "%BBC_HOME%\bbc.py" watch "%CD%"
+    ) else (
+        python "%BBC_HOME%\bbc.py" watch %2 %3 %4 %5
     )
     exit /b !errorlevel!
 )
