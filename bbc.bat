@@ -125,12 +125,20 @@ if /i "%1"=="start" (
 )
 
 if /i "%1"=="stop" (
-    python "%BBC_HOME%\bbc.py" stop
+    if "%2"=="" (
+        python "%BBC_HOME%\bbc.py" stop "%CD%"
+    ) else (
+        python "%BBC_HOME%\bbc.py" stop %2 %3 %4 %5
+    )
     exit /b !errorlevel!
 )
 
 if /i "%1"=="status" (
-    python "%BBC_HOME%\bbc.py" status
+    if "%2"=="" (
+        python "%BBC_HOME%\bbc.py" status "%CD%"
+    ) else (
+        python "%BBC_HOME%\bbc.py" status %2 %3 %4 %5
+    )
     exit /b !errorlevel!
 )
 
