@@ -192,11 +192,38 @@ if /i "%1"=="watch" (
     exit /b !errorlevel!
 )
 
+if /i "%1"=="analyze" (
+    if "%2"=="" (
+        python "%BBC_HOME%\bbc.py" analyze "%CD%"
+    ) else (
+        python "%BBC_HOME%\bbc.py" analyze %2 %3 %4 %5
+    )
+    exit /b !errorlevel!
+)
+
+if /i "%1"=="inject" (
+    if "%2"=="" (
+        python "%BBC_HOME%\run_bbc.py" inject "%CD%" %3 %4 %5
+    ) else (
+        python "%BBC_HOME%\run_bbc.py" inject %2 %3 %4 %5
+    )
+    exit /b !errorlevel!
+)
+
+if /i "%1"=="bootstrap" (
+    if "%2"=="" (
+        python "%BBC_HOME%\run_bbc.py" bootstrap "%CD%" %3 %4 %5
+    ) else (
+        python "%BBC_HOME%\run_bbc.py" bootstrap %2 %3 %4 %5
+    )
+    exit /b !errorlevel!
+)
+
 if /i "%1"=="install" (
     python "%BBC_HOME%\bbc_installer.py" install %2
     exit /b !errorlevel!
 )
 
-REM --- Commands routed to run_bbc.py (bootstrap, analyze, inject) ---
+REM --- Fallback: route unknown commands to run_bbc.py ---
 python "%BBC_HOME%\run_bbc.py" %*
 exit /b %errorlevel%
