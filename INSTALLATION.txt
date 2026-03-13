@@ -1,37 +1,49 @@
 BBC v8.3 Installation Instructions
 ===================================
 
-WINDOWS USERS:
--------------
-1. Extract the BBC folder
-2. Open Command Prompt in the BBC folder
-3. Run: python bbc_installer.py install C:\path\to\your\project
-4. Or: python bbc.py start C:\path\to\your\project
+STEP 1: CLONE BBC
+-----------------
+git clone https://github.com/Anubis44197/BBC.git
+cd BBC
 
-LINUX/MAC USERS:
----------------
-1. Extract the BBC folder
-2. Open terminal in the BBC folder
-3. Run: python3 bbc_installer.py install /path/to/your/project
-4. Or: python3 bbc.py start /path/to/your/project
+STEP 2: INSTALL DEPENDENCIES
+----------------------------
+pip install -r requirements.txt
+
+STEP 3: START BBC ON YOUR PROJECT
+---------------------------------
+# Windows
+python bbc.py start C:\path\to\your\project
+
+# Linux/macOS
+python3 bbc.py start /path/to/your/project
+
+# Current directory
+python bbc.py start .
 
 PIP INSTALL (DEVELOPMENT):
 --------------------------
-1. cd BBC_MASTER_BBCMath
+1. cd BBC
 2. pip install -e .
-3. bbc start /path/to/your/project
+3. python bbc.py start /path/to/your/project
 
 FIRST USAGE:
 -----------
-1. Go to your project: cd /path/to/project
-2. Start BBC: bbc start
-3. That's it! Your AI assistants now understand your code.
+1. Clone BBC: git clone https://github.com/Anubis44197/BBC.git
+2. Install deps: pip install -r requirements.txt
+3. Start BBC: python bbc.py start /path/to/project
+4. That's it! Your AI assistants now understand your code.
+
+UPDATE BBC:
+----------
+cd BBC
+git pull origin main
 
 TROUBLESHOOTING:
 ---------------
 - Python not found? Install Python 3.8+ from python.org
 - BBC not found? Make sure you're in the BBC folder
-- AI assistants not working? Run: bbc start -f (force refresh)
+- AI assistants not working? Run: python bbc.py start -f . (force refresh)
 - Check logs: .bbc/logs/
 
 SUPPORT:
@@ -39,4 +51,4 @@ SUPPORT:
 Documentation: USER_GUIDE.md
 Quick start: QUICK_START.md
 
-Enjoy BBC! 🎉
+Enjoy BBC!

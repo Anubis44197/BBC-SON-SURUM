@@ -11,31 +11,19 @@
 
 ## 🚀 Installation
 
-### Method 1: Installer (Recommended)
+### Method 1: Clone & Run (Recommended)
 ```bash
-# Windows
-python bbc_installer.py install C:\path\to\your\project
-
-# Linux/macOS
-python3 bbc_installer.py install /path/to/your/project
+git clone https://github.com/Anubis44197/BBC.git
+cd BBC
+pip install -r requirements.txt
+python bbc.py start /path/to/your/project
 ```
-
-The installer will:
-1. Validate the project
-2. Create a virtual environment
-3. Install dependencies
-4. Analyze the project
-5. Inject IDE configurations
 
 ### Method 2: pip Install (Development)
 ```bash
-cd BBC_MASTER_BBCMath
+git clone https://github.com/Anubis44197/BBC.git
+cd BBC
 pip install -e .
-bbc start /path/to/your/project
-```
-
-### Method 3: Direct Run (No Install)
-```bash
 python bbc.py start /path/to/your/project
 ```
 
@@ -43,11 +31,11 @@ python bbc.py start /path/to/your/project
 
 ### Start Using BBC
 ```bash
-# Navigate to your project
-cd /path/to/your/project
+# From the BBC directory, point to your project
+python bbc.py start /path/to/your/project
 
-# Start BBC
-bbc start
+# Or use current directory
+python bbc.py start .
 ```
 
 ### What Happens When You Start BBC
@@ -61,17 +49,17 @@ bbc start
 ### Main Commands (bbc.py)
 | Command | Description |
 |---------|-------------|
-| `bbc start [path]` | Full pipeline: Verify + Analyze + Inject |
-| `bbc start -b [path]` | Run in background (daemon mode) |
-| `bbc start -f [path]` | Force refresh (re-analyze everything) |
-| `bbc analyze [path]` | Deep project scan only |
-| `bbc verify [path]` | Check structural integrity |
-| `bbc menu [path]` | Interactive BBC menu |
-| `bbc serve --port 3333` | Start REST API server |
-| `bbc audit [path]` | Audit BBC traces in project |
-| `bbc purge [path] [--force]` | Complete BBC removal |
-| `bbc stop` | Stop BBC daemon |
-| `bbc status` | Show system status |
+| `python bbc.py start [path]` | Full pipeline: Verify + Analyze + Inject |
+| `python bbc.py start -b [path]` | Run in background (daemon mode) |
+| `python bbc.py start -f [path]` | Force refresh (re-analyze everything) |
+| `python bbc.py analyze [path]` | Deep project scan only |
+| `python bbc.py verify [path]` | Check structural integrity |
+| `python bbc.py menu [path]` | Interactive BBC menu |
+| `python bbc.py serve --port 3333` | Start REST API server |
+| `python bbc.py audit [path]` | Audit BBC traces in project |
+| `python bbc.py purge [path]` | Complete BBC removal |
+| `python bbc.py stop [path]` | Stop BBC daemon |
+| `python bbc.py status [path]` | Show system status |
 
 ### Engine Commands (run_bbc.py)
 | Command | Description |
@@ -150,14 +138,14 @@ After each analysis, BBC shows a visual report:
 
 ### Background Mode (Daemon)
 ```bash
-bbc start -b
+python bbc.py start -b .
 # BBC runs in background, monitoring file changes
-bbc stop  # Stop the daemon
+python bbc.py stop .  # Stop the daemon
 ```
 
 ### REST API Server
 ```bash
-bbc serve --port 3333
+python bbc.py serve --port 3333
 # API available at http://127.0.0.1:3333
 # Endpoints:
 #   GET  /health               → Server health + memory
@@ -165,7 +153,6 @@ bbc serve --port 3333
 #   GET  /api/symbol_analysis  → Symbol graph + critical symbols
 #   GET  /api/stats            → Token savings + stability stats
 #   POST /api/analyze          → Analyze a single file
-#   POST /mcp                  → MCP gateway (Claude Desktop, Cursor)
 ```
 
 ### Isolated vs Embedded Installation
@@ -175,7 +162,7 @@ bbc serve --port 3333
 ## 🔥 Troubleshooting
 
 ### "AI assistants not using BBC"
-1. Run `bbc start -f` (force refresh)
+1. Run `python bbc.py start -f .` (force refresh)
 2. Restart your IDE
 3. Check `.bbc/manifest/injected_files.json` for created files
 

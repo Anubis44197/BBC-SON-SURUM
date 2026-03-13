@@ -2,10 +2,9 @@
 
 > **Zero-Hallucination AI Coding Framework** — Analyzes your project, detects your active IDE, and provides AI assistants with a mathematically sealed context.
 
-[![BBC CI](https://github.com/Anubis44197/BBC_MASTER_BBCMath/actions/workflows/ci.yml/badge.svg)](https://github.com/Anubis44197/BBC_MASTER_BBCMath/actions)
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v8.3%20STABLE-green)](https://github.com/Anubis44197/BBC_MASTER_BBCMath)
+[![Version](https://img.shields.io/badge/version-v8.3%20STABLE-green)](https://github.com/Anubis44197/BBC)
 
 ---
 
@@ -35,8 +34,8 @@ Scan Project  →  Build Sealed Context  →  Detect Active IDE  →  Inject Onl
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/Anubis44197/BBC_MASTER_BBCMath.git
-cd BBC_MASTER_BBCMath
+git clone https://github.com/Anubis44197/BBC.git
+cd BBC
 ```
 
 ### 2. Install Dependencies
@@ -58,23 +57,7 @@ python3 bbc.py start /path/to/your/project
 python bbc.py start .
 ```
 
-> **Tip:** Add `bbc.bat` (Windows) or `bbc.sh` (Linux/macOS) to your PATH to use the shorthand `bbc start` command.
-
-### Alternative: Self-Installing Launcher (End-User Distribution)
-
-If you want to give BBC to someone without requiring a manual clone, use the **self-installing `bbc.bat`** from the distribution repository:
-
-```
-https://github.com/Anubis44197/BBC.git
-```
-
-The user only receives **`bbc.bat`**. On first run it:
-1. Checks for Python + Git
-2. Clones `BBC_MASTER_BBCMath` into `%APPDATA%\BBC\` automatically
-3. Installs all dependencies
-4. Runs BBC on the current project
-
-No manual setup required on the user's side.
+> **Tip:** Add the BBC directory to your PATH to use `python bbc.py start` from anywhere.
 
 ---
 
@@ -184,41 +167,38 @@ Verification also runs automatically at the end of every `bbc start` and `bootst
 
 ```bash
 # Full pipeline: Verify + Analyze + Inject + Start Daemon
-bbc start [path]
+python bbc.py start [path]
 
 # Force refresh (use after code changes)
-bbc start -f [path]
+python bbc.py start -f [path]
 
 # Run daemon in background
-bbc start -b [path]
+python bbc.py start -b [path]
 
 # Deep project analysis only
-bbc analyze [path]
+python bbc.py analyze [path]
 
 # Check structural integrity
-bbc verify [path]
+python bbc.py verify [path]
 
 # Audit BBC traces in a project
-bbc audit [path]
+python bbc.py audit [path]
 
-# Install BBC into a target project (copies engine + runs bootstrap)
-bbc install [target_path]
-
-# Start REST API + MCP server (default port 3333)
-bbc serve
-bbc serve --port 8080
+# Start REST API server (default port 3333)
+python bbc.py serve
+python bbc.py serve --port 8080
 
 # Show system status
-bbc status
+python bbc.py status [path]
 
 # Stop BBC daemon
-bbc stop
+python bbc.py stop [path]
 
 # Remove all BBC files from a project
-bbc purge [path]
+python bbc.py purge [path]
 
-# Update BBC to the latest version (self-installing bat only)
-bbc update
+# Update BBC to the latest version
+git pull origin main
 ```
 
 ---
@@ -226,7 +206,7 @@ bbc update
 ## 📂 Project Structure
 
 ```
-BBC_MASTER_BBCMath/
+BBC/
 ├── bbc.py                    # Main CLI entry point
 ├── bbc_daemon.py             # Real-time file watcher daemon
 ├── bbc_installer.py          # System-level installation engine
@@ -257,22 +237,14 @@ BBC_MASTER_BBCMath/
 │   ├── ai_integration.py     # External AI API integration helpers
 │   ├── realtime_token_counter.py # Live token usage tracker
 │   ├── terminal_monitor.py   # Terminal output monitor
-│   ├── http_server.py        # REST API + MCP server (FastAPI)
+│   ├── http_server.py        # REST API server (FastAPI)
 │   ├── global_menu.py        # Interactive TUI global menu
 │   ├── global_setup.py       # First-run environment setup
 │   ├── bbc_logger.py         # Structured logging system
 │   └── cli.py                # CLI command handler
-├── 01_Engine/
-│   ├── hmpu_api_v53.py       # FastAPI industrial endpoint (v5.3)
-│   ├── hmpu_core.py          # Core HMPU math engine
-│   ├── hmpu_fused_pipeline.py# Fused analysis + quantization pipeline
-│   ├── hmpu_indexer.py       # High-performance vector indexer
-│   ├── hmpu_master_pipeline.py # Master orchestration pipeline
-│   ├── hmpu_quantizer.py     # Token quantizer (production grade)
-│   ├── hmpu_weights.json     # Pre-trained stability weights
-│   ├── analyze_file.py       # Single-file analysis utility
-│   ├── create_recipe.py      # Context recipe builder
-│   └── get_stats.py          # Statistics extractor
+├── requirements.txt          # Python dependencies
+├── setup.py                  # pip install support
+├── pyproject.toml            # Project metadata
 └── tests/                    # Unit tests
 ```
 
@@ -301,34 +273,28 @@ BBC works with any codebase — it uses language-agnostic AST analysis:
 
 ---
 
-## 📂 Where Does BBC Install?
+## 📂 How BBC Works in Your Project
 
-BBC installs **once** on your system:
-
-```
-%APPDATA%\BBC\BBC_MASTER_BBCMath\   ← BBC engine (installed automatically via bbc.bat)
-```
-
-For each project, only a small `.bbc/` folder is created in your project root:
+When you run `python bbc.py start /path/to/project`, BBC creates a `.bbc/` folder in the target project:
 
 ```
-YourProject\
-  .bbc\
+YourProject/
+  .bbc/
     bbc_context.json    ← Sealed context (AI's single source of truth)
     bbc_rules.md        ← Coding rules injected into AI
     BBC_INSTRUCTIONS.md ← Instruction manifest for AI assistants
-    indices\            ← Vector indices for similarity search
-    cache\              ← Project snapshot cache
-    logs\               ← Daemon and session logs
+    indices/            ← Vector indices for similarity search
+    cache/              ← Project snapshot cache
+    logs/               ← Daemon and session logs
 ```
 
-> All `.bbc/` contents are automatically added to `.gitignore` — they never pollute your repository.
+BBC also injects instructions into your active IDE's config (e.g. `.github/copilot-instructions.md`). These files are automatically added to `.gitignore` — they never pollute your repository.
 
 ---
 
-## 🌐 REST API & MCP Server
+## 🌐 REST API Server
 
-BBC can run as an HTTP server, exposing its context engine via REST API and **MCP (Model Context Protocol)**.
+BBC can run as an HTTP server, exposing its context engine via REST API.
 
 ### Start the API Server
 
@@ -338,9 +304,6 @@ python bbc.py serve
 
 # Custom port
 python bbc.py serve --port 8080
-
-# With project path
-BBC_PROJECT_ROOT=/path/to/project python -m uvicorn bbc_core.http_server:app --port 3333
 ```
 
 ### Available Endpoints
@@ -352,7 +315,6 @@ BBC_PROJECT_ROOT=/path/to/project python -m uvicorn bbc_core.http_server:app --p
 | `GET` | `/api/symbol_analysis` | Symbol graph + critical symbols |
 | `GET` | `/api/stats` | Token savings, stability stats |
 | `POST` | `/api/analyze` | Analyze a single file |
-| `POST` | `/mcp` | MCP gateway for AI tools |
 
 ### Example: Health Check
 
@@ -369,33 +331,6 @@ curl http://localhost:3333/health
 }
 ```
 
-### MCP Integration (Claude Desktop, Cursor, etc.)
-
-BBC's `/mcp` endpoint implements the **Model Context Protocol**, allowing AI tools to query BBC directly.
-
-```bash
-# List available tools
-curl -X POST http://localhost:3333/mcp \
-  -H "Content-Type: application/json" \
-  -d '{"type": "list_tools"}'
-```
-
-**Available MCP tools:**
-- `analyze_project` — Full project analysis
-- `get_stats` — System statistics  
-- `symbol_radius` — Calculate impact radius of a symbol
-
-**Claude Desktop config** (`claude_desktop_config.json`):
-```json
-{
-  "mcpServers": {
-    "bbc": {
-      "url": "http://localhost:3333/mcp"
-    }
-  }
-}
-```
-
 > **Interactive Docs:** Once running, visit `http://localhost:3333/docs` for the full Swagger UI.
 
 ---
@@ -404,15 +339,15 @@ curl -X POST http://localhost:3333/mcp \
 
 **BBC not starting?**
 ```bash
-bbc status              # Check daemon state
-python bbc.py verify .  # Run structural check
-python bbc.py start -f .  # Force full refresh
+python bbc.py status .       # Check daemon state
+python bbc.py verify .       # Run structural check
+python bbc.py start -f .     # Force full refresh
 ```
 
 **AI assistant ignoring BBC?**
 ```bash
-python bbc.py audit .   # Check which files were injected
-python bbc.py start -f .  # Re-run IDE detection and injection
+python bbc.py audit .        # Check which files were injected
+python bbc.py start -f .     # Re-run IDE detection and injection
 # Then restart your IDE
 ```
 
@@ -442,8 +377,6 @@ $$C = \frac{1}{1 + \log_{10}(\kappa)}$$
 | κ > 20.0 | ⚠️ WEAK | <50% |
 
 For the full technical reference: [`BBC_TECHNICAL_REFERENCE_EN.md`](BBC_TECHNICAL_REFERENCE_EN.md)
-
-For the architecture manifest: [`BBC_MASTER_MANIFEST.md`](BBC_MASTER_MANIFEST.md)
 
 ---
 

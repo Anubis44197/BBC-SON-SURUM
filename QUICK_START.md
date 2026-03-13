@@ -2,37 +2,25 @@
 
 ## 🎯 Get BBC Working in 5 Minutes
 
-### Step 1: Install BBC
+### Step 1: Clone & Install BBC
 
-#### Option A: Installer (Recommended)
 ```bash
-# Windows
-python bbc_installer.py install C:\path\to\your\project
-
-# Linux/macOS
-python3 bbc_installer.py install /path/to/your/project
+git clone https://github.com/Anubis44197/BBC.git
+cd BBC
+pip install -r requirements.txt
 ```
 
-#### Option B: pip Install (Development)
-```bash
-cd BBC_MASTER_BBCMath
-pip install -e .
-```
+### Step 2: Start BBC on Your Project
 
-#### Option C: Direct Run (No Install)
 ```bash
 # Windows
 python bbc.py start C:\path\to\your\project
 
 # Linux/macOS
 python3 bbc.py start /path/to/your/project
-```
 
-### Step 2: Use BBC on Your Project
-
-```bash
-cd /path/to/your/project
-bbc start
+# Current directory
+python bbc.py start .
 ```
 
 **BBC will:**
@@ -100,17 +88,17 @@ Universal files (always created inside `.bbc/`):
 ## 🛠️ All Commands
 
 ```bash
-bbc start [path]       # Full pipeline: Verify + Analyze + Inject
-bbc start -b [path]    # Run in background (daemon mode)
-bbc start -f [path]    # Force refresh
-bbc analyze [path]     # Deep project scan only
-bbc verify [path]      # Check structural integrity
-bbc menu [path]        # Interactive BBC menu
-bbc serve --port 3333  # Start REST API server
-bbc audit [path]       # Audit BBC traces
-bbc purge [path] [--force]  # Complete BBC removal
-bbc stop               # Stop BBC daemon
-bbc status             # Show system status
+python bbc.py start [path]       # Full pipeline: Verify + Analyze + Inject
+python bbc.py start -b [path]    # Run in background (daemon mode)
+python bbc.py start -f [path]    # Force refresh
+python bbc.py analyze [path]     # Deep project scan only
+python bbc.py verify [path]      # Check structural integrity
+python bbc.py menu [path]        # Interactive BBC menu
+python bbc.py serve --port 3333  # Start REST API server
+python bbc.py audit [path]       # Audit BBC traces
+python bbc.py purge [path]       # Complete BBC removal
+python bbc.py stop [path]        # Stop BBC daemon
+python bbc.py status [path]      # Show system status
 ```
 
 ## 📚 Need More Help?
