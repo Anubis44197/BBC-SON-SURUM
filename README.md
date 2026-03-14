@@ -259,7 +259,43 @@ Verification also runs automatically at the end of every `bbc start` and `bootst
 
 ---
 
-## 📂 Project Structure
+## �️ CLI Commands
+
+All user-facing commands go through `bbc.py` — the single entry point:
+
+| Command | Description |
+|---|---|
+| `bbc start [path]` | Full pipeline: analyze + verify + inject + daemon |
+| `bbc analyze [path]` | Deep project scan, generate sealed context |
+| `bbc verify [path]` | Check structural integrity (freshness gate + fail policy) |
+| `bbc check <file>` | Hallucination guard — check AI-generated code against context |
+| `bbc impact <file>` | Semantic impact analysis of a file change |
+| `bbc patch [path]` | Detect and auto-fix code issues (dry-run by default) |
+| `bbc inject [path]` | Inject BBC instructions into AI agent config files |
+| `bbc hooks [path]` | Install/remove BBC git hooks for team automation |
+| `bbc install [path]` | One-command setup: deps + analyze + inject + start |
+| `bbc serve` | Start REST API server |
+| `bbc status [path]` | Show system status (context + daemon) |
+| `bbc watch [path]` | Watch AI operations in IDE terminal |
+| `bbc stop [path]` | Stop BBC daemon |
+| `bbc audit [path]` | Audit BBC traces |
+| `bbc purge [path]` | Complete BBC removal |
+| `bbc menu [path]` | Interactive TUI menu |
+
+### Global Options
+
+| Option | Values | Description |
+|---|---|---|
+| `--enforcement` | `strict` / `balanced` / `relaxed` | Override enforcement level |
+| `--fail-policy` | `fail_closed` / `fail_open` | Override fail policy |
+
+### CLI Architecture Note
+> `bbc.py` is the **user-facing CLI** — all commands should be run through it.
+> `run_bbc.py` is the **internal engine CLI** used by `bbc.py` under the hood. Users should not call it directly.
+
+---
+
+## �📂 Project Structure
 
 ```
 BBC/

@@ -294,6 +294,10 @@ def main():
     patch_parser.add_argument("path", nargs="?", default=".", help="Project path (default: current directory)")
     patch_parser.add_argument("--apply", action="store_true", help="Apply safe patches (default: dry-run only)")
 
+    # Inject (Agent Instruction Injection)
+    inject_parser = subparsers.add_parser("inject", help="Inject BBC instructions into AI agent config files")
+    inject_parser.add_argument("path", nargs="?", default=".", help="Project path (default: current directory)")
+
     # Hooks (Git Hook Generator)
     hooks_parser = subparsers.add_parser("hooks", help="Install/remove BBC git hooks for team automation")
     hooks_parser.add_argument("path", nargs="?", default=".", help="Project path")
@@ -372,6 +376,18 @@ def main():
         cli.watch(args.path)
     elif args.command == "install":
         cli.install(args.path, args.force)
+    elif args.command == "inject":
+        project_resolved = str(Path(args.path).resolve())
+        ctx_file = str(Path(project_resolved) / ".bbc" / "bbc_context.json")
+        if Path(ctx_file).exists():
+            from bbc_core.agent_adapter import inject_to_project
+            created = inject_to_project(ctx_file, project_resolved)
+            print(f"\n[BBC] Injection complete — {len(created)} target(s):")
+            for label, path in created.items():
+                print(f"  [{label}] {path}")
+        else:
+            print(f"[BBC] Context not found: {ctx_file}")
+            print(f"[BBC] Run 'bbc analyze {args.path}' first to generate the context.")
     elif args.command == "stop":
         cli.stop(args.path)
     elif args.command == "status":
