@@ -1,6 +1,6 @@
 # 🧠 BBC — Bitter Brain Context v8.4
 
-> **Zero-Hallucination AI Coding Framework** — Analyzes your project, detects your active IDE, and provides AI assistants with a mathematically sealed context.
+> **Zero-Hallucination AI Coding Framework** — Analyzes your project, detects your active IDE, and provides AI assistants with a verified sealed context.
 
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -138,13 +138,8 @@ Previous versions created config folders for 20+ tools regardless of whether the
 - ❌ **Before:** `.codiumai/`, `.replit/`, `.tabnine/`, `.pieces/`... (20+ folders)
 - ✅ **Now:** Only active IDE + installed extensions (1–3 files maximum)
 
-### 📊 Mathematical Stability Engine (HMPU)
-BBC measures your project's structural health using a **3×3 Aura Matrix**:
-
-```
-Condition Number (κ) < 10  →  💎 STABLE   — AI operates with high confidence
-Condition Number (κ) > 20  →  ⚠️  WEAK    — High risk of AI hallucination
-```
+### 📊 Stability Engine
+BBC continuously evaluates project health and verification confidence to keep AI work aligned with the current sealed context.
 
 ### 💾 Token Savings
 ```
@@ -156,7 +151,7 @@ BBC's daemon (`bbc_daemon.py`) actively monitors your project for changes every 
 - **New files added** → automatic re-analysis + re-injection
 - **Files modified** → SHA-256 hash comparison detects stale context, triggers re-seal
 - **Files deleted** → context updated to remove orphaned symbols
-- **Aura Gradient Feedback (v8.4)** → successful re-seal sends positive feedback to HMPU Governor (`aura_gradient_bend`), failed re-seal sends negative feedback — the system learns from its own operations
+- **Adaptive feedback (v8.4)** → successful re-seal improves stability tracking, failed re-seal lowers trust until the project is sealed again
 
 The daemon uses `adaptive_mode.check_context_freshness()` for hash-based staleness detection and recommends `RESCAN` or `PARTIAL_RESCAN` based on the ratio of changed files.
 
@@ -171,15 +166,15 @@ BBC operates in two modes depending on context match quality:
 If a symbol is not in the sealed context, BBC returns: `"Information not found in sealed context"`
 
 ### ✅ Full Verifier (v8.4)
-BBC's verifier (`bbc_core/verifier.py`) runs a **4-layer verification** using BBC Mathematics:
+BBC's verifier (`bbc_core/verifier.py`) runs a **4-layer verification**:
 
 1. **Syntax Check** — AST parsing for Python, brace balancing for C-family languages
 2. **Freshness Check** — SHA-256 hash comparison detects files changed since last seal
-3. **Symbol Mismatch** — HMPUQuantizer re-scans disk files and compares against sealed context symbols
-4. **Aura Field Score** — HMPU Governor computes `aura_field_score(S, C, P)` with condition number `κ`
+3. **Symbol Mismatch** — BBC re-scans disk files and compares against sealed context symbols
+4. **Stability Report** — BBC returns project health, trust level, and final verdict
 
 ```bash
-bbc verify [path]   # Full verification with Aura Field report
+bbc verify [path]   # Full verification with stability report
 ```
 
 ```
@@ -188,12 +183,12 @@ bbc verify [path]   # Full verification with Aura Field report
 [FRESH]  Context is FRESH (42 files verified)
 [MATCH]  All symbols consistent (187 symbols)
 
- AURA FIELD (BBC Mathematics)
-  S (Structure):  1.0
-  C (Chaos):      0.0
-  P (Pulse):      1.0
-  Aura Score:     0.9847
-  Confidence:     0.726
+  AURA FIELD
+   S (Structure):  1.0 [STABLE]
+   C (Chaos):      0.0 [STABLE]
+   P (Pulse):      1.0 [STABLE]
+   Aura Score:     0.9847 [STABLE]
+   Confidence:     0.726 [WEAK]
   VERDICT: 💎 SEALED_STABLE
 ```
 
@@ -205,7 +200,7 @@ Post-generation verification — checks AI-generated code against the sealed BBC
 - Extracts referenced symbols from generated code
 - Compares against `bbc_context.json` known symbols
 - Detects speculative language patterns ("probably", "might", "could be")
-- Computes Aura confidence via HMPU Governor
+- Computes verification confidence and verdict
 - Reports CVP (Constraint Violation Protocol) violations
 
 ```bash
@@ -218,9 +213,37 @@ bbc check output.py --json                 # Machine-readable output
 ### 📦 Token Optimizer (v8.4)
 General-purpose token compression built into BBC core (`bbc_core/token_optimizer.py`):
 
-- **Shannon entropy-based adaptive sampling** — high entropy regions get more samples, repetitive data is aggressively compressed
+- **Adaptive sampling** — dense regions get more samples, repetitive data is aggressively compressed
 - **Compact JSON** — field name shortening, null/empty removal, decimal rounding
 - Full pipeline: `optimizer.optimize(data, target_ratio=0.1)`
+
+### 🔍 Semantic Impact Analysis (v8.5)
+BBC can estimate the blast radius of a change before you commit it:
+
+- Maps direct dependents of a changed file
+- Finds indirect downstream effects
+- Tracks symbol-level impact when specific functions or classes are changed
+- Ranks semantically similar files for review
+- Returns a risk verdict for the proposed change
+
+```bash
+python bbc.py impact bbc_core/verifier.py --symbols verify_full
+python bbc.py impact bbc_core/verifier.py --op Refactor
+```
+
+### 🔧 Auto Patcher (v8.5)
+BBC can scan the project for safe cleanup opportunities and propose fixes:
+
+- Detects silent exception handling patterns
+- Detects some unused imports
+- Flags symbol drift that requires resealing
+- Runs in preview mode by default
+- Applies only safe patches when explicitly requested
+
+```bash
+python bbc.py patch .
+python bbc.py patch . --apply
+```
 
 ### 🔗 Git Hooks — Team Automation (v8.4)
 Automatic BBC re-sealing on `git checkout` and `git merge`:
@@ -233,89 +256,6 @@ bbc hooks [path] --remove  # Remove BBC hooks
 Every team member gets automatic context re-sealing without manual intervention.
 
 Verification also runs automatically at the end of every `bbc start` and `bootstrap` pipeline.
-
----
-
-## � Case Study: Borsa MCP (Real-World Benchmark)
-
-BBC was tested on **borsa-mcp** — a financial data MCP server for Borsa Istanbul with 257K+ lines of code. Testing was performed using the **Cline extension** (VS Code) with free-form prompts.
-
-### Benchmark: 10-Year OHLCV Analysis (3,650 records)
-
-| Metric | Without BBC | With BBC | Savings |
-|---|---:|---:|---:|
-| Characters | 449,490 | 4,266 | 445,224 |
-| Tokens (approx) | 112,372 | 1,066 | 111,306 |
-| Tokens (tiktoken/real) | 233,757 | 1,951 | **231,806** |
-| **Savings Rate (real)** | — | — | **99.17%** |
-
-> **119:1 compression ratio** — verified with `tiktoken` (GPT-4o tokenizer)
-
-### How BBC Achieved This
-
-1. **Context Discipline:** Instead of dumping README + raw data + verbose instructions into one prompt, BBC enforces focused task payloads with `context_source: .bbc/bbc_context.json`
-2. **Adaptive Sampling:** 3,650 daily records → key inflection points only (`TokenOptimizer`)
-3. **Compact JSON:** Field shortening, null removal, number rounding (`CompactJSONOptimizer`)
-4. **Hallucination Prevention:** `constraint_status: verified` ensures AI stays within sealed context
-
-### Key Insight
-
-> *"BBC is not magic automation — it's an engineering framework that keeps AI work safe and focused."*
-> 
-> The massive token reduction comes from BBC discipline + optimization working together, not from a single tool.
-
-*Tested with Cline extension (VS Code) using free-form prompts. March 2026.*
-
----
-
-## �🛠️ Commands
-
-```bash
-# Full pipeline: Verify + Analyze + Inject + Start Daemon
-python bbc.py start [path]
-
-# One-command install: deps + analyze + inject + start
-python bbc.py install [path]
-
-# Force refresh (use after code changes)
-python bbc.py start -f [path]
-
-# Run daemon in background
-python bbc.py start -b [path]
-
-# Deep project analysis only
-python bbc.py analyze [path]
-
-# Full verification (Syntax + Freshness + Mismatch + Aura)
-python bbc.py verify [path]
-
-# Check AI-generated code for hallucinations
-python bbc.py check generated_file.py
-python bbc.py check output.py --context .bbc/bbc_context.json
-
-# Install/remove git hooks for team automation
-python bbc.py hooks [path]
-python bbc.py hooks [path] --remove
-
-# Audit BBC traces in a project
-python bbc.py audit [path]
-
-# Start REST API server (default port 3333)
-python bbc.py serve
-python bbc.py serve --port 8080
-
-# Show system status
-python bbc.py status [path]
-
-# Stop BBC daemon
-python bbc.py stop [path]
-
-# Remove all BBC files from a project
-python bbc.py purge [path]
-
-# Update BBC to the latest version
-git pull origin main
-```
 
 ---
 
@@ -339,18 +279,19 @@ BBC/
 │   ├── symbol_graph.py       # Dependency call graph builder
 │   ├── context_optimizer.py  # Blast radius & context filter
 │   ├── adaptive_mode.py      # STRICT / RELAXED mode switcher
-│   ├── hmpu_core.py          # Mathematical stability governor
-│   ├── hmpu_engine.py        # HMPU v8.3 pipeline orchestrator
-│   ├── hmpu_indexer.py       # Vector index builder for similarity search
-│   ├── hmpu_quantizer.py     # Token compression & quantization
-│   ├── matrix_ops.py         # Linear algebra operations (Aura Matrix)
+│   ├── internal_engine.py    # Core processing pipeline
+│   ├── internal_indexer.py   # Vector index builder for similarity search
+│   ├── internal_quantizer.py # Token compression & quantization
+│   ├── internal_ops.py       # Internal operations
 │   ├── bbc_scalar.py         # BBC scalar state logic (STABLE/WEAK/DEGENERATE)
 │   ├── config.py             # Global configuration & paths
 │   ├── state_manager.py      # Session & daemon state manager
 │   ├── telemetry.py          # Operational telemetry & session tracking
-│   ├── verifier.py           # Full verifier (Syntax+Freshness+Mismatch+Aura)
+│   ├── verifier.py           # Full verifier (syntax, freshness, mismatch, stability)
 │   ├── hallucination_guard.py # Post-generation hallucination detector
-│   ├── token_optimizer.py    # Shannon entropy adaptive token compressor
+│   ├── token_optimizer.py    # Adaptive token compressor
+│   ├── impact_analyzer.py    # Change impact analysis and blast-radius report
+│   ├── auto_patcher.py       # Safe automatic patch preview/apply engine
 │   ├── git_hooks.py          # Git hook generator for team automation
 │   ├── attribution_tracer.py # Symbol attribution & call trace
 │   ├── migrator_engine.py    # Legacy context migration engine
@@ -385,121 +326,6 @@ All `.bbc/` files are automatically added to `.gitignore` — they never pollute
 
 ---
 
-## 📦 Supported Project Types
-
-BBC works with any codebase — it uses language-agnostic AST analysis:
-
-`Python` · `JavaScript` · `TypeScript` · `Java` · `C/C++` · `Go` · `Rust` · `PHP` · `Ruby` · `C#` · `Swift` · `Kotlin` · `and more...`
-
----
-
-## 📂 How BBC Works in Your Project
-
-When you run `python bbc.py start /path/to/project`, BBC creates a `.bbc/` folder in the target project:
-
-```
-YourProject/
-  .bbc/
-    bbc_context.json    ← Sealed context (AI's single source of truth)
-    bbc_rules.md        ← Coding rules injected into AI
-    BBC_INSTRUCTIONS.md ← Instruction manifest for AI assistants
-    indices/            ← Vector indices for similarity search
-    cache/              ← Project snapshot cache
-    logs/               ← Daemon and session logs
-```
-
-BBC also injects instructions into your active IDE's config (e.g. `.github/copilot-instructions.md`). These files are automatically added to `.gitignore` — they never pollute your repository.
-
----
-
-## 🌐 REST API Server
-
-BBC can run as an HTTP server, exposing its context engine via REST API.
-
-### Start the API Server
-
-```bash
-# Default port 3333
-python bbc.py serve
-
-# Custom port
-python bbc.py serve --port 8080
-```
-
-### Available Endpoints
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/health` | Server health + memory usage |
-| `GET` | `/api/project_context` | Full sealed BBC context (JSON) |
-| `GET` | `/api/symbol_analysis` | Symbol graph + critical symbols |
-| `GET` | `/api/stats` | Token savings, stability stats |
-| `POST` | `/api/analyze` | Analyze a single file |
-
-### Example: Health Check
-
-```bash
-curl http://localhost:3333/health
-```
-```json
-{
-  "status": "healthy",
-  "version": "8.3.0",
-  "adapter_ready": true,
-  "memory_mb": 51.11,
-  "uptime_seconds": 16.4
-}
-```
-
-> **Interactive Docs:** Once running, visit `http://localhost:3333/docs` for the full Swagger UI.
-
----
-
-## 🔧 Troubleshooting
-
-**BBC not starting?**
-```bash
-python bbc.py status .       # Check daemon state
-python bbc.py verify .       # Run structural check
-python bbc.py start -f .     # Force full refresh
-```
-
-**AI assistant ignoring BBC?**
-```bash
-python bbc.py audit .        # Check which files were injected
-python bbc.py start -f .     # Re-run IDE detection and injection
-# Then restart your IDE
-```
-
-**View logs:**
-```bash
-# Windows
-type .bbc\logs\daemon.log
-
-# Linux / macOS
-cat .bbc/logs/daemon.log
-```
-
----
-
-## 📐 Architecture
-
-BBC's core is the **HMPU (Hybrid Mathematical Processing Unit)**, which provides mathematically grounded confidence scores rather than arbitrary percentages:
-
-$$\kappa(A) = \|A\| \cdot \|A^{-1}\|$$
-
-$$C = \frac{1}{1 + \log_{10}(\kappa)}$$
-
-| Condition Number | Status | AI Confidence |
-|---|---|---|
-| κ ≈ 1.0 | 💎 STABLE | ~90%+ |
-| κ = 2.38 | 💎 STABLE | ~73% |
-| κ > 20.0 | ⚠️ WEAK | <50% |
-
-For the full technical reference: [`BBC_TECHNICAL_REFERENCE_EN.md`](BBC_TECHNICAL_REFERENCE_EN.md)
-
----
-
 ## 📄 License
 
 MIT License — see [LICENSE](LICENSE) for details.
@@ -508,7 +334,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 <div align="center">
 
-**BBC v8.4 STABLE** — Your AI assistants now see your project with mathematical certainty.
+**BBC v8.4 STABLE** — Your AI assistants now see your project through a verified sealed context.
 
 *No hallucinations. No guesswork. Only verified context.*
 
