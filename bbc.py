@@ -178,6 +178,28 @@ class BBCCLI:
         if force: cmd.append("--force")
         self.run_command(cmd)
 
+    def install(self, project_path: str = ".", force: bool = False):
+        """One-command BBC install: pip install deps + analyze + inject + start"""
+        print(f"[BBC] One-Command Install starting...")
+        
+        # 1. Install dependencies
+        req_file = self.script_dir / "requirements.txt"
+        if req_file.exists():
+            print(f"[BBC] Step 1/2: Installing dependencies...")
+            result = subprocess.call(
+                [sys.executable, "-m", "pip", "install", "-r", str(req_file), "-q"]
+            )
+            if result != 0:
+                print(f"[BBC] Warning: Some dependencies may have failed to install.")
+            else:
+                print(f"[BBC] Step 1/2: Dependencies installed.")
+        else:
+            print(f"[BBC] Step 1/2: No requirements.txt found, skipping.")
+        
+        # 2. Run full start pipeline
+        print(f"[BBC] Step 2/2: Starting BBC...")
+        self.start(project_path, force=force)
+
     def serve(self, port=3333):
         """Start HTTP API Server"""
         print(f"[BBC] Starting API Server on port {port}...")
@@ -221,6 +243,11 @@ def main():
     menu_parser = subparsers.add_parser("menu", help="Interactive BBC Menu")
     menu_parser.add_argument("path", nargs="?", default=".", help="Project path")
 
+    # Install (One-command setup)
+    install_parser = subparsers.add_parser("install", help="One-command install: deps + analyze + inject + start")
+    install_parser.add_argument("path", nargs="?", default=".", help="Project path")
+    install_parser.add_argument("--force", "-f", action="store_true", help="Force fresh install")
+
     # Watch (IDE Terminal Monitor)
     watch_parser = subparsers.add_parser("watch", help="Watch AI operations and show HMPU reports in IDE terminal")
     watch_parser.add_argument("path", nargs="?", default=".", help="Project path")
@@ -256,6 +283,8 @@ def main():
         menu_main(str(Path(args.path).resolve()), loop=True)
     elif args.command == "watch":
         cli.watch(args.path)
+    elif args.command == "install":
+        cli.install(args.path, args.force)
     elif args.command == "stop":
         cli.stop(args.path)
     elif args.command == "status":

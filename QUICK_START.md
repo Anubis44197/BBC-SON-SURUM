@@ -2,25 +2,33 @@
 
 ## 🎯 Get BBC Working in 5 Minutes
 
-### Step 1: Clone & Install BBC
+### Step 1: Clone BBC into Your Project
 
 ```bash
+cd your-project
 git clone https://github.com/Anubis44197/BBC.git
-cd BBC
-pip install -r requirements.txt
 ```
 
-### Step 2: Start BBC on Your Project
+### Step 2: One-Command Setup
 
 ```bash
-# Windows
-python bbc.py start C:\path\to\your\project
+# Windows (automatic)
+BBC\setup.bat
 
-# Linux/macOS
-python3 bbc.py start /path/to/your/project
+# Linux/macOS (automatic)
+bash BBC/setup.sh
 
-# Current directory
-python bbc.py start .
+# Or use the install command
+python BBC/bbc.py install .
+```
+
+All three options do the same thing: install dependencies + analyze + inject + start daemon.
+
+### Alternative: Manual Setup
+
+```bash
+pip install -r BBC/requirements.txt
+python BBC/bbc.py start .
 ```
 
 **BBC will:**
@@ -88,6 +96,7 @@ Universal files (always created inside `.bbc/`):
 ## 🛠️ All Commands
 
 ```bash
+python bbc.py install [path]     # One-command: deps + analyze + inject + start
 python bbc.py start [path]       # Full pipeline: Verify + Analyze + Inject
 python bbc.py start -b [path]    # Run in background (daemon mode)
 python bbc.py start -f [path]    # Force refresh

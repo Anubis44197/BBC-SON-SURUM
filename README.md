@@ -31,31 +31,46 @@ Scan Project  →  Build Sealed Context  →  Detect Active IDE  →  Inject Onl
 - Python 3.8+
 - Git
 
-### 1. Clone the Repository
+### Option A: One-Command Setup (Recommended)
+
+Clone BBC into your project and run the setup script:
 
 ```bash
+cd your-project
 git clone https://github.com/Anubis44197/BBC.git
-cd BBC
-```
 
-### 2. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Start BBC on Your Project
-
-```bash
 # Windows
-python bbc.py start C:\path\to\your\project
+BBC\setup.bat
 
 # Linux / macOS
-python3 bbc.py start /path/to/your/project
-
-# Current directory
-python bbc.py start .
+bash BBC/setup.sh
 ```
+
+This automatically installs dependencies and starts BBC on your project.
+
+### Option B: Manual Setup
+
+```bash
+# 1. Clone BBC into your project
+cd your-project
+git clone https://github.com/Anubis44197/BBC.git
+
+# 2. Install dependencies
+pip install -r BBC/requirements.txt
+
+# 3. Start BBC
+python BBC/bbc.py start .
+```
+
+### Option C: Install Command
+
+If you've already cloned BBC, use the `install` command for one-step setup:
+
+```bash
+python BBC/bbc.py install .
+```
+
+This runs `pip install` + `analyze` + `inject` + `start daemon` in one command.
 
 > **Tip:** Add the BBC directory to your PATH to use `python bbc.py start` from anywhere.
 
@@ -137,7 +152,12 @@ Source: 132,000 tokens  →  Context: 14,000 tokens  |  89% savings  |  9.4x fas
 ```
 
 ### 🔄 Real-time Re-sealing
-BBC's daemon (`bbc_daemon.py`) watches for file changes. If your code changes after AI interaction, it automatically triggers a re-analysis to prevent stale context.
+BBC's daemon (`bbc_daemon.py`) actively monitors your project for changes every 30 seconds:
+- **New files added** → automatic re-analysis + re-injection
+- **Files modified** → SHA-256 hash comparison detects stale context, triggers re-seal
+- **Files deleted** → context updated to remove orphaned symbols
+
+The daemon uses `adaptive_mode.check_context_freshness()` for hash-based staleness detection and recommends `RESCAN` or `PARTIAL_RESCAN` based on the ratio of changed files.
 
 ### 🧠 Adaptive Mode (STRICT / RELAXED)
 BBC operates in two modes depending on context match quality:
@@ -168,6 +188,9 @@ Verification also runs automatically at the end of every `bbc start` and `bootst
 ```bash
 # Full pipeline: Verify + Analyze + Inject + Start Daemon
 python bbc.py start [path]
+
+# One-command install: deps + analyze + inject + start
+python bbc.py install [path]
 
 # Force refresh (use after code changes)
 python bbc.py start -f [path]
@@ -209,8 +232,9 @@ git pull origin main
 BBC/
 ├── bbc.py                    # Main CLI entry point
 ├── bbc_daemon.py             # Real-time file watcher daemon
-├── bbc_installer.py          # System-level installation engine
 ├── run_bbc.py                # Direct execution runner
+├── setup.bat                 # One-command setup (Windows)
+├── setup.sh                  # One-command setup (Linux/Mac)
 ├── bbc_core/
 │   ├── agent_adapter.py      # IDE/Extension detection + Context injection
 │   ├── ide_auto_config.py    # Smart IDE/plugin detection system
