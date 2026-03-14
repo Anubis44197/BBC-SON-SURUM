@@ -258,6 +258,11 @@ def main():
     status_parser = subparsers.add_parser("status", help="Show system status")
     status_parser.add_argument("path", nargs="?", default=".", help="Project path")
 
+    # Hooks (Git Hook Generator)
+    hooks_parser = subparsers.add_parser("hooks", help="Install/remove BBC git hooks for team automation")
+    hooks_parser.add_argument("path", nargs="?", default=".", help="Project path")
+    hooks_parser.add_argument("--remove", action="store_true", help="Remove BBC hooks")
+
     args = parser.parse_args()
     cli = BBCCLI()
 
@@ -318,6 +323,25 @@ def main():
             print("    Run 'bbc start' to enable live defense.")
             
         print("="*40 + "\n")
+    elif args.command == "hooks":
+        from bbc_core.git_hooks import install_hooks, remove_hooks
+        project_resolved = str(Path(args.path).resolve())
+        if args.remove:
+            result = remove_hooks(project_resolved)
+            if result["removed"]:
+                for r in result["removed"]:
+                    print(f"[BBC] Removed: {r}")
+            else:
+                print("[BBC] No BBC hooks found to remove.")
+        else:
+            result = install_hooks(project_resolved)
+            if result["success"]:
+                for h in result["installed"]:
+                    print(f"[BBC] Hook: {h}")
+                print(f"[BBC] Hooks installed in {result['hooks_dir']}")
+            else:
+                for e in result.get("errors", []):
+                    print(f"[BBC] Error: {e}")
     else:
         parser.print_help()
 

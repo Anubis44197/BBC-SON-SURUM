@@ -324,11 +324,27 @@ class BBCDaemon:
                             except Exception as e:
                                 self._log(f"[WATCH] Freshness check error: {e}")
                         
-                        # 3) Yeniden analiz gerekiyorsa çalıştır
+                        # 3) Yeniden analiz gerekiyorsa çalıştır + Aura feedback
                         if needs_reanalysis:
                             self._log(f"[WATCH] Triggering re-analysis: {reason}")
-                            if self._run_reanalysis(project_str):
-                                # Dosya setini güncelle
+                            success = self._run_reanalysis(project_str)
+                            
+                            # Aura Gradient Bend — HMPU feedback
+                            try:
+                                from bbc_core.hmpu_core import HMPU_Governor
+                                governor = HMPU_Governor()
+                                if success:
+                                    # Başarılı reseal → pozitif feedback
+                                    governor.aura_gradient_bend(delta=0.05, stability=True)
+                                    self._log("[AURA] Gradient bend: +stability (reseal OK)")
+                                else:
+                                    # Başarısız → negatif feedback
+                                    governor.aura_gradient_bend(delta=0.1, stability=False)
+                                    self._log("[AURA] Gradient bend: -stability (reseal FAIL)")
+                            except Exception as e:
+                                self._log(f"[AURA] Gradient bend skipped: {e}")
+                            
+                            if success:
                                 known_files = current_files
                                 self._update_config(project_path, "RESEALED")
                                 self._log("[WATCH] Context resealed successfully")

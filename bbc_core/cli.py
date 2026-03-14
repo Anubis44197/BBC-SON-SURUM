@@ -563,6 +563,18 @@ def main():
     adaptive_parser.add_argument("--json", action="store_true",
                                 help="Output raw JSON only")
 
+    # check command - Post-generation Hallucination Guard
+    check_parser = subparsers.add_parser("check", help="Check AI-generated code against BBC context for hallucinations")
+    check_parser.add_argument("file", help="Path to file containing AI-generated code to check")
+    check_parser.add_argument("--context", default=None,
+                             help="Path to bbc_context.json (default: auto-detect in project)")
+    check_parser.add_argument("--strict", action="store_true", default=True,
+                             help="Strict mode: flag all unknown symbols (default)")
+    check_parser.add_argument("--relaxed", action="store_true",
+                             help="Relaxed mode: only flag speculative language")
+    check_parser.add_argument("--json", action="store_true",
+                             help="Output raw JSON only")
+
     args = parser.parse_args()
 
     # Initialize system
@@ -578,17 +590,56 @@ def main():
     elif args.command == "verify":
         from bbc_core.verifier import BBCVerifier
         verifier = BBCVerifier(args.recipe)
-        errors = verifier.verify_syntax_only()
+        report = verifier.verify_full()
         
-        print(f"\n[VERIFY] BBC VERIFIER REPORT")
-        print("="*50)
-        if errors:
-            print(f"[ERR] Found {len(errors)} critical issues:")
-            for e in errors:
-                print(f" - [{e['type']}] {e['file']}:{e.get('line', '?')} -> {e.get('msg')}")
+        aura = report["aura_field"]
+        freshness = report["freshness"]
+        mismatch = report["symbol_mismatch"]
+        
+        print(f"\n{'='*60}")
+        print(f" {report['verdict_icon']} BBC FULL VERIFICATION REPORT")
+        print(f"{'='*60}")
+        
+        # Syntax
+        if report["syntax_error_count"] > 0:
+            print(f"\n[SYNTAX] {report['syntax_error_count']} error(s):")
+            for e in report["syntax_errors"][:10]:
+                print(f"  - [{e['type']}] {e['file']}:{e.get('line', '?')} -> {e.get('msg')}")
         else:
-            print("[OK] No syntax errors found. Project is structurally sound.")
-        print("="*50)
+            print(f"\n[SYNTAX] No errors found.")
+        
+        # Freshness
+        if freshness["context_fresh"]:
+            print(f"[FRESH]  Context is FRESH ({freshness.get('total_files', 0)} files verified)")
+        else:
+            print(f"[STALE]  {freshness['stale_count']}/{freshness.get('total_files', 0)} files changed -> {freshness['recommendation']}")
+            for sf in freshness["stale_files"][:5]:
+                print(f"  - {sf}")
+            if freshness.get("missing_count", 0) > 0:
+                print(f"  ({freshness['missing_count']} file(s) missing from disk)")
+        
+        # Symbol Mismatch
+        if mismatch["mismatch_count"] == 0:
+            print(f"[MATCH]  All symbols consistent ({mismatch.get('total_context_symbols', 0)} symbols)")
+        else:
+            print(f"[DRIFT]  {mismatch['mismatch_count']} file(s) with symbol drift (ratio: {mismatch['mismatch_ratio']})")
+            for mf in mismatch["mismatch_files"][:5]:
+                added_str = f"+{mf['added_count']}" if mf['added_count'] else ""
+                removed_str = f"-{mf['removed_count']}" if mf['removed_count'] else ""
+                print(f"  - {mf['file']} [{added_str}{removed_str}]")
+        
+        # Aura Field
+        print(f"\n{'─'*60}")
+        print(f" AURA FIELD (BBC Mathematics)")
+        print(f"{'─'*60}")
+        print(f"  S (Structure):  {aura['S_structure']}")
+        print(f"  C (Chaos):      {aura['C_chaos']}")
+        print(f"  P (Pulse):      {aura['P_pulse']}")
+        print(f"  Aura Score:     {aura['aura_score']}")
+        print(f"  Field κ:        {aura['field_stability']}")
+        print(f"  Confidence:     {aura['confidence']}")
+        print(f"\n  VERDICT: {report['verdict_icon']} {report['verdict']}")
+        print(f"{'='*60}")
     elif args.command == "clean":
         clean_system()
     elif args.command == "purge":
@@ -850,6 +901,72 @@ def main():
                 for v in data['violations']:
                     print(f"  ! {v}")
             print(f"{'='*60}\n")
+
+    elif args.command == "check":
+        from bbc_core.hallucination_guard import HallucinationGuard
+
+        # Context path: explicit veya auto-detect
+        ctx_path = args.context
+        if not ctx_path:
+            # Auto-detect: dosyanın bulunduğu dizinden yukarı .bbc/bbc_context.json ara
+            search_dir = os.path.dirname(os.path.abspath(args.file))
+            for _ in range(10):
+                candidate = os.path.join(search_dir, ".bbc", "bbc_context.json")
+                if os.path.exists(candidate):
+                    ctx_path = candidate
+                    break
+                parent = os.path.dirname(search_dir)
+                if parent == search_dir:
+                    break
+                search_dir = parent
+            if not ctx_path:
+                print("[ERROR] bbc_context.json not found. Use --context to specify path.")
+                sys.exit(1)
+
+        # Dosyayı oku
+        if not os.path.exists(args.file):
+            print(f"[ERROR] File not found: {args.file}")
+            sys.exit(1)
+
+        with open(args.file, 'r', encoding='utf-8') as f:
+            generated_code = f.read()
+
+        guard = HallucinationGuard(ctx_path)
+        strict_mode = not getattr(args, "relaxed", False)
+        result = guard.check(generated_code, strict=strict_mode)
+
+        if args.json:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            aura = result.get("aura_field", {})
+            print(f"\n{'='*60}")
+            print(f" BBC HALLUCINATION GUARD REPORT")
+            print(f"{'='*60}")
+            print(f"  File:           {args.file}")
+            print(f"  Context:        {ctx_path}")
+            print(f"  Mode:           {'STRICT' if strict_mode else 'RELAXED'}")
+            print(f"  Match Ratio:    {result['match_ratio']} ({result['matched']}/{result['total_referenced']})")
+            print(f"  Verdict:        {result['verdict']}")
+
+            if result.get("hallucinated_symbols"):
+                print(f"\n  Unknown Symbols ({len(result['hallucinated_symbols'])}):")
+                for sym in result["hallucinated_symbols"][:15]:
+                    print(f"    - {sym}")
+
+            if result.get("speculative_violations"):
+                print(f"\n  Speculative Language:")
+                for sv in result["speculative_violations"]:
+                    print(f"    ! {sv}")
+
+            print(f"\n{'─'*60}")
+            print(f" AURA FIELD (BBC Mathematics)")
+            print(f"{'─'*60}")
+            print(f"  S (Match):      {aura.get('S_match', 'N/A')}")
+            print(f"  C (Chaos):      {aura.get('C_chaos', 'N/A')}")
+            print(f"  P (Pulse):      {aura.get('P_pulse', 'N/A')}")
+            print(f"  Aura Score:     {aura.get('aura_score', 'N/A')}")
+            print(f"  Confidence:     {aura.get('confidence', 'N/A')}")
+            print(f"{'='*60}")
 
     else:
         parser.print_help()
