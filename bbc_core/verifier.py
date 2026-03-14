@@ -4,8 +4,10 @@ import os
 import re
 import math
 import hashlib
+from collections import Counter
 from .attribution_tracer import AttributionTracer
 from .hmpu_quantizer import HMPUQuantizer
+from .bbc_scalar import BBCScalar, STABLE, WEAK, UNSTABLE, DEGENERATE, OmegaOperator, bbc_data_ingestion
 
 class BBCVerifier:
     """
@@ -307,20 +309,25 @@ class BBCVerifier:
             "mismatch_ratio": round(mismatch_ratio, 3)
         }
 
+    def _calculate_chaos(self, text: str) -> float:
+        """Shannon Chaos Density — HMPU Governor ile aynı formül."""
+        if not text or not isinstance(text, str):
+            return 0.0
+        cnt = Counter(text)
+        ln = len(text)
+        entropy = sum(-(v / ln) * math.log2(v / ln) for v in cnt.values())
+        return entropy if not math.isnan(entropy) else 0.0
+
     def verify_full(self):
         """
         BBC Full Verification — Syntax + Freshness + Symbol Mismatch + Aura Field Score.
         
-        Aura Field skorunu BBC matematiğiyle hesaplar:
-          S = structure_health  (syntax hata oranının tersi)
-          C = chaos_density     (mismatch oranından türetilen kaos)
-          P = freshness_pulse   (stale ratio'nun tersi)
-        
-        Bu üçlü, HMPU Governor'ın aura_field_score(S, C, P) fonksiyonuna beslenir.
-        Sonuç: 0.0 (DEGENERATE) ... 1.0 (STABLE)
-        
-        Condition number (κ) ile güven skoru:
-          confidence = 1 / (1 + log10(κ))
+        Tüm hesaplar BBC matematiğiyle yapılır:
+          - S, C, P → BBCScalar (origin="semantic", state-aware)
+          - Shannon chaos density ile mismatch kaos ölçümü
+          - HMPU Governor aura_field_score(S, C, P) → iteratif alan dönüşümü
+          - Condition number (κ) → confidence = 1 / (1 + log10(κ))
+          - State propagation ile verdict (STABLE/WEAK/UNSTABLE/DEGENERATE)
         
         Returns: dict with all verification results + aura_score + confidence + verdict
         """
@@ -333,46 +340,90 @@ class BBCVerifier:
         # 3. Symbol Mismatch
         mismatch = self.verify_symbol_mismatch()
 
-        # 4. Aura Field Score hesapla (BBC Matematiği)
-        #    S: Structural health — syntax hatasız dosya oranı
+        # 4. BBC Matematik: S, C, P → BBCScalar (origin="semantic")
         total_files = freshness.get("total_files", 1) or 1
         syntax_error_ratio = len(syntax_errors) / total_files if total_files > 0 else 0.0
-        S = max(0.0, min(1.0, 1.0 - syntax_error_ratio))
 
-        #    C: Chaos density — sembol mismatch oranından türetilir
-        #    Mismatch yüksekse kaos yüksek (kötü), düşükse kaos düşük (iyi)
+        # S: Structure health — syntax hatasız dosya oranı
+        s_val = max(0.0, min(1.0, 1.0 - syntax_error_ratio))
+        s_state = STABLE if s_val >= 0.8 else WEAK if s_val >= 0.5 else UNSTABLE if s_val >= 0.2 else DEGENERATE
+        S = BBCScalar(s_val, state=s_state, metadata={"origin": "semantic"})
+
+        # C: Chaos density — Shannon entropy ile mismatch kaosunu doğrudan ölç
         mismatch_ratio = mismatch.get("mismatch_ratio", 0.0)
-        C = max(0.0, min(1.0, mismatch_ratio))
+        # Mismatch dosyalarının içeriğinden gerçek Shannon chaos hesapla
+        chaos_samples = []
+        for mf in mismatch.get("mismatch_files", [])[:5]:
+            added = mf.get("added_symbols", [])
+            removed = mf.get("removed_symbols", [])
+            chaos_samples.extend(added + removed)
+        if chaos_samples:
+            chaos_text = " ".join(str(s) for s in chaos_samples)
+            chaos_raw = self._calculate_chaos(chaos_text)
+            c_val = max(0.0, min(1.0, chaos_raw / 8.0))
+        else:
+            c_val = max(0.0, min(1.0, mismatch_ratio))
+        c_state = STABLE if c_val <= 0.1 else WEAK if c_val <= 0.3 else UNSTABLE if c_val <= 0.6 else DEGENERATE
+        C = BBCScalar(c_val, state=c_state, metadata={"origin": "semantic"})
 
-        #    P: Freshness pulse — stale ratio'nun tersi
+        # P: Freshness pulse — stale ratio'nun tersi
         stale_ratio = freshness.get("stale_ratio", 0.0)
-        P = max(0.0, min(1.0, 1.0 - stale_ratio))
+        p_val = max(0.0, min(1.0, 1.0 - stale_ratio))
+        p_state = STABLE if p_val >= 0.9 else WEAK if p_val >= 0.7 else UNSTABLE if p_val >= 0.4 else DEGENERATE
+        P = BBCScalar(p_val, state=p_state, metadata={"origin": "semantic"})
 
-        # Aura Field Score: HMPU Governor kullan (varsa)
-        aura_score = 0.0
-        confidence = 0.0
+        # 5. Aura Field Score: HMPU Governor (tam BBC matematik)
+        aura_score_scalar = BBCScalar(0.0, state=DEGENERATE, metadata={"origin": "semantic"})
+        confidence_scalar = BBCScalar(0.0, state=DEGENERATE, metadata={"origin": "math"})
         field_stability = float('inf')
+        governor_used = False
+
         try:
             from .hmpu_core import HMPU_Governor
             governor = HMPU_Governor()
-            aura_score = governor.aura_field_score(S, C, P)
+            aura_raw = governor.aura_field_score(float(S), float(C), float(P))
             field_stability = governor.get_field_stability()
-            if not math.isinf(field_stability) and field_stability > 0:
-                confidence = 1.0 / (1.0 + math.log10(field_stability))
-                confidence = round(min(max(confidence, 0.0), 1.0), 3)
-        except Exception:
-            # Fallback: basit ağırlıklı ortalama
-            aura_score = (S * 0.6) + ((1.0 - C) * 0.2) + (P * 0.2)
-            confidence = aura_score
+            governor_used = True
 
-        # 5. Verdict (karar)
-        if confidence >= 0.7 and len(syntax_errors) == 0 and freshness["context_fresh"]:
+            # Aura score → BBCScalar (state propagated from S, C, P)
+            combined_state = S._determine_new_state(C.state)
+            combined_state_2 = BBCScalar(0, state=combined_state)._determine_new_state(P.state)
+            aura_score_scalar = BBCScalar(aura_raw, state=combined_state_2, metadata={"origin": "math"})
+
+            # Confidence → BBCScalar (condition number'dan)
+            if not math.isinf(field_stability) and field_stability > 0:
+                conf_val = 1.0 / (1.0 + math.log10(field_stability))
+                conf_val = min(max(conf_val, 0.0), 1.0)
+                conf_state = STABLE if conf_val >= 0.7 else WEAK if conf_val >= 0.4 else UNSTABLE
+                confidence_scalar = BBCScalar(conf_val, state=conf_state, metadata={"origin": "math"})
+        except Exception:
+            # Fallback: BBC state-aware weighted synthesis (Governor yoksa)
+            w_s = BBCScalar(0.6, state=STABLE, metadata={"origin": "math"})
+            w_c = BBCScalar(0.2, state=STABLE, metadata={"origin": "math"})
+            w_p = BBCScalar(0.2, state=STABLE, metadata={"origin": "math"})
+            one = BBCScalar(1.0, state=STABLE, metadata={"origin": "math"})
+
+            # Aura = 0.6*S + 0.2*(1-C) + 0.2*P — state propagation ile
+            aura_score_scalar = (w_s * S) + (w_c * (one - C)) + (w_p * P)
+            confidence_scalar = aura_score_scalar
+
+        # 6. Heal: Eğer aura UNSTABLE ise OmegaOperator ile iyileştirmeyi dene
+        if aura_score_scalar.state in [UNSTABLE, DEGENERATE]:
+            aura_score_scalar = OmegaOperator.trigger(
+                BBCScalar(aura_score_scalar.value, state=aura_score_scalar.state,
+                          heal_count=aura_score_scalar.heal_count,
+                          metadata=aura_score_scalar.metadata)
+            )
+
+        # 7. Verdict — BBCScalar state'ten türetilir (klasik float karşılaştırma değil)
+        final_state = aura_score_scalar.state
+        if final_state == STABLE and len(syntax_errors) == 0 and freshness["context_fresh"]:
             verdict = "SEALED_STABLE"
             verdict_icon = "💎"
-        elif confidence >= 0.5:
+        elif final_state == WEAK:
             verdict = "WEAK"
             verdict_icon = "⚠️"
-        elif confidence >= 0.3:
+        elif final_state == UNSTABLE:
             verdict = "UNSTABLE"
             verdict_icon = "🔴"
         else:
@@ -385,12 +436,13 @@ class BBCVerifier:
             "freshness": freshness,
             "symbol_mismatch": mismatch,
             "aura_field": {
-                "S_structure": round(S, 3),
-                "C_chaos": round(C, 3),
-                "P_pulse": round(P, 3),
-                "aura_score": round(aura_score, 4),
+                "S_structure": {"value": round(float(S), 3), "state": S.state, "origin": S.origin},
+                "C_chaos": {"value": round(float(C), 3), "state": C.state, "origin": C.origin},
+                "P_pulse": {"value": round(float(P), 3), "state": P.state, "origin": P.origin},
+                "aura_score": {"value": round(float(aura_score_scalar), 4), "state": aura_score_scalar.state, "origin": aura_score_scalar.origin},
                 "field_stability": round(field_stability, 4) if not math.isinf(field_stability) else "inf",
-                "confidence": confidence
+                "confidence": {"value": round(float(confidence_scalar), 3), "state": confidence_scalar.state},
+                "governor_used": governor_used
             },
             "verdict": verdict,
             "verdict_icon": verdict_icon

@@ -15,6 +15,7 @@ import math
 import re
 from collections import Counter
 from typing import List, Dict, Any, Optional, Union
+from .bbc_scalar import BBCScalar, STABLE, WEAK, UNSTABLE, DEGENERATE
 
 
 class TokenOptimizer:
@@ -35,25 +36,49 @@ class TokenOptimizer:
         self.max_field_length = max_field_length
         self.decimal_places = decimal_places
 
-    # ─── Shannon Entropy (BBC HMPU formülü) ───────────────────────
+    # ─── Shannon Entropy (BBC HMPU formülü — BBCScalar native) ─────
 
-    def _shannon_entropy(self, text: str) -> float:
-        """Shannon Chaos Density — HMPU Governor ile aynı formül."""
+    def _shannon_entropy(self, text: str) -> BBCScalar:
+        """
+        Shannon Chaos Density — HMPU Governor ile aynı formül.
+        Sonuç BBCScalar olarak döner: değer + state + origin.
+        """
         if not text:
-            return 0.0
+            return BBCScalar(0.0, state=STABLE, metadata={"origin": "math"})
         cnt = Counter(text)
         ln = len(text)
         entropy = sum(-(v / ln) * math.log2(v / ln) for v in cnt.values())
-        return entropy if not math.isnan(entropy) else 0.0
+        if math.isnan(entropy):
+            entropy = 0.0
+        # State: entropy seviyesine göre
+        state = STABLE if entropy <= 3.0 else WEAK if entropy <= 5.0 else UNSTABLE if entropy <= 7.0 else DEGENERATE
+        return BBCScalar(entropy, state=state, metadata={"origin": "math"})
 
-    def _chunk_entropy(self, data: List[Any], chunk_size: int = 10) -> List[float]:
-        """Veri listesini parçalara ayırıp her parçanın entropy'sini hesaplar."""
+    def _chunk_entropy(self, data: List[Any], chunk_size: int = 10) -> List[BBCScalar]:
+        """Veri listesini parçalara ayırıp her parçanın entropy'sini BBCScalar olarak hesaplar."""
         entropies = []
         for i in range(0, len(data), chunk_size):
             chunk = data[i:i + chunk_size]
             chunk_str = json.dumps(chunk, ensure_ascii=False)
             entropies.append(self._shannon_entropy(chunk_str))
         return entropies
+
+    def _chaos_derivative_filter(self, entropies: List[BBCScalar], threshold: float = 0.4) -> List[int]:
+        """
+        Chaos Derivative Filter (dC/dt) — HMPU Governor Operator 1.
+        Ardışık chunk'lar arasındaki entropy farkı eşiği geçerse
+        o chunk'u 'sinyal' (faz değişimi) olarak işaretler.
+        Returns: sinyal içeren chunk indeksleri
+        """
+        signal_indices = []
+        prev_entropy = 0.0
+        for i, e_scalar in enumerate(entropies):
+            curr = float(e_scalar)
+            dc_dt = abs(curr - prev_entropy)
+            if dc_dt > threshold:
+                signal_indices.append(i)
+            prev_entropy = curr
+        return signal_indices
 
     # ─── Adaptif Örnekleme ────────────────────────────────────────
 
@@ -91,17 +116,20 @@ class TokenOptimizer:
         # Chunk boyutunu hesapla
         chunk_size = max(1, n // 10)
         
-        # Her chunk'ın entropy'sini hesapla
+        # Her chunk'ın entropy'sini hesapla (BBCScalar olarak döner)
         entropies = self._chunk_entropy(data, chunk_size)
-        max_entropy = max(entropies) if entropies else 1.0
+        max_entropy = max(float(e) for e in entropies) if entropies else 1.0
         if max_entropy == 0:
             max_entropy = 1.0
         
-        # Her chunk'tan entropy ağırlıklı örnekleme
+        # Chaos derivative filter: sinyal içeren chunk'ları işaretle
+        signal_indices = set(self._chaos_derivative_filter(entropies, threshold=0.4))
+
+        # Her chunk'tan BBCScalar entropy ağırlıklı örnekleme
         sampled = []
         remaining_budget = target_count
         
-        for i, entropy in enumerate(entropies):
+        for i, e_scalar in enumerate(entropies):
             start = i * chunk_size
             end = min(start + chunk_size, n)
             chunk = data[start:end]
@@ -109,8 +137,20 @@ class TokenOptimizer:
             if not chunk:
                 continue
             
-            # Entropy ağırlığı: yüksek entropy = daha fazla örnek
-            weight = entropy / max_entropy
+            # BBCScalar entropy ağırlığı
+            entropy_val = float(e_scalar)
+            weight = entropy_val / max_entropy
+
+            # Sinyal chunk'larına bonus (dC/dt > 0.4 olan faz değişimleri)
+            if i in signal_indices:
+                weight = min(weight * 1.5, 1.0)
+
+            # State-aware: UNSTABLE/DEGENERATE chunk'lardan daha az örnek
+            if e_scalar.state == DEGENERATE:
+                weight *= 0.3
+            elif e_scalar.state == UNSTABLE:
+                weight *= 0.6
+
             sample_count = max(1, round(len(chunk) * weight * target_ratio * 2))
             sample_count = min(sample_count, remaining_budget, len(chunk))
             
@@ -262,16 +302,20 @@ class TokenOptimizer:
         entropy_optimized = self._shannon_entropy(optimized_str)
         
         savings_ratio = 1.0 - (optimized_chars / original_chars) if original_chars > 0 else 0.0
+
+        # Savings → BBCScalar (yüksek tasarruf = STABLE, düşük = WEAK)
+        sr_state = STABLE if savings_ratio >= 0.5 else WEAK if savings_ratio >= 0.2 else UNSTABLE
+        savings_scalar = BBCScalar(savings_ratio, state=sr_state, metadata={"origin": "math"})
         
         return {
             "data": optimized,
             "metrics": {
                 "original_chars": original_chars,
                 "optimized_chars": optimized_chars,
-                "savings_ratio": round(savings_ratio, 4),
+                "savings_ratio": {"value": round(float(savings_scalar), 4), "state": savings_scalar.state},
                 "savings_percent": f"{savings_ratio * 100:.1f}%",
-                "entropy_original": round(entropy_original, 3),
-                "entropy_optimized": round(entropy_optimized, 3),
+                "entropy_original": {"value": round(float(entropy_original), 3), "state": entropy_original.state},
+                "entropy_optimized": {"value": round(float(entropy_optimized), 3), "state": entropy_optimized.state},
                 "compression_factor": f"{original_chars / optimized_chars:.1f}x" if optimized_chars > 0 else "inf"
             }
         }

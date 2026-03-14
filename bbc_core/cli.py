@@ -628,16 +628,22 @@ def main():
                 removed_str = f"-{mf['removed_count']}" if mf['removed_count'] else ""
                 print(f"  - {mf['file']} [{added_str}{removed_str}]")
         
-        # Aura Field
+        # Aura Field (BBC Mathematics — BBCScalar native)
         print(f"\n{'─'*60}")
-        print(f" AURA FIELD (BBC Mathematics)")
+        print(f" AURA FIELD (BBC Mathematics — State-Aware)")
         print(f"{'─'*60}")
-        print(f"  S (Structure):  {aura['S_structure']}")
-        print(f"  C (Chaos):      {aura['C_chaos']}")
-        print(f"  P (Pulse):      {aura['P_pulse']}")
-        print(f"  Aura Score:     {aura['aura_score']}")
+        s_info = aura['S_structure']
+        c_info = aura['C_chaos']
+        p_info = aura['P_pulse']
+        a_info = aura['aura_score']
+        conf_info = aura['confidence']
+        print(f"  S (Structure):  {s_info['value']}  [{s_info['state']}]  origin={s_info['origin']}")
+        print(f"  C (Chaos):      {c_info['value']}  [{c_info['state']}]  origin={c_info['origin']}")
+        print(f"  P (Pulse):      {p_info['value']}  [{p_info['state']}]  origin={p_info['origin']}")
+        print(f"  Aura Score:     {a_info['value']}  [{a_info['state']}]  origin={a_info['origin']}")
         print(f"  Field κ:        {aura['field_stability']}")
-        print(f"  Confidence:     {aura['confidence']}")
+        print(f"  Confidence:     {conf_info['value']}  [{conf_info['state']}]")
+        print(f"  Governor:       {'HMPU' if aura.get('governor_used') else 'Fallback'}")
         print(f"\n  VERDICT: {report['verdict_icon']} {report['verdict']}")
         print(f"{'='*60}")
     elif args.command == "clean":
@@ -959,13 +965,20 @@ def main():
                     print(f"    ! {sv}")
 
             print(f"\n{'─'*60}")
-            print(f" AURA FIELD (BBC Mathematics)")
+            print(f" AURA FIELD (BBC Mathematics — State-Aware)")
             print(f"{'─'*60}")
-            print(f"  S (Match):      {aura.get('S_match', 'N/A')}")
-            print(f"  C (Chaos):      {aura.get('C_chaos', 'N/A')}")
-            print(f"  P (Pulse):      {aura.get('P_pulse', 'N/A')}")
-            print(f"  Aura Score:     {aura.get('aura_score', 'N/A')}")
-            print(f"  Confidence:     {aura.get('confidence', 'N/A')}")
+            s_info = aura.get('S_match', {})
+            c_info = aura.get('C_chaos', {})
+            p_info = aura.get('P_pulse', {})
+            a_info = aura.get('aura_score', {})
+            conf_info = aura.get('confidence', {})
+            print(f"  S (Match):      {s_info.get('value', 'N/A')}  [{s_info.get('state', '?')}]  origin={s_info.get('origin', '?')}")
+            print(f"  C (Chaos):      {c_info.get('value', 'N/A')}  [{c_info.get('state', '?')}]  origin={c_info.get('origin', '?')}")
+            print(f"  P (Pulse):      {p_info.get('value', 'N/A')}  [{p_info.get('state', '?')}]  origin={p_info.get('origin', '?')}")
+            print(f"  Aura Score:     {a_info.get('value', 'N/A')}  [{a_info.get('state', '?')}]  origin={a_info.get('origin', '?')}")
+            print(f"  Field κ:        {aura.get('field_stability', 'N/A')}")
+            print(f"  Confidence:     {conf_info.get('value', 'N/A')}  [{conf_info.get('state', '?')}]")
+            print(f"  Governor:       {'HMPU' if aura.get('governor_used') else 'Fallback'}")
             print(f"{'='*60}")
 
     else:
