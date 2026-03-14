@@ -1,10 +1,10 @@
-# 🧠 BBC — Bitter Brain Context v8.4
+# 🧠 BBC — Bitter Brain Context v8.5
 
 > **Zero-Hallucination AI Coding Framework** — Analyzes your project, detects your active IDE, and provides AI assistants with a verified sealed context.
 
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v8.4%20STABLE-green)](https://github.com/Anubis44197/BBC)
+[![Version](https://img.shields.io/badge/version-v8.5%20STABLE-green)](https://github.com/Anubis44197/BBC)
 
 ---
 
@@ -155,13 +155,19 @@ BBC's daemon (`bbc_daemon.py`) actively monitors your project for changes every 
 
 The daemon uses `adaptive_mode.check_context_freshness()` for hash-based staleness detection and recommends `RESCAN` or `PARTIAL_RESCAN` based on the ratio of changed files.
 
-### 🧠 Adaptive Mode (STRICT / RELAXED)
-BBC operates in two modes depending on context match quality:
+### � Agent Integration Layer (v8.5)
+BBC now exposes its operational mode directly to AI agents through the sealed context and injected instruction files.
 
-| Mode | Trigger | Behavior |
-|---|---|---|
-| **STRICT** | `context_match_ratio ≥ 0.8` | AI only uses verified symbols from `.bbc/bbc_context.json` |
-| **RELAXED** | `context_match_ratio < 0.8` | AI may use broader knowledge with a hallucination warning |
+- **Versioning / Compatibility** — `bbc_instructions_version` and `context_schema_version` are written into `.bbc/bbc_context.json` and `BBC_INSTRUCTIONS.md`
+- **Freshness Gate** — `context_fresh` tracks whether the current context still matches the project on disk
+- **Fail Policy** — `fail_closed` blocks code generation on stale or missing context, while `fail_open` allows continuation with a warning
+- **Enforcement Profiles** — `strict`, `balanced`, and `relaxed` profiles define how aggressively BBC should enforce context-first behavior
+
+| Profile | Behavior |
+|---|---|
+| **strict** | Verified symbols only, impact-first workflow, verify-after-change, patch check, stale context blocks work |
+| **balanced** | Verified symbols only, verify-after-change, stale context warns but keeps workflow practical |
+| **relaxed** | Context-first guidance remains active, but broader iteration is allowed with warnings |
 
 If a symbol is not in the sealed context, BBC returns: `"Information not found in sealed context"`
 
@@ -259,7 +265,7 @@ Verification also runs automatically at the end of every `bbc start` and `bootst
 
 ---
 
-## �️ CLI Commands
+## 🖥️ CLI Commands
 
 All user-facing commands go through `bbc.py` — the single entry point:
 
@@ -295,7 +301,7 @@ All user-facing commands go through `bbc.py` — the single entry point:
 
 ---
 
-## �📂 Project Structure
+## 📂 Project Structure
 
 ```
 BBC/
@@ -370,7 +376,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 <div align="center">
 
-**BBC v8.4 STABLE** — Your AI assistants now see your project through a verified sealed context.
+**BBC v8.5 STABLE** — Your AI assistants now see your project through a verified sealed context.
 
 *No hallucinations. No guesswork. Only verified context.*
 
