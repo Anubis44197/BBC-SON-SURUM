@@ -19,6 +19,40 @@ class BBCConfig:
     # BBC isolation directory - all output goes here
     BBC_DIR = ".bbc"
     
+    # BBC Policy Defaults
+    BBC_INSTRUCTIONS_VERSION = "1.0"
+    CONTEXT_SCHEMA_VERSION = "8.5"
+    DEFAULT_FAIL_POLICY = "fail_closed"       # fail_closed | fail_open
+    DEFAULT_ENFORCEMENT = "strict"            # strict | balanced | relaxed
+    
+    # Enforcement Profile Definitions
+    ENFORCEMENT_PROFILES = {
+        "strict": {
+            "allow_unknown_symbols": False,
+            "require_context_first": True,
+            "require_impact_before_change": True,
+            "require_verify_after_change": True,
+            "auto_patch_check": True,
+            "stale_context_action": "block",
+        },
+        "balanced": {
+            "allow_unknown_symbols": False,
+            "require_context_first": True,
+            "require_impact_before_change": False,
+            "require_verify_after_change": True,
+            "auto_patch_check": False,
+            "stale_context_action": "warn",
+        },
+        "relaxed": {
+            "allow_unknown_symbols": True,
+            "require_context_first": True,
+            "require_impact_before_change": False,
+            "require_verify_after_change": False,
+            "auto_patch_check": False,
+            "stale_context_action": "warn",
+        },
+    }
+    
     @staticmethod
     def get_bbc_dir(project_root: str = ".") -> str:
         """Get or create the .bbc isolation directory."""

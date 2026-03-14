@@ -536,6 +536,15 @@ def inject_to_project(context_path: str, project_path: str = None) -> Dict[str, 
     class_count = sum(len(e.get("structure", {}).get("classes", [])) for e in code_structure if isinstance(e, dict))
     func_count = sum(len(e.get("structure", {}).get("functions", [])) for e in code_structure if isinstance(e, dict))
 
+    # --- Policy fields (v8.5) ---
+    instr_version = context.get("bbc_instructions_version", "1.0")
+    schema_version = context.get("context_schema_version", "8.5")
+    context_fresh = context.get("context_fresh", True)
+    fail_policy = context.get("fail_policy", "fail_closed")
+    enforcement = context.get("enforcement_level", "strict")
+    from bbc_core.config import BBCConfig
+    profile = BBCConfig.ENFORCEMENT_PROFILES.get(enforcement, BBCConfig.ENFORCEMENT_PROFILES["strict"])
+
     created_files: Dict[str, str] = {}
 
     # --- Manifest helpers ---
@@ -590,7 +599,27 @@ def inject_to_project(context_path: str, project_path: str = None) -> Dict[str, 
         created_files[label] = str(full)
 
     def get_instructions() -> str:
-        return f"""# BBC (Bitter Brain Context) v8.3 — MANDATORY SYSTEM INSTRUCTIONS
+        freshness_str = "FRESH" if context_fresh else "STALE (run: python bbc.py analyze)"
+        if fail_policy == "fail_closed":
+            fail_rule = "If context is missing or STALE, do NOT write code. Only explain what is needed and suggest running `python bbc.py analyze`."
+        else:
+            fail_rule = "If context is missing or STALE, you may continue but prefix EVERY response with: `[BBC WARNING] Operating without verified context.`"
+
+        impact_rule = ""
+        if profile.get("require_impact_before_change"):
+            impact_rule = "\n6. **IMPACT-FIRST:** Before modifying any file, run `python bbc.py impact <file> --symbols <changed_symbols>`. If risk is CAUTION or HIGH, ask user for confirmation before proceeding."
+        verify_rule = ""
+        if profile.get("require_verify_after_change"):
+            verify_rule = "\n7. **VERIFY-AFTER:** After every code change, run `python bbc.py verify .` to confirm structural integrity."
+        patch_rule = ""
+        if profile.get("auto_patch_check"):
+            patch_rule = "\n8. **PATCH-CHECK:** After changes, run `python bbc.py patch .` (dry-run) to detect regressions."
+
+        return f"""# BBC (Bitter Brain Context) v8.5 — MANDATORY SYSTEM INSTRUCTIONS
+# bbc_instructions_version: {instr_version}
+# context_schema_version: {schema_version}
+# enforcement: {enforcement}
+# fail_policy: {fail_policy}
 
 ## CRITICAL: READ THIS BEFORE ANY ACTION
 These instructions are NON-OPTIONAL. They apply to ALL projects regardless of size.
@@ -601,10 +630,16 @@ Before writing ANY code, reading ANY file, or answering ANY question:
 1. Read `.bbc/bbc_context.json` — this is the verified project map
 2. Read `.bbc/bbc_rules.md` — these are the project-specific rules
 3. Use the `code_structure` field from bbc_context.json as your primary reference
+4. Check `context_fresh` field — current status: **{freshness_str}**
 
 DO NOT use your own file scanning tools (read_file, grep, etc.) to discover the project structure.
 The BBC context has already mapped the entire project with verified checksums.
 Using BBC context is FASTER and MORE ACCURATE than scanning files yourself.
+
+## CONTEXT FRESHNESS & FAIL POLICY
+- Context Freshness: **{freshness_str}**
+- Fail Policy: **{fail_policy}**
+- {fail_rule}
 
 ## WHY YOU MUST USE BBC CONTEXT (EVEN FOR SMALL PROJECTS)
 - BBC context includes HMPU-compressed token-optimized project structure
@@ -613,17 +648,27 @@ Using BBC context is FASTER and MORE ACCURATE than scanning files yourself.
 - Using BBC context reduces your token consumption by {savings_pct}%
 - The project has been analyzed: {file_count} files, status: {status}
 
-## RULES (MANDATORY)
+## RULES (MANDATORY — enforcement: {enforcement})
 1. **CONTEXT-FIRST:** Get project structure from `.bbc/bbc_context.json`, NOT from scanning files
 2. **VERIFIED SYMBOLS ONLY:** Only use classes, functions, and variables that exist in bbc_context.json `code_structure`
 3. **NO HALLUCINATION:** If a symbol is NOT in the context, do NOT invent it. Ask the user to run `python bbc.py analyze`
 4. **WARN ON EXTERNAL:** If forced to use symbols outside context, prefix your response with: "WARNING: Using symbols outside BBC sealed context"
-5. **CITE CONTEXT:** When referencing project structure, cite bbc_context.json as your source
+5. **CITE CONTEXT:** When referencing project structure, cite bbc_context.json as your source{impact_rule}{verify_rule}{patch_rule}
+
+## GUARDRAIL PIPELINE (automatic workflow)
+Before writing code: impact analysis → risk check
+After writing code: patch check → verify integrity
+If any step fails: STOP and report to user
 
 ## PROJECT SNAPSHOT
 - Status: {status}
 - Files: {file_count}
 - Token Savings: {savings_pct}%
+- Freshness: {freshness_str}
+- Enforcement: {enforcement}
+- Fail Policy: {fail_policy}
+- Instructions Version: {instr_version}
+- Schema Version: {schema_version}
 - Context File: .bbc/bbc_context.json
 """
 

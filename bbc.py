@@ -18,6 +18,18 @@ sys.path.append(str(Path(__file__).parent))
 
 from bbc_core.auto_detector import auto_start_bbc, stop_bbc_auto
 
+
+def _update_context_freshness(ctx_file: str, fresh: bool) -> None:
+    """Update the context_fresh field in bbc_context.json."""
+    try:
+        with open(ctx_file, "r", encoding="utf-8") as f:
+            ctx = json.load(f)
+        ctx["context_fresh"] = fresh
+        with open(ctx_file, "w", encoding="utf-8") as f:
+            json.dump(ctx, f, indent=2, ensure_ascii=False)
+    except Exception:
+        pass
+
 class BBCCLI:
     """BBC Command Line Interface v8.3"""
 
@@ -209,7 +221,11 @@ class BBCCLI:
         uvicorn.run(app, host="127.0.0.1", port=port)
 
 def main():
-    parser = argparse.ArgumentParser(description="BBC Master CLI - v8.3 STABLE", prog="bbc")
+    parser = argparse.ArgumentParser(description="BBC Master CLI - v8.5 STABLE", prog="bbc")
+    parser.add_argument("--enforcement", choices=["strict", "balanced", "relaxed"], default=None,
+                        help="Override enforcement level (default: read from context or strict)")
+    parser.add_argument("--fail-policy", choices=["fail_closed", "fail_open"], default=None,
+                        help="Override fail policy (default: read from context or fail_closed)")
     subparsers = parser.add_subparsers(dest="command", help="Commands")
 
     # Start
@@ -291,8 +307,41 @@ def main():
     elif args.command == "analyze":
         cli.run_command(["analyze", args.path])
     elif args.command == "verify":
-        ctx_file = str(Path(args.path).resolve() / ".bbc" / "bbc_context.json")
+        project_resolved = str(Path(args.path).resolve())
+        ctx_file = str(Path(project_resolved) / ".bbc" / "bbc_context.json")
         if Path(ctx_file).exists():
+            # --- Freshness gate ---
+            from bbc_core.cli import _is_context_stale
+            stale = _is_context_stale(project_resolved, ctx_file)
+            if stale:
+                _update_context_freshness(ctx_file, False)
+            # --- Read policy from context (with CLI overrides) ---
+            import json as _json
+            with open(ctx_file, "r", encoding="utf-8") as _f:
+                _ctx = _json.load(_f)
+            fp = getattr(args, "fail_policy", None) or _ctx.get("fail_policy", "fail_closed")
+            enf = getattr(args, "enforcement", None) or _ctx.get("enforcement_level", "strict")
+            # --- Apply CLI overrides to context if provided ---
+            _dirty = False
+            if getattr(args, "enforcement", None) and args.enforcement != _ctx.get("enforcement_level"):
+                _ctx["enforcement_level"] = args.enforcement
+                _dirty = True
+            if getattr(args, "fail_policy", None) and args.fail_policy != _ctx.get("fail_policy"):
+                _ctx["fail_policy"] = args.fail_policy
+                _dirty = True
+            if _dirty:
+                with open(ctx_file, "w", encoding="utf-8") as _f:
+                    _json.dump(_ctx, _f, indent=2, ensure_ascii=False)
+            # --- Freshness warning/block ---
+            if stale:
+                print(f"[BBC] Context freshness: STALE")
+                if fp == "fail_closed":
+                    print(f"[BBC] Fail policy: fail_closed — run 'bbc analyze {args.path}' to refresh context before proceeding.")
+                else:
+                    print(f"[BBC WARNING] Operating with stale context (fail_open mode).")
+            else:
+                print(f"[BBC] Context freshness: FRESH")
+            print(f"[BBC] Enforcement: {enf} | Fail policy: {fp}")
             cli.run_command(["verify", ctx_file])
         else:
             print(f"[BBC] Context not found: {ctx_file}")

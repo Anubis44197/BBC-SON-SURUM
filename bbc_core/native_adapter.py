@@ -113,7 +113,16 @@ class BBCNativeAdapter:
         dependency_graph = self._build_dependency_graph(project_recipes, files_found)
 
         # Build Context JSON
+        import time as _time
+        _generated_at = _time.strftime("%Y-%m-%dT%H:%M:%S")
+
         context_json = {
+            "bbc_instructions_version": "1.0",
+            "context_schema_version": "8.5",
+            "generated_at": _generated_at,
+            "context_fresh": True,
+            "fail_policy": "fail_closed",
+            "enforcement_level": "strict",
             "project_skeleton": {
                 "root": root_to_scan,
                 "file_count": len(files_found),
