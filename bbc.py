@@ -258,6 +258,19 @@ def main():
     status_parser = subparsers.add_parser("status", help="Show system status")
     status_parser.add_argument("path", nargs="?", default=".", help="Project path")
 
+    # Impact (Semantic Impact Analysis)
+    impact_parser = subparsers.add_parser("impact", help="Analyze semantic impact of a file change (BBC Mathematics)")
+    impact_parser.add_argument("file", help="Path to the changed file")
+    impact_parser.add_argument("--path", default=".", help="Project path (default: current directory)")
+    impact_parser.add_argument("--symbols", nargs="*", default=None, help="Changed symbol names (optional)")
+    impact_parser.add_argument("--op", choices=["Refactor", "Patch", "Feature"], default="Patch",
+                               help="Operation type (default: Patch)")
+
+    # Patch (Auto Patcher)
+    patch_parser = subparsers.add_parser("patch", help="Detect and fix code issues automatically (BBC Mathematics)")
+    patch_parser.add_argument("path", nargs="?", default=".", help="Project path (default: current directory)")
+    patch_parser.add_argument("--apply", action="store_true", help="Apply safe patches (default: dry-run only)")
+
     # Hooks (Git Hook Generator)
     hooks_parser = subparsers.add_parser("hooks", help="Install/remove BBC git hooks for team automation")
     hooks_parser.add_argument("path", nargs="?", default=".", help="Project path")
@@ -323,6 +336,96 @@ def main():
             print("    Run 'bbc start' to enable live defense.")
             
         print("="*40 + "\n")
+    elif args.command == "impact":
+        project_resolved = str(Path(getattr(args, 'path', '.')).resolve())
+        ctx_file = str(Path(project_resolved) / ".bbc" / "bbc_context.json")
+        if not Path(ctx_file).exists():
+            print(f"[BBC] Context not found: {ctx_file}")
+            print(f"[BBC] Run 'bbc analyze' first.")
+        else:
+            from bbc_core.impact_analyzer import ImpactAnalyzer
+            analyzer = ImpactAnalyzer(ctx_file)
+            report = analyzer.analyze_impact(args.file, changed_symbols=args.symbols, op_type=args.op)
+            aura = report["aura_impact"]
+            print(f"\n{'='*60}")
+            print(f" {report['verdict_icon']} BBC SEMANTIC IMPACT ANALYSIS")
+            print(f"{'='*60}")
+            print(f"  Changed:   {report['changed_file']}")
+            if report['changed_symbols']:
+                print(f"  Symbols:   {', '.join(report['changed_symbols'])}")
+            print(f"  Operation: {report['op_type']}")
+            print(f"\n[DIRECT]  {report['direct_count']} file(s) directly affected:")
+            for dep in report["direct_dependents"][:10]:
+                print(f"  → {dep}")
+            if report["indirect_count"] > 0:
+                print(f"[INDIRECT] {report['indirect_count']} file(s) indirectly affected:")
+                for dep in report["indirect_dependents"][:10]:
+                    print(f"  ⤳ {dep}")
+            if report["symbol_impacts"]:
+                print(f"\n[SYMBOLS] Symbol-level impacts:")
+                for si in report["symbol_impacts"][:5]:
+                    print(f"  - {si['symbol']}: {si['affected_count']} file(s)")
+            if report["semantic_similar"]:
+                print(f"\n[FOCUS]   Semantically similar files (cos θ):")
+                for ss in report["semantic_similar"][:5]:
+                    sim = ss["similarity"]
+                    print(f"  - {ss['file']}  sim={sim['value']} [{sim['state']}]  risk={ss['risk']}")
+            print(f"\n{'─'*60}")
+            print(f" AURA IMPACT (BBC Mathematics — State-Aware)")
+            print(f"{'─'*60}")
+            ir = aura['impact_ratio']
+            cd = aura['chaos_density']
+            pr = aura['pulse_risk']
+            cr = aura['composite_risk']
+            print(f"  Impact Ratio:    {ir['value']}  [{ir['state']}]")
+            print(f"  Chaos Density:   {cd['value']}  [{cd['state']}]")
+            print(f"  Pulse Risk:      {pr['value']}  [{pr['state']}]")
+            print(f"  Composite Risk:  {cr['value']}  [{cr['state']}]")
+            print(f"\n  VERDICT: {report['verdict_icon']} {report['verdict']}")
+            print(f"{'='*60}")
+    elif args.command == "patch":
+        project_resolved = str(Path(args.path).resolve())
+        ctx_file = str(Path(project_resolved) / ".bbc" / "bbc_context.json")
+        if not Path(ctx_file).exists():
+            print(f"[BBC] Context not found: {ctx_file}")
+            print(f"[BBC] Run 'bbc analyze' first.")
+        else:
+            from bbc_core.auto_patcher import AutoPatcher
+            patcher = AutoPatcher(ctx_file, project_resolved)
+            dry_run = not getattr(args, "apply", False)
+            report = patcher.analyze_and_patch(dry_run=dry_run)
+            mode_str = "DRY-RUN (preview)" if dry_run else "APPLY"
+            oq = report["overall_quality"]
+            print(f"\n{'='*60}")
+            print(f" 🔧 BBC AUTO PATCHER [{mode_str}]")
+            print(f"{'='*60}")
+            print(f"  Total issues found: {report['total_patches']}")
+            print(f"  Applied:            {report['applied']}")
+            print(f"  Skipped (unsafe):   {report['skipped_unsafe']}")
+            print(f"  Overall Quality:    {oq['value']}  [{oq['state']}]")
+            if report["patch_results"]:
+                print(f"\n{'─'*60}")
+                print(f" PATCHES")
+                print(f"{'─'*60}")
+                for i, pr_item in enumerate(report["patch_results"], 1):
+                    p = pr_item["patch"]
+                    safe = "✅" if pr_item.get("safe_to_apply") else "🔴"
+                    applied = " [APPLIED]" if pr_item.get("applied") else ""
+                    print(f"  {i}. {safe} [{p['action']}] {p['file']}")
+                    print(f"     {p['description']}{applied}")
+                    if "patch_quality" in pr_item:
+                        pq = pr_item["patch_quality"]
+                        print(f"     Quality: {pq['value']} [{pq['state']}]")
+            if report["reseal_needed"]:
+                print(f"\n{'─'*60}")
+                print(f" RESEAL NEEDED")
+                print(f"{'─'*60}")
+                for r in report["reseal_needed"]:
+                    print(f"  ⚠️  {r['file']}: {r['description']}")
+                print(f"\n  Run 'bbc analyze' to reseal context.")
+            print(f"{'='*60}")
+            if dry_run and report["total_patches"] > 0:
+                print(f"\n  💡 To apply safe patches: bbc patch {args.path} --apply")
     elif args.command == "hooks":
         from bbc_core.git_hooks import install_hooks, remove_hooks
         project_resolved = str(Path(args.path).resolve())
