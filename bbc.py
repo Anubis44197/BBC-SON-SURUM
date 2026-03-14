@@ -258,6 +258,13 @@ def main():
     status_parser = subparsers.add_parser("status", help="Show system status")
     status_parser.add_argument("path", nargs="?", default=".", help="Project path")
 
+    # Check (Hallucination Guard)
+    check_parser = subparsers.add_parser("check", help="Check AI-generated code against sealed BBC context")
+    check_parser.add_argument("file", help="Path to file containing AI-generated code to check")
+    check_parser.add_argument("--path", default=".", help="Project path (default: current directory)")
+    check_parser.add_argument("--strict", action="store_true", default=True, help="Strict mode: flag all unknown symbols")
+    check_parser.add_argument("--relaxed", action="store_true", help="Relaxed mode: only flag speculative language")
+
     # Impact (Semantic Impact Analysis)
     impact_parser = subparsers.add_parser("impact", help="Analyze semantic impact of a file change (BBC Mathematics)")
     impact_parser.add_argument("file", help="Path to the changed file")
@@ -287,6 +294,19 @@ def main():
         ctx_file = str(Path(args.path).resolve() / ".bbc" / "bbc_context.json")
         if Path(ctx_file).exists():
             cli.run_command(["verify", ctx_file])
+        else:
+            print(f"[BBC] Context not found: {ctx_file}")
+            print(f"[BBC] Run 'bbc start {args.path}' first to generate the context.")
+    elif args.command == "check":
+        project_resolved = str(Path(getattr(args, 'path', '.')).resolve())
+        ctx_file = str(Path(project_resolved) / ".bbc" / "bbc_context.json")
+        if Path(ctx_file).exists():
+            cmd = ["check", args.file, "--context", ctx_file]
+            if getattr(args, "relaxed", False):
+                cmd.append("--relaxed")
+            elif getattr(args, "strict", False):
+                cmd.append("--strict")
+            cli.run_command(cmd)
         else:
             print(f"[BBC] Context not found: {ctx_file}")
             print(f"[BBC] Run 'bbc start {args.path}' first to generate the context.")
