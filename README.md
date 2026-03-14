@@ -1,10 +1,10 @@
-# 🧠 BBC — Bitter Brain Context v8.3
+# 🧠 BBC — Bitter Brain Context v8.4
 
 > **Zero-Hallucination AI Coding Framework** — Analyzes your project, detects your active IDE, and provides AI assistants with a mathematically sealed context.
 
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v8.3%20STABLE-green)](https://github.com/Anubis44197/BBC)
+[![Version](https://img.shields.io/badge/version-v8.4%20STABLE-green)](https://github.com/Anubis44197/BBC)
 
 ---
 
@@ -78,7 +78,7 @@ This runs `pip install` + `analyze` + `inject` + `start daemon` in one command.
 
 ## 🎯 Features
 
-### 🔍 Smart IDE Detection (v8.3)
+### 🔍 Smart IDE Detection
 BBC automatically detects which IDE and AI extensions you are actively using:
 
 | Active Environment | BBC Writes |
@@ -156,6 +156,7 @@ BBC's daemon (`bbc_daemon.py`) actively monitors your project for changes every 
 - **New files added** → automatic re-analysis + re-injection
 - **Files modified** → SHA-256 hash comparison detects stale context, triggers re-seal
 - **Files deleted** → context updated to remove orphaned symbols
+- **Aura Gradient Feedback (v8.4)** → successful re-seal sends positive feedback to HMPU Governor (`aura_gradient_bend`), failed re-seal sends negative feedback — the system learns from its own operations
 
 The daemon uses `adaptive_mode.check_context_freshness()` for hash-based staleness detection and recommends `RESCAN` or `PARTIAL_RESCAN` based on the ratio of changed files.
 
@@ -169,15 +170,67 @@ BBC operates in two modes depending on context match quality:
 
 If a symbol is not in the sealed context, BBC returns: `"Information not found in sealed context"`
 
-### ✅ Verifier
-BBC's built-in verifier (`bbc_core/verifier.py`) runs structural integrity checks on the sealed context:
-- Syntax correctness of all extracted symbols
-- Completeness of the call graph
-- Detects orphaned or unreachable symbols
+### ✅ Full Verifier (v8.4)
+BBC's verifier (`bbc_core/verifier.py`) runs a **4-layer verification** using BBC Mathematics:
+
+1. **Syntax Check** — AST parsing for Python, brace balancing for C-family languages
+2. **Freshness Check** — SHA-256 hash comparison detects files changed since last seal
+3. **Symbol Mismatch** — HMPUQuantizer re-scans disk files and compares against sealed context symbols
+4. **Aura Field Score** — HMPU Governor computes `aura_field_score(S, C, P)` with condition number `κ`
 
 ```bash
-bbc verify [path]   # Run structural check manually
+bbc verify [path]   # Full verification with Aura Field report
 ```
+
+```
+💎 BBC FULL VERIFICATION REPORT
+[SYNTAX] No errors found.
+[FRESH]  Context is FRESH (42 files verified)
+[MATCH]  All symbols consistent (187 symbols)
+
+ AURA FIELD (BBC Mathematics)
+  S (Structure):  1.0
+  C (Chaos):      0.0
+  P (Pulse):      1.0
+  Aura Score:     0.9847
+  Confidence:     0.726
+  VERDICT: 💎 SEALED_STABLE
+```
+
+Verdicts: `💎 SEALED_STABLE` · `⚠️ WEAK` · `🔴 UNSTABLE` · `💀 DEGENERATE`
+
+### 🛡️ Hallucination Guard (v8.4)
+Post-generation verification — checks AI-generated code against the sealed BBC context:
+
+- Extracts referenced symbols from generated code
+- Compares against `bbc_context.json` known symbols
+- Detects speculative language patterns ("probably", "might", "could be")
+- Computes Aura confidence via HMPU Governor
+- Reports CVP (Constraint Violation Protocol) violations
+
+```bash
+bbc check generated_file.py               # Auto-detect context
+bbc check output.py --context path/to/bbc_context.json
+bbc check output.py --relaxed              # Only flag speculative language
+bbc check output.py --json                 # Machine-readable output
+```
+
+### 📦 Token Optimizer (v8.4)
+General-purpose token compression built into BBC core (`bbc_core/token_optimizer.py`):
+
+- **Shannon entropy-based adaptive sampling** — high entropy regions get more samples, repetitive data is aggressively compressed
+- **Compact JSON** — field name shortening, null/empty removal, decimal rounding
+- Full pipeline: `optimizer.optimize(data, target_ratio=0.1)`
+
+### 🔗 Git Hooks — Team Automation (v8.4)
+Automatic BBC re-sealing on `git checkout` and `git merge`:
+
+```bash
+bbc hooks [path]           # Install post-checkout + post-merge hooks
+bbc hooks [path] --remove  # Remove BBC hooks
+```
+
+Every team member gets automatic context re-sealing without manual intervention.
 
 Verification also runs automatically at the end of every `bbc start` and `bootstrap` pipeline.
 
@@ -233,8 +286,16 @@ python bbc.py start -b [path]
 # Deep project analysis only
 python bbc.py analyze [path]
 
-# Check structural integrity
+# Full verification (Syntax + Freshness + Mismatch + Aura)
 python bbc.py verify [path]
+
+# Check AI-generated code for hallucinations
+python bbc.py check generated_file.py
+python bbc.py check output.py --context .bbc/bbc_context.json
+
+# Install/remove git hooks for team automation
+python bbc.py hooks [path]
+python bbc.py hooks [path] --remove
 
 # Audit BBC traces in a project
 python bbc.py audit [path]
@@ -287,7 +348,10 @@ BBC/
 │   ├── config.py             # Global configuration & paths
 │   ├── state_manager.py      # Session & daemon state manager
 │   ├── telemetry.py          # Operational telemetry & session tracking
-│   ├── verifier.py           # Sealed context integrity checker
+│   ├── verifier.py           # Full verifier (Syntax+Freshness+Mismatch+Aura)
+│   ├── hallucination_guard.py # Post-generation hallucination detector
+│   ├── token_optimizer.py    # Shannon entropy adaptive token compressor
+│   ├── git_hooks.py          # Git hook generator for team automation
 │   ├── attribution_tracer.py # Symbol attribution & call trace
 │   ├── migrator_engine.py    # Legacy context migration engine
 │   ├── ai_integration.py     # External AI API integration helpers
@@ -444,7 +508,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 <div align="center">
 
-**BBC v8.3 STABLE** — Your AI assistants now see your project with mathematical certainty.
+**BBC v8.4 STABLE** — Your AI assistants now see your project with mathematical certainty.
 
 *No hallucinations. No guesswork. Only verified context.*
 
