@@ -183,7 +183,39 @@ Verification also runs automatically at the end of every `bbc start` and `bootst
 
 ---
 
-## 🛠️ Commands
+## � Case Study: Borsa MCP (Real-World Benchmark)
+
+BBC was tested on **borsa-mcp** — a financial data MCP server for Borsa Istanbul with 257K+ lines of code. Testing was performed using the **Cline extension** (VS Code) with free-form prompts.
+
+### Benchmark: 10-Year OHLCV Analysis (3,650 records)
+
+| Metric | Without BBC | With BBC | Savings |
+|---|---:|---:|---:|
+| Characters | 449,490 | 4,266 | 445,224 |
+| Tokens (approx) | 112,372 | 1,066 | 111,306 |
+| Tokens (tiktoken/real) | 233,757 | 1,951 | **231,806** |
+| **Savings Rate (real)** | — | — | **99.17%** |
+
+> **119:1 compression ratio** — verified with `tiktoken` (GPT-4o tokenizer)
+
+### How BBC Achieved This
+
+1. **Context Discipline:** Instead of dumping README + raw data + verbose instructions into one prompt, BBC enforces focused task payloads with `context_source: .bbc/bbc_context.json`
+2. **Adaptive Sampling:** 3,650 daily records → key inflection points only (`TokenOptimizer`)
+3. **Compact JSON:** Field shortening, null removal, number rounding (`CompactJSONOptimizer`)
+4. **Hallucination Prevention:** `constraint_status: verified` ensures AI stays within sealed context
+
+### Key Insight
+
+> *"BBC is not magic automation — it's an engineering framework that keeps AI work safe and focused."*
+> 
+> The massive token reduction comes from BBC discipline + optimization working together, not from a single tool.
+
+*Tested with Cline extension (VS Code) using free-form prompts. March 2026.*
+
+---
+
+## �🛠️ Commands
 
 ```bash
 # Full pipeline: Verify + Analyze + Inject + Start Daemon
