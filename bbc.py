@@ -30,6 +30,39 @@ def _update_context_freshness(ctx_file: str, fresh: bool) -> None:
     except Exception:
         pass
 
+
+def _print_transaction_report(project_path: str, source: str) -> None:
+    """Print BBC token savings / aura report after a completed operation."""
+    try:
+        from bbc_core.config import BBCConfig
+
+        project_resolved = str(Path(project_path).resolve())
+        ctx_file = BBCConfig.get_context_path(project_resolved)
+
+        if os.path.exists(ctx_file):
+            try:
+                with open(ctx_file, "r", encoding="utf-8") as f:
+                    ctx = json.load(f)
+                ctx.setdefault("metrics", {})
+                ctx["metrics"]["unified_status"] = "COMPLETED"
+                ctx["metrics"]["unified_source"] = source
+                ctx["metrics"]["unified_updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+                with open(ctx_file, "w", encoding="utf-8") as f:
+                    json.dump(ctx, f, indent=2, ensure_ascii=False)
+            except Exception:
+                pass
+
+        old_argv = sys.argv[:]
+        try:
+            sys.argv = ["run_bbc", source, project_resolved]
+            from run_bbc import print_transaction_report
+            print_transaction_report()
+        finally:
+            sys.argv = old_argv
+    except Exception as e:
+        print(f"[BBC] Report error: {e}")
+
+
 class BBCCLI:
     """BBC Command Line Interface v8.3"""
 
@@ -385,6 +418,7 @@ def main():
             print(f"\n[BBC] Injection complete — {len(created)} target(s):")
             for label, path in created.items():
                 print(f"  [{label}] {path}")
+            _print_transaction_report(project_resolved, "inject")
         else:
             print(f"[BBC] Context not found: {ctx_file}")
             print(f"[BBC] Run 'bbc analyze {args.path}' first to generate the context.")
@@ -468,6 +502,7 @@ def main():
             print(f"  Composite Risk:  {cr['value']}  [{cr['state']}]")
             print(f"\n  VERDICT: {report['verdict_icon']} {report['verdict']}")
             print(f"{'='*60}")
+            _print_transaction_report(project_resolved, "impact")
     elif args.command == "patch":
         project_resolved = str(Path(args.path).resolve())
         ctx_file = str(Path(project_resolved) / ".bbc" / "bbc_context.json")
@@ -511,6 +546,7 @@ def main():
             print(f"{'='*60}")
             if dry_run and report["total_patches"] > 0:
                 print(f"\n  💡 To apply safe patches: bbc patch {args.path} --apply")
+            _print_transaction_report(project_resolved, "patch")
     elif args.command == "hooks":
         from bbc_core.git_hooks import install_hooks, remove_hooks
         project_resolved = str(Path(args.path).resolve())
@@ -527,6 +563,7 @@ def main():
                 for h in result["installed"]:
                     print(f"[BBC] Hook: {h}")
                 print(f"[BBC] Hooks installed in {result['hooks_dir']}")
+                _print_transaction_report(project_resolved, "hooks")
             else:
                 for e in result.get("errors", []):
                     print(f"[BBC] Error: {e}")
