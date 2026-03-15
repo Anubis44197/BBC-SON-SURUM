@@ -10,6 +10,9 @@ Supports:
 - Cursor IDE (YAML-like format)
 - Gemini Code Assist (XML snapshot format)
 - Kilo Code / Cline (Native format)
+- Continue / Codeium / Tabnine / Amazon Q / Blackbox / Cody / Supermaven
+- Roo Code / Refact.ai / MutableAI / Codiga / DeepSeek / Qodo / Replit / Warp
+- JetBrains / Fleet / Zed / Theia / Trae / Visual Studio / Vim / Neovim
 """
 
 import json
@@ -22,7 +25,14 @@ from pathlib import Path
 class BBCAgentAdapter:
     """Transforms BBC sealed context into Agent-specific formats"""
     
-    SUPPORTED_AGENTS = ["copilot", "cursor", "gemini", "kilo", "cline", "vscode", "generic"]
+    SUPPORTED_AGENTS = [
+        "copilot", "cursor", "gemini", "kilo", "cline", "vscode", "generic",
+        "continue", "codeium", "tabnine", "amazonq", "blackbox", "codegpt",
+        "pieces", "codegeex", "cody", "supermaven", "codiumai", "mintlify",
+        "askcodi", "fauxpilot", "roo", "refact", "mutableai", "codiga",
+        "intellicode", "deepseek", "qodo", "replit", "warp", "jetbrains",
+        "fleet", "zed", "theia", "trae", "visualstudio", "vim", "neovim"
+    ]
     
     def __init__(self, context_path: str):
         """
@@ -691,6 +701,66 @@ If any step fails: STOP and report to user
             cfg.update(extra)
         return json.dumps(cfg, indent=2, ensure_ascii=False)
 
+    adapter = BBCAgentAdapter(str(context_file))
+
+    def _render_tool_content(format_type: str, label: str) -> str:
+        if format_type == "copilot_md":
+            return adapter.to_copilot_prompt()
+        if format_type == "cursor_rules":
+            return adapter.to_cursor_context()
+        if format_type == "gemini_xml":
+            return adapter.to_gemini_context()
+        if format_type == "kilo_rules":
+            return adapter.to_kilo_context()
+        if format_type == "vscode_json":
+            return adapter.to_vscode_context()
+        if format_type == "jetbrains_xml":
+            return f"""<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<project version=\"4\">
+  <component name=\"BBCAIAssistant\">
+    <option name=\"enabled\" value=\"true\" />
+    <option name=\"contextFile\" value=\".bbc/bbc_context.json\" />
+    <option name=\"enforcement\" value=\"{enforcement}\" />
+    <option name=\"failPolicy\" value=\"{fail_policy}\" />
+    <option name=\"instructionsVersion\" value=\"{instr_version}\" />
+    <option name=\"schemaVersion\" value=\"{schema_version}\" />
+    <option name=\"instructions\"><![CDATA[{instructions}]]></option>
+  </component>
+</project>"""
+        if format_type == "native_rules":
+            return instructions
+        if format_type == "ext_json":
+            return _ext_json({
+                "agent": label,
+                "instructionsVersion": instr_version,
+                "schemaVersion": schema_version,
+                "enforcement": enforcement,
+                "failPolicy": fail_policy,
+                "contextFresh": context_fresh,
+                "contextPath": ".bbc/bbc_context.json",
+            })
+        if format_type == "zed_json":
+            return json.dumps({
+                "assistant": {
+                    "enabled": True,
+                    "rules": instructions,
+                    "context_path": ".bbc/bbc_context.json",
+                    "enforcement": enforcement,
+                    "fail_policy": fail_policy,
+                }
+            }, indent=2, ensure_ascii=False)
+        if format_type == "theia_json":
+            return json.dumps({
+                "bbc": {
+                    "enabled": True,
+                    "instructions_file": ".bbc/BBC_INSTRUCTIONS.md",
+                    "context_file": ".bbc/bbc_context.json",
+                    "enforcement": enforcement,
+                    "fail_policy": fail_policy,
+                }
+            }, indent=2, ensure_ascii=False)
+        return instructions
+
     # --- .bbc/bbc_context.md (always) ---
     def _build_context_md() -> str:
         lines = [
@@ -772,23 +842,68 @@ If any step fails: STOP and report to user
 
     # Aktif IDE -> (label, relative_path)
     IDE_CONFIG_MAP = {
-        "vscode":      ("VS Code",       ".github/copilot-instructions.md"),
-        "cursor":      ("Cursor",        ".cursorrules"),
-        "windsurf":    ("Windsurf",      ".windsurf/bbc_rules.md"),
-        "antigravity": ("Antigravity",   ".antigravity/rules.md"),
-        "cline":       ("Cline",         ".clinerules"),
-        "jetbrains":   ("JetBrains",     ".idea/bbc-ai-assistant.xml"),
-        "zed":         ("Zed",           ".zed/settings.json"),
+        "vscode":      ("VS Code",         ".github/copilot-instructions.md", "copilot_md"),
+        "cursor":      ("Cursor",          ".cursorrules",                    "cursor_rules"),
+        "windsurf":    ("Windsurf",        ".windsurf/bbc_rules.md",          "native_rules"),
+        "antigravity": ("Antigravity",     ".antigravity/rules.md",           "native_rules"),
+        "cline":       ("Cline",           ".clinerules",                     "kilo_rules"),
+        "jetbrains":   ("JetBrains",       ".idea/bbc-ai-assistant.xml",      "jetbrains_xml"),
+        "zed":         ("Zed",             ".zed/settings.json",              "zed_json"),
+        "visualstudio":("Visual Studio",   ".vs/bbc-instructions.md",         "native_rules"),
+        "fleet":       ("JetBrains Fleet", ".fleet/bbc_rules.md",             "native_rules"),
+        "theia":       ("Eclipse Theia",   ".theia/settings.json",            "theia_json"),
+        "trae":        ("Trae",            ".trae/rules.md",                  "native_rules"),
+        "vim":         ("Vim",             ".bbc-vim-config",                 "native_rules"),
+        "neovim":      ("Neovim",          ".bbc-vim-config",                 "native_rules"),
+        "sublime":     ("Sublime Text",    ".sublime-project.sublime-settings","theia_json"),
+        "notepadpp":   ("Notepad++",       ".notepadpp/bbc_rules.md",         "native_rules"),
+        "eclipse":     ("Eclipse",         ".eclipse/bbc_rules.md",           "native_rules"),
+        "xcode":       ("Xcode",           ".xcode/bbc_rules.md",             "native_rules"),
     }
 
     # VS Code Eklenti ID -> (label, relative_path, icerik_tipi)
     # icerik_tipi: "md" = markdown, "json" = json wrapper
     EXTENSION_CONFIG_MAP = {
-        "github.copilot":         ("GitHub Copilot",  ".github/copilot-instructions.md", "md"),
-        "github.copilot-chat":    ("GitHub Copilot",  ".github/copilot-instructions.md", "md"),
-        "saoudrizwan.claude-dev": ("Cline",            ".clinerules",                     "md"),
-        "kilocode.kilo-code":     ("Kilo Code",        ".clinerules",                     "md"),
-        "continue.continue":      ("Continue",         ".continue/config.json",           "json"),
+        "github.copilot":         ("GitHub Copilot",             ".github/copilot-instructions.md", "copilot_md"),
+        "github.copilot-chat":    ("GitHub Copilot",             ".github/copilot-instructions.md", "copilot_md"),
+        "saoudrizwan.claude-dev": ("Cline",                       ".clinerules",                     "kilo_rules"),
+        "kilocode.kilo-code":     ("Kilo Code",                   ".clinerules",                     "kilo_rules"),
+        "continue.continue":      ("Continue",                    ".continue/config.json",           "ext_json"),
+        "codeium.codeium":        ("Codeium",                     ".codeium/config.json",            "ext_json"),
+        "tabnine.tabnine-vscode": ("Tabnine",                     ".tabnine/config.json",            "ext_json"),
+        "amazonwebservices.amazon-q-vscode": ("Amazon Q",         ".amazonq/config.json",            "ext_json"),
+        "amazonwebservices.codewhisperer-for-command-line-companion": ("CodeWhisperer", ".amazonq/config.json", "ext_json"),
+        "blackboxapp.blackbox":   ("Blackbox AI",                 ".blackbox/config.json",           "ext_json"),
+        "promptshell.promptshell":("CodeGPT",                     ".codegpt/config.json",            "ext_json"),
+        "danielsanmedium.dscodegpt": ("CodeGPT",                  ".codegpt/config.json",            "ext_json"),
+        "pieces.pieces-vscode":   ("Pieces",                      ".pieces/config.json",             "ext_json"),
+        "aminer.codegeex":        ("CodeGeeX",                    ".codegeex/config.json",           "ext_json"),
+        "sourcegraph.cody-ai":    ("Sourcegraph Cody",            ".cody/config.json",               "ext_json"),
+        "supermaven.supermaven":  ("Supermaven",                  ".supermaven/config.json",         "ext_json"),
+        "codium.codium":          ("CodiumAI",                    ".codiumai/config.json",           "ext_json"),
+        "codiumai.codiumate":     ("CodiumAI",                    ".codiumai/config.json",           "ext_json"),
+        "mintlify.document":      ("Mintlify",                    ".mintlify/config.json",           "ext_json"),
+        "askcodi.askcodi":        ("AskCodi",                     ".askcodi/config.json",            "ext_json"),
+        "sourcery.sourcery":      ("Sourcery",                    ".sourcery/bbc_rules.md",          "native_rules"),
+        "fauxpilot.fauxpilot":    ("FauxPilot",                   ".fauxpilot/config.json",          "ext_json"),
+        "rooveterinaryinc.roo-cline": ("Roo Code",                ".roo-code/config.json",           "ext_json"),
+        "smallcloudai.refact":    ("Refact.ai",                   ".refact/config.json",             "ext_json"),
+        "maboroshi.mutableai":    ("MutableAI",                   ".mutableai/config.json",          "ext_json"),
+        "codiga.codiga":          ("Codiga",                      ".codiga/config.json",             "ext_json"),
+        "visualstudioexptteam.vscodeintellicode": ("Intellicode", ".intellicode/config.json",        "ext_json"),
+        "deepseekai.deepseek-coder": ("DeepSeek Coder",           ".deepseek/config.json",           "ext_json"),
+        "qodo.qodo-gen":          ("Qodo Gen",                    ".qodo/config.json",               "ext_json"),
+        "replit.replit":          ("Replit Ghostwriter",          ".replit/ai.json",                 "ext_json"),
+        "warp.warp-terminal":     ("Warp Terminal AI",            ".warp/config.json",               "ext_json"),
+        "github-copilot":         ("GitHub Copilot (JetBrains)",  ".idea/bbc-ai-assistant.xml",      "jetbrains_xml"),
+        "ai-assistant":           ("JetBrains AI Assistant",      ".idea/bbc-ai-assistant.xml",      "jetbrains_xml"),
+        "codeium":                ("Codeium (JetBrains)",         ".idea/bbc-ai-assistant.xml",      "jetbrains_xml"),
+        "tabnine":                ("Tabnine (JetBrains)",         ".idea/bbc-ai-assistant.xml",      "jetbrains_xml"),
+        "continue":               ("Continue (JetBrains)",        ".idea/bbc-ai-assistant.xml",      "jetbrains_xml"),
+        "codewhisperer":          ("Amazon CodeWhisperer",        ".idea/bbc-ai-assistant.xml",      "jetbrains_xml"),
+        "amazonq":                ("Amazon Q (JetBrains)",        ".idea/bbc-ai-assistant.xml",      "jetbrains_xml"),
+        "cody":                   ("Sourcegraph Cody (JetBrains)", ".idea/bbc-ai-assistant.xml",     "jetbrains_xml"),
+        "supermaven":             ("Supermaven (JetBrains)",      ".idea/bbc-ai-assistant.xml",      "jetbrains_xml"),
     }
 
     # Onceki BBC dosyalarini temizle (sadece BBC yazdigini dogrulayarak)
@@ -801,6 +916,38 @@ If any step fails: STOP and report to user
         ".idea/bbc-ai-assistant.xml",
         ".zed/settings.json",
         ".continue/config.json",
+        ".codeium/config.json",
+        ".tabnine/config.json",
+        ".amazonq/config.json",
+        ".blackbox/config.json",
+        ".codegpt/config.json",
+        ".pieces/config.json",
+        ".codegeex/config.json",
+        ".cody/config.json",
+        ".supermaven/config.json",
+        ".codiumai/config.json",
+        ".mintlify/config.json",
+        ".askcodi/config.json",
+        ".fauxpilot/config.json",
+        ".roo-code/config.json",
+        ".refact/config.json",
+        ".mutableai/config.json",
+        ".codiga/config.json",
+        ".intellicode/config.json",
+        ".deepseek/config.json",
+        ".qodo/config.json",
+        ".replit/ai.json",
+        ".warp/config.json",
+        ".fleet/bbc_rules.md",
+        ".theia/settings.json",
+        ".trae/rules.md",
+        ".vs/bbc-instructions.md",
+        ".eclipse/bbc_rules.md",
+        ".xcode/bbc_rules.md",
+        ".notepadpp/bbc_rules.md",
+        ".sourcery/bbc_rules.md",
+        ".sublime-project.sublime-settings",
+        ".bbc-vim-config",
     ]
     for ide_file in BBC_IDE_FILES:
         fp = project_root / ide_file
@@ -816,18 +963,26 @@ If any step fails: STOP and report to user
                 pass
 
     # Eski BBC cop klasorleri temizle
+    protected_dirs = {".bbc", ".github", ".idea", ".vs", ".fleet", ".theia", ".windsurf", ".antigravity", ".zed"}
+    for _, rel_path, _ in IDE_CONFIG_MAP.values():
+        rel_parent = Path(rel_path).parent
+        if str(rel_parent) not in ("", "."):
+            protected_dirs.add(str(rel_parent).replace("\\", "/"))
+    for _, rel_path, _ in EXTENSION_CONFIG_MAP.values():
+        rel_parent = Path(rel_path).parent
+        if str(rel_parent) not in ("", "."):
+            protected_dirs.add(str(rel_parent).replace("\\", "/"))
+
     BBC_LEGACY_DIRS = [
-        ".agent", ".context", ".codiumai", ".replit",
-        ".askcodi", ".fauxpilot", ".mutableai", ".refact",
-        ".roo-code", ".qodo", ".codiga", ".deepseek",
-        ".mintlify", ".cody", ".supermaven", ".codegeex", ".pieces",
-        ".codegpt", ".blackbox", ".amazonq", ".tabnine", ".codeium",
-        ".warp", ".intellicode",
+        ".agent", ".context",
     ]
     for legacy_dir in BBC_LEGACY_DIRS:
         p = project_root / legacy_dir
         if p.exists() and p.is_dir():
             try:
+                normalized = legacy_dir.replace("\\", "/")
+                if normalized in protected_dirs:
+                    continue
                 if len(list(p.rglob("*"))) <= 3:
                     shutil.rmtree(p)
             except Exception:
@@ -840,8 +995,8 @@ If any step fails: STOP and report to user
     written_paths = set()
 
     if active_ide_type and active_ide_type in IDE_CONFIG_MAP:
-        label, rel_path = IDE_CONFIG_MAP[active_ide_type]
-        _write_config(label, rel_path, instructions)
+        label, rel_path, format_type = IDE_CONFIG_MAP[active_ide_type]
+        _write_config(label, rel_path, _render_tool_content(format_type, label))
         written_paths.add(rel_path)
         injected.append(f"{label} -> {rel_path}")
 
@@ -852,9 +1007,9 @@ If any step fails: STOP and report to user
     # ------------------------------------------------------------
     try:
         if configurator:
-            if active_ide_type in ["vscode", "cursor", "windsurf", "cline", None]:
+            if active_ide_type in ["vscode", "cursor", "windsurf", "cline", "trae", "theia", None]:
                 extensions = configurator.detect_vscode_extensions()
-            elif active_ide_type == "jetbrains":
+            elif active_ide_type in ["jetbrains", "fleet"]:
                 extensions = configurator.detect_jetbrains_plugins()
             else:
                 extensions = configurator.detect_vscode_extensions()
@@ -866,17 +1021,7 @@ If any step fails: STOP and report to user
                 e_label, e_rel_path, e_type = EXTENSION_CONFIG_MAP[ext_id]
                 if e_rel_path in written_paths:
                     continue  # Zaten yazildi, tekrar yazma
-                if e_type == "json":
-                    content = json.dumps({
-                        "bbc": {
-                            "enabled": True,
-                            "version": "8.3",
-                            "contextFile": ".bbc/bbc_context.json"
-                        },
-                        "customInstructions": f"BBC Mode Active. Read .bbc/bbc_context.json. Only use verified symbols. Status: {status}"
-                    }, indent=2, ensure_ascii=False)
-                else:
-                    content = instructions
+                content = _render_tool_content(e_type, e_label)
                 _write_config(e_label, e_rel_path, content)
                 written_paths.add(e_rel_path)
                 injected.append(f"{e_label} -> {e_rel_path}")

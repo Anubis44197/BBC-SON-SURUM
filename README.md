@@ -88,14 +88,16 @@ BBC automatically detects which IDE and AI extensions you are actively using:
 | **VS Code + GitHub Copilot** | `.github/copilot-instructions.md` |
 | **VS Code + Continue** | `.continue/config.json` |
 | **VS Code + Cline** | `.clinerules` |
+| **JetBrains / Fleet** | `.idea/bbc-ai-assistant.xml` or `.fleet/bbc_rules.md` |
+| **Zed / Theia / Trae** | tool-specific BBC config file only when detected |
 | **Windsurf** | `.windsurf/bbc_rules.md` |
 | **Not detected** | `.bbc/` folder only |
 
 > Detection method: environment variables → process tree → VS Code extension directory
 
-### 🤖 Full Supported AI Tools (30+)
+### 🤖 Full Supported AI Tools (40+)
 
-BBC auto-detects and configures **30+ AI coding tools** across all major IDEs:
+BBC auto-detects and configures **40+ AI coding tools** across major IDEs and agent surfaces:
 
 | Tool | Config File Written |
 |---|---|
@@ -112,31 +114,42 @@ BBC auto-detects and configures **30+ AI coding tools** across all major IDEs:
 | Cody (Sourcegraph) | `.cody/config.json` |
 | CodeGeeX | `.codegeex/config.json` |
 | Supermaven | `.supermaven/config.json` |
-| CodiumAI / Qodo | `.codiumai/config.json` |
+| CodiumAI | `.codiumai/config.json` |
 | Pieces | `.pieces/config.json` |
 | DeepSeek Coder | `.deepseek/config.json` |
 | Refact.ai | `.refact/config.json` |
 | Warp | `.warp/config.json` |
 | Mintlify | `.mintlify/config.json` |
-| Amazon Q | auto-detected |
-| Tabnine | auto-detected |
-| Codeium | auto-detected |
-| IntelliCode | auto-detected |
+| Amazon Q | `.amazonq/config.json` |
+| Tabnine | `.tabnine/config.json` |
+| Codeium | `.codeium/config.json` |
+| IntelliCode | `.intellicode/config.json` |
 | Replit AI | `.replit/ai.json` |
 | FauxPilot | `.fauxpilot/config.json` |
-| AskCodi | auto-detected |
+| AskCodi | `.askcodi/config.json` |
 | Codiga | `.codiga/config.json` |
-| MutableAI | auto-detected |
+| MutableAI | `.mutableai/config.json` |
 | Qodo Gen | `.qodo/config.json` |
-| BlackBox AI | auto-detected |
-| CodeGPT | auto-detected |
+| BlackBox AI | `.blackbox/config.json` |
+| CodeGPT | `.codegpt/config.json` |
+| JetBrains AI Assistant | `.idea/bbc-ai-assistant.xml` |
+| Visual Studio | `.vs/bbc-instructions.md` |
+| JetBrains Fleet | `.fleet/bbc_rules.md` |
+| Zed | `.zed/settings.json` |
+| Eclipse Theia | `.theia/settings.json` |
+| Trae | `.trae/rules.md` |
+| Vim / Neovim | `.bbc-vim-config` |
+| Sublime Text | `.sublime-project.sublime-settings` |
+| Notepad++ | `.notepadpp/bbc_rules.md` |
+| Eclipse | `.eclipse/bbc_rules.md` |
+| Xcode | `.xcode/bbc_rules.md` |
 
-> BBC only writes to tools you have installed. It never creates folders for tools you don't use.
+> BBC writes only to detected IDEs/extensions in the active environment. It does not mass-create config folders for every supported tool.
 
 ### 🚫 Ghost Injection Prevention
 Previous versions created config folders for 20+ tools regardless of whether they were installed. v8.3 eliminates this entirely:
 - ❌ **Before:** `.codiumai/`, `.replit/`, `.tabnine/`, `.pieces/`... (20+ folders)
-- ✅ **Now:** Only active IDE + installed extensions (1–3 files maximum)
+- ✅ **Now:** Only the active IDE and actually detected extensions are written, alongside the central `.bbc/` manifest files
 
 ### 📊 Stability Engine
 BBC continuously evaluates project health and verification confidence to keep AI work aligned with the current sealed context.
