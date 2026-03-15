@@ -596,6 +596,22 @@ def main():
     verify_parser.add_argument("--changed-only", action="store_true",
                                help="Only verify files that changed since last seal")
     
+    # compile command - Task-Aware Context Compiler
+    compile_parser = subparsers.add_parser("compile", help="Compile task-aware context for LLM (bugfix/feature/refactor/review)")
+    compile_parser.add_argument("--task", required=True,
+                                choices=["bugfix", "feature", "refactor", "review"],
+                                help="Task type to compile context for")
+    compile_parser.add_argument("--file", default=None,
+                                help="Target file being worked on (relative path)")
+    compile_parser.add_argument("--symbols", nargs="*", default=None,
+                                help="Target symbol names (optional)")
+    compile_parser.add_argument("--context", default=None,
+                                help="Path to bbc_context.json (default: auto-detect)")
+    compile_parser.add_argument("--out", default=None,
+                                help="Output path for compiled context (default: .bbc/compiled_<task>.json)")
+    compile_parser.add_argument("--json", action="store_true",
+                                help="Output raw JSON to stdout")
+
     # clean command
     clean_parser = subparsers.add_parser("clean", help="Clean temporary files and caches")
     
@@ -789,6 +805,63 @@ def main():
             print(f"  Confidence:     {conf_info.get('value', 'N/A')}  [{conf_info.get('state', 'N/A')}]")
         print(f"\n  VERDICT: {report['verdict_icon']} {report['verdict']}")
         print(f"{'='*60}")
+    elif args.command == "compile":
+        # Auto-detect context
+        ctx_path = getattr(args, "context", None)
+        if not ctx_path:
+            for candidate in [".bbc/bbc_context.json", "bbc_context.json"]:
+                if os.path.exists(candidate):
+                    ctx_path = candidate
+                    break
+        if not ctx_path or not os.path.exists(ctx_path):
+            print("[ERROR] BBC context not found. Run 'bbc analyze' first.")
+            sys.exit(1)
+
+        from bbc_core.context_compiler import TaskContextCompiler
+        compiler = TaskContextCompiler(ctx_path)
+        compiled = compiler.compile(
+            task=args.task,
+            target_file=getattr(args, "file", None),
+            target_symbols=getattr(args, "symbols", None),
+        )
+
+        if getattr(args, "json", False):
+            print(json.dumps(compiled, indent=2, ensure_ascii=False, default=str))
+        else:
+            tc = compiled.get("task_context", {})
+            m = compiled.get("metrics", {})
+            print(f"\n{'='*60}")
+            print(f" 🎯 BBC TASK-AWARE CONTEXT COMPILED")
+            print(f"{'='*60}")
+            print(f"  Task:       {tc.get('task_type', '?')} — {tc.get('task_profile', '')}")
+            if tc.get("target_file"):
+                print(f"  Target:     {tc['target_file']}")
+            if tc.get("target_symbols"):
+                print(f"  Symbols:    {', '.join(tc['target_symbols'])}")
+            print(f"  Files:      {tc.get('files_included', 0)}/{tc.get('files_total', 0)} ({tc.get('file_reduction_pct', 0)}% reduction)")
+            print(f"  Lines:      {m.get('code_lines', 0):,} code lines included")
+            print(f"{'─'*60}")
+            print(f"  Full ctx:   ~{m.get('full_context_tokens_est', 0):,} tokens")
+            print(f"  Compiled:   ~{m.get('compiled_tokens_est', 0):,} tokens")
+            print(f"  Savings:    {m.get('task_savings_pct', 0)}% token reduction")
+            print(f"{'─'*60}")
+
+            # Show included files
+            cs = compiled.get("code_structure", [])
+            print(f"\n  Included files (by relevance):")
+            for recipe in cs[:15]:
+                score = recipe.get("_relevance_score", 0)
+                bar = "█" * int(score * 10) + "░" * (10 - int(score * 10))
+                print(f"    [{bar}] {score:.2f}  {recipe.get('path', '?')}")
+            if len(cs) > 15:
+                print(f"    ... and {len(cs) - 15} more")
+
+            # Save
+            out_path = getattr(args, "out", None)
+            saved = compiler.save_compiled(compiled, out_path)
+            print(f"\n  [OK] Saved to: {saved}")
+            print(f"{'='*60}\n")
+
     elif args.command == "impact":
         # Context dosyasını bul
         ctx_path = args.context

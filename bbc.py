@@ -340,6 +340,17 @@ def main():
     hooks_parser.add_argument("path", nargs="?", default=".", help="Project path")
     hooks_parser.add_argument("--remove", action="store_true", help="Remove BBC hooks")
 
+    # Compile (Task-Aware Context Compiler)
+    compile_parser = subparsers.add_parser("compile", help="Compile task-aware context (bugfix/feature/refactor/review)")
+    compile_parser.add_argument("--task", required=True,
+                                choices=["bugfix", "feature", "refactor", "review"],
+                                help="Task type")
+    compile_parser.add_argument("--file", default=None, help="Target file (relative path)")
+    compile_parser.add_argument("--symbols", nargs="*", default=None, help="Target symbol names")
+    compile_parser.add_argument("--path", default=".", help="Project path (default: current directory)")
+    compile_parser.add_argument("--out", default=None, help="Output path for compiled context")
+    compile_parser.add_argument("--json", action="store_true", help="Output raw JSON to stdout")
+
     args = parser.parse_args()
     cli = BBCCLI()
 
@@ -465,6 +476,24 @@ def main():
             print("    Run 'bbc start' to enable live defense.")
             
         print("="*40 + "\n")
+    elif args.command == "compile":
+        project_resolved = str(Path(getattr(args, 'path', '.')).resolve())
+        ctx_file = str(Path(project_resolved) / ".bbc" / "bbc_context.json")
+        if not Path(ctx_file).exists():
+            print(f"[BBC] Context not found: {ctx_file}")
+            print(f"[BBC] Run 'bbc analyze' first.")
+        else:
+            compile_cmd = ["compile", "--task", args.task]
+            if getattr(args, "file", None):
+                compile_cmd.extend(["--file", args.file])
+            if getattr(args, "symbols", None):
+                compile_cmd.extend(["--symbols"] + args.symbols)
+            compile_cmd.extend(["--context", ctx_file])
+            if getattr(args, "out", None):
+                compile_cmd.extend(["--out", args.out])
+            if getattr(args, "json", False):
+                compile_cmd.append("--json")
+            cli.run_command(compile_cmd)
     elif args.command == "impact":
         project_resolved = str(Path(getattr(args, 'path', '.')).resolve())
         ctx_file = str(Path(project_resolved) / ".bbc" / "bbc_context.json")
