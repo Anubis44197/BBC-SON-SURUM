@@ -1,10 +1,10 @@
-# 🧠 BBC — Bitter Brain Context v8.5
+# 🧠 BBC — Bitter Brain Context v8.6
 
 > **Zero-Hallucination AI Coding Framework** — Analyzes your project, detects your active IDE, and provides AI assistants with a verified sealed context.
 
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v8.5%20STABLE-green)](https://github.com/Anubis44197/BBC)
+[![Version](https://img.shields.io/badge/version-v8.6%20STABLE-green)](https://github.com/Anubis44197/BBC)
 
 ---
 
@@ -264,6 +264,71 @@ python bbc.py patch .
 python bbc.py patch . --apply
 ```
 
+---
+
+## 🚀 BBC 8.6 Sprint Enhancements
+
+### 🔄 Incremental Analysis & Changed-Only Verify (Sprint 1)
+BBC now tracks file hashes and only re-analyses what changed:
+
+- **Change Tracker** — `.bbc/change_index.json` stores file hashes and change sets
+- **Incremental Analyze** — `bbc analyze . --incremental` skips unchanged files
+- **Changed-Only Verify** — `bbc verify . --changed-only` validates only modified files
+- **Speedup** — 3.7x faster on incremental runs
+
+```bash
+bbc analyze . --incremental
+bbc verify . --changed-only
+```
+
+### 🎯 Task-Aware Context Compiler (Sprint 2)
+Generate task-specific, token-optimized contexts for LLMs:
+
+- **bugfix** — target file + direct deps + error context
+- **feature** — related modules + interfaces + critical symbols
+- **refactor** — target + full blast radius (all dependents)
+- **review** — broad structural view + critical symbols
+
+```bash
+bbc compile --task bugfix --file bbc_core/verifier.py
+```
+
+### 📦 Semantic Packer (Sprint 3)
+Intelligent context compression without losing meaning:
+
+- **Safe mode** — 18.3% compression, dedupes shared imports
+- **Aggressive mode** — 27.0% compression, strips dep graph
+- **Path aliasing** — Shorten repeated prefixes (`@a/`, `@b/`)
+- **Metadata strip** — Remove LLM-irrelevant fields
+
+```bash
+bbc pack --aggressive
+```
+
+### 📊 Feedback Telemetry Dashboard (Sprint 4)
+Track BBC performance and token savings over time:
+
+- **Command history** — duration, files, tokens saved per command
+- **Aggregated stats** — total savings, success rate, command breakdown
+- **Recent activity** — last N executions with outcomes
+
+```bash
+bbc telemetry
+```
+
+### 🤖 Agent-Specific Optimized Injection (Sprint 5)
+Inject per-task optimized contexts tailored to each AI tool:
+
+- **Task mapping** — Each AI format gets a task profile (bugfix/feature/review)
+- **Optimized contexts** — `.bbc/agent_context_<task>.json` per format
+- **Smart references** — Config files point to optimized context paths
+- **Toggle** — `--no-optimize` disables optimization per run
+
+```bash
+bbc inject .               # Optimized injection
+bbc inject . --no-optimize  # Full context injection
+```
+
 ### 🔗 Git Hooks — Team Automation (v8.4)
 Automatic BBC re-sealing on `git checkout` and `git merge`:
 
@@ -286,11 +351,18 @@ All user-facing commands go through `bbc.py` — the single entry point:
 |---|---|
 | `bbc start [path]` | Full pipeline: analyze + verify + inject + daemon |
 | `bbc analyze [path]` | Deep project scan, generate sealed context |
+| `bbc analyze [path] --incremental` | Incremental analysis of changed files only |
 | `bbc verify [path]` | Check structural integrity (freshness gate + fail policy) |
+| `bbc verify [path] --changed-only` | Verify only modified files |
 | `bbc check <file>` | Hallucination guard — check AI-generated code against context |
 | `bbc impact <file>` | Semantic impact analysis of a file change |
 | `bbc patch [path]` | Detect and auto-fix code issues (dry-run by default) |
+| `bbc compile --task <type> --file <path>` | Compile task-aware context (bugfix/feature/refactor/review) |
+| `bbc pack` | Semantically compress context for minimal token usage |
+| `bbc pack --aggressive` | Deeper compression, removes dep graph |
+| `bbc telemetry` | Show BBC performance dashboard |
 | `bbc inject [path]` | Inject BBC instructions into AI agent config files |
+| `bbc inject [path] --no-optimize` | Inject without task-specific optimization |
 | `bbc hooks [path]` | Install/remove BBC git hooks for team automation |
 | `bbc install [path]` | One-command setup: deps + analyze + inject + start |
 | `bbc serve` | Start REST API server |
@@ -389,7 +461,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 <div align="center">
 
-**BBC v8.5 STABLE** — Your AI assistants now see your project through a verified sealed context.
+**BBC v8.6 STABLE** — Your AI assistants now see your project through a verified sealed context.
 
 *No hallucinations. No guesswork. Only verified context.*
 
