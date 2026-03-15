@@ -169,6 +169,105 @@ class BBCCLI:
             print(f"[TIP] AI assistants will now see the verified logic structure.")
             print(f"{'='*70}\n")
 
+    async def run_analysis_incremental(self, target_path, output_file, silent: bool = False):
+        """Incremental analysis — only re-processes changed files."""
+        target_path = os.path.abspath(target_path)
+
+        if output_file == "bbc_context.json":
+            output_file = BBCConfig.get_context_path(target_path)
+        else:
+            output_file = os.path.abspath(output_file)
+
+        if not os.path.exists(target_path):
+            print(f"Error: Path does not exist: {target_path}")
+            sys.exit(1)
+
+        if not silent:
+            print(f"[*] Starting Incremental Analysis: {target_path}")
+
+        start_time = time.time()
+        context = await self.adapter.analyze_project_incremental(
+            target_path, output_file=output_file, silent=silent
+        )
+
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(context, f, indent=2, ensure_ascii=False, cls=BBCEncoder)
+
+        try:
+            _write_project_snapshot(target_path, output_file)
+        except Exception as e:
+            print(f"[WARN] Snapshot write skipped: {e}", file=sys.stderr)
+
+        inc_info = context.get("incremental", {})
+        mode = inc_info.get("mode", "full")
+
+        # Token counting (same as full analysis)
+        raw_content = ""
+        try:
+            for root, dirs, files in os.walk(target_path):
+                dirs[:] = [d for d in dirs if not d.startswith('.') and d not in
+                           ["node_modules", ".venv", "dist", "build", ".git", "__pycache__"]]
+                for file in files:
+                    if file.lower().endswith(('.py', '.md', '.json', '.js', '.ts', '.html',
+                                              '.css', '.sql', '.rs', '.go', '.c', '.cpp',
+                                              '.h', '.hpp', '.java', '.cs', '.php', '.rb',
+                                              '.swift', '.kt')):
+                        fp = os.path.join(root, file)
+                        try:
+                            with open(fp, 'r', encoding='utf-8') as f:
+                                raw_content += f.read() + "\n"
+                        except Exception:
+                            continue
+        except Exception:
+            pass
+
+        context_content = json.dumps(context, ensure_ascii=False, default=str)
+        raw_tokens = count_tokens(raw_content) if raw_content else context.get("metrics", {}).get("raw_bytes", 0) // 4
+        context_tokens = count_tokens(context_content)
+        saved_tokens = raw_tokens - context_tokens
+        savings_pct = (saved_tokens / raw_tokens * 100) if raw_tokens > 0 else 0
+
+        context.setdefault("metrics", {})
+        context["metrics"]["raw_tokens"] = raw_tokens
+        context["metrics"]["context_tokens"] = context_tokens
+        context["metrics"]["savings_pct"] = round(savings_pct, 1)
+        context["metrics"]["unified_tokens_used"] = context_tokens
+        context["metrics"]["unified_tokens_saved"] = max(0, saved_tokens)
+        context["metrics"]["unified_tokens_normal"] = raw_tokens
+        context["metrics"]["unified_savings_pct"] = round(savings_pct, 1)
+        context["metrics"]["unified_savings_confidence"] = context["metrics"].get("unified_savings_confidence", 0.95)
+        context["metrics"]["unified_status"] = "IDLE"
+        context["metrics"]["unified_source"] = "analyze_incremental"
+        context["metrics"]["unified_updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+        try:
+            with open(output_file, 'w', encoding='utf-8') as f:
+                json.dump(context, f, indent=2, ensure_ascii=False, cls=BBCEncoder)
+        except Exception:
+            pass
+
+        bbc_time = time.time() - start_time
+        m = context.get("metrics", {})
+
+        if not silent:
+            print(f"\n{'='*70}")
+            print(f">>> BBC INCREMENTAL ANALYSIS COMPLETE ({mode.upper()})")
+            print(f"{'='*70}")
+            files_scanned = m.get('files_scanned', 0)
+            print(f"[{'#'*30}] 100% ({files_scanned:,}) | {bbc_time:.2f}s")
+
+            if mode == "incremental":
+                print(f"[INCR] +{inc_info.get('added', 0)} added | ~{inc_info.get('changed', 0)} changed | -{inc_info.get('removed', 0)} removed")
+                print(f"[INCR] {inc_info.get('reanalyzed', 0)} re-analyzed | {inc_info.get('cached', 0)} cached")
+            elif mode == "cached":
+                print(f"[CACHE] No changes detected — context served from cache.")
+            else:
+                print(f"[FULL] First run — full analysis performed.")
+
+            print(f"[INFO] Source:{raw_tokens:,} tokens -> Context:{context_tokens:,} tokens | Compression:{savings_pct:.1f}%")
+            print(f"{'='*70}")
+            print(f"\n[OK] BBC Context Secured: {os.path.abspath(output_file)}")
+            print(f"{'='*70}\n")
+
 
 def _is_context_stale(project_root: str, context_path: str) -> bool:
     project_root = os.path.abspath(project_root)
@@ -483,6 +582,8 @@ def main():
     analyze_parser.add_argument("path", help="Project path to analyze")
     analyze_parser.add_argument("--out", default="bbc_context.json", help="Output JSON file name")
     analyze_parser.add_argument("--silent", action="store_true", help="Minimal output")
+    analyze_parser.add_argument("--incremental", action="store_true",
+                               help="Only re-analyze files changed since last run")
 
     # migrate command
     migrate_parser = subparsers.add_parser("migrate")
@@ -492,6 +593,8 @@ def main():
     # verify command
     verify_parser = subparsers.add_parser("verify")
     verify_parser.add_argument("recipe", help="Path to the recipe JSON (for root path context)")
+    verify_parser.add_argument("--changed-only", action="store_true",
+                               help="Only verify files that changed since last seal")
     
     # clean command
     clean_parser = subparsers.add_parser("clean", help="Clean temporary files and caches")
@@ -605,7 +708,10 @@ def main():
 
     if args.command == "analyze":
         cli = BBCCLI()
-        asyncio.run(cli.run_analysis(args.path, args.out, silent=getattr(args, "silent", False)))
+        if getattr(args, "incremental", False):
+            asyncio.run(cli.run_analysis_incremental(args.path, args.out, silent=getattr(args, "silent", False)))
+        else:
+            asyncio.run(cli.run_analysis(args.path, args.out, silent=getattr(args, "silent", False)))
     elif args.command == "migrate":
         from bbc_core.migrator_engine import BBCMigratorEngine
         engine = BBCMigratorEngine(args.recipe)
@@ -613,15 +719,22 @@ def main():
     elif args.command == "verify":
         from bbc_core.verifier import BBCVerifier
         verifier = BBCVerifier(args.recipe)
-        report = verifier.verify_full()
+        if getattr(args, "changed_only", False):
+            report = verifier.verify_changed_only()
+        else:
+            report = verifier.verify_full()
         
         aura = report["aura_field"]
         freshness = report["freshness"]
         mismatch = report["symbol_mismatch"]
         
+        changed_only_info = report.get("changed_only")
+        report_title = "BBC CHANGED-ONLY VERIFICATION REPORT" if changed_only_info else "BBC FULL VERIFICATION REPORT"
         print(f"\n{'='*60}")
-        print(f" {report['verdict_icon']} BBC FULL VERIFICATION REPORT")
+        print(f" {report['verdict_icon']} {report_title}")
         print(f"{'='*60}")
+        if changed_only_info:
+            print(f"[SCOPE] {changed_only_info.get('files_checked', 0)} file(s) checked (changed-only mode)")
         
         # Syntax
         if report["syntax_error_count"] > 0:
@@ -655,18 +768,25 @@ def main():
         print(f"\n{'─'*60}")
         print(f" AURA FIELD (BBC Mathematics — State-Aware)")
         print(f"{'─'*60}")
-        s_info = aura['S_structure']
-        c_info = aura['C_chaos']
-        p_info = aura['P_pulse']
-        a_info = aura['aura_score']
-        conf_info = aura['confidence']
-        print(f"  S (Structure):  {s_info['value']}  [{s_info['state']}]  origin={s_info['origin']}")
-        print(f"  C (Chaos):      {c_info['value']}  [{c_info['state']}]  origin={c_info['origin']}")
-        print(f"  P (Pulse):      {p_info['value']}  [{p_info['state']}]  origin={p_info['origin']}")
-        print(f"  Aura Score:     {a_info['value']}  [{a_info['state']}]  origin={a_info['origin']}")
-        print(f"  Field κ:        {aura['field_stability']}")
-        print(f"  Confidence:     {conf_info['value']}  [{conf_info['state']}]")
-        print(f"  Governor:       {'HMPU' if aura.get('governor_used') else 'Fallback'}")
+        try:
+            s_info = aura['S_structure']
+            c_info = aura['C_chaos']
+            p_info = aura['P_pulse']
+            a_info = aura['aura_score']
+            conf_info = aura['confidence']
+            print(f"  S (Structure):  {s_info['value']}  [{s_info['state']}]  origin={s_info['origin']}")
+            print(f"  C (Chaos):      {c_info['value']}  [{c_info['state']}]  origin={c_info['origin']}")
+            print(f"  P (Pulse):      {p_info['value']}  [{p_info['state']}]  origin={p_info['origin']}")
+            print(f"  Aura Score:     {a_info['value']}  [{a_info['state']}]  origin={a_info['origin']}")
+            print(f"  Field κ:        {aura.get('field_stability', 'N/A')}")
+            print(f"  Confidence:     {conf_info['value']}  [{conf_info['state']}]")
+            print(f"  Governor:       {'HMPU' if aura.get('governor_used') else 'Fallback'}")
+        except KeyError:
+            # Minimal aura dict (e.g. changed-only with no changes)
+            a_info = aura.get('aura_score', {})
+            conf_info = aura.get('confidence', {})
+            print(f"  Aura Score:     {a_info.get('value', 'N/A')}  [{a_info.get('state', 'N/A')}]")
+            print(f"  Confidence:     {conf_info.get('value', 'N/A')}  [{conf_info.get('state', 'N/A')}]")
         print(f"\n  VERDICT: {report['verdict_icon']} {report['verdict']}")
         print(f"{'='*60}")
     elif args.command == "impact":

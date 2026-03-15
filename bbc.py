@@ -270,10 +270,14 @@ def main():
     # Analyze (Direct)
     analyze_parser = subparsers.add_parser("analyze", help="Deep Project Scan")
     analyze_parser.add_argument("path", nargs="?", default=".", help="Project path")
+    analyze_parser.add_argument("--incremental", action="store_true",
+                               help="Only re-analyze files changed since last run")
 
     # Verify
     verify_parser = subparsers.add_parser("verify", help="Check Structural Integrity")
     verify_parser.add_argument("path", nargs="?", default=".", help="Project path")
+    verify_parser.add_argument("--changed-only", action="store_true",
+                               help="Only verify files that changed since last seal")
 
     # Serve
     serve_parser = subparsers.add_parser("serve", help="Start API Server")
@@ -342,7 +346,10 @@ def main():
     if args.command == "start":
         cli.start(args.path, args.background, args.force)
     elif args.command == "analyze":
-        cli.run_command(["analyze", args.path])
+        cmd = ["analyze", args.path]
+        if getattr(args, "incremental", False):
+            cmd.append("--incremental")
+        cli.run_command(cmd)
     elif args.command == "verify":
         project_resolved = str(Path(args.path).resolve())
         ctx_file = str(Path(project_resolved) / ".bbc" / "bbc_context.json")
@@ -379,7 +386,10 @@ def main():
             else:
                 print(f"[BBC] Context freshness: FRESH")
             print(f"[BBC] Enforcement: {enf} | Fail policy: {fp}")
-            cli.run_command(["verify", ctx_file])
+            verify_cmd = ["verify", ctx_file]
+            if getattr(args, "changed_only", False):
+                verify_cmd.append("--changed-only")
+            cli.run_command(verify_cmd)
         else:
             print(f"[BBC] Context not found: {ctx_file}")
             print(f"[BBC] Run 'bbc start {args.path}' first to generate the context.")

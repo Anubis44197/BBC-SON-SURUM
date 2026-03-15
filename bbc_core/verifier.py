@@ -447,3 +447,241 @@ class BBCVerifier:
             "verdict": verdict,
             "verdict_icon": verdict_icon
         }
+
+    def verify_changed_only(self, changed_files: list = None):
+        """
+        Changed-Only Verification — sadece değişen dosyaları doğrular.
+        ChangeTracker'dan gelen dosya listesini kullanır veya freshness
+        kontrolü ile stale dosyaları otomatik tespit eder.
+        
+        Tam verify_full ile aynı BBC matematik pipeline'ını kullanır,
+        ancak yalnızca etkilenen dosyalar üzerinde çalışır.
+        
+        Args:
+            changed_files: Doğrulanacak dosya yollarının listesi (relative).
+                           None ise freshness'tan otomatik tespit eder.
+        Returns: dict — verify_full ile aynı yapıda, ek olarak changed_only metadata
+        """
+        # Değişen dosya listesini belirle
+        if changed_files is None:
+            freshness = self.verify_freshness()
+            changed_files = freshness.get("stale_files", [])
+        else:
+            freshness = self.verify_freshness()
+
+        if not changed_files:
+            return {
+                "syntax_errors": [],
+                "syntax_error_count": 0,
+                "freshness": freshness,
+                "symbol_mismatch": {"mismatch_count": 0, "mismatch_files": [], "mismatch_ratio": 0.0},
+                "aura_field": {
+                    "aura_score": {"value": 1.0, "state": STABLE, "origin": "semantic"},
+                    "confidence": {"value": 1.0, "state": STABLE},
+                },
+                "verdict": "SEALED_STABLE",
+                "verdict_icon": "💎",
+                "changed_only": {
+                    "mode": "changed_only",
+                    "files_checked": 0,
+                    "skipped": "no_changes"
+                }
+            }
+
+        changed_set = set(changed_files)
+
+        # --- Syntax check: sadece değişen dosyalar ---
+        syntax_errors = []
+        binary_exts = {'.png', '.jpg', '.jpeg', '.gif', '.ico', '.webp', '.ttf',
+                       '.woff', '.woff2', '.eot', '.pdf', '.zip', '.exe', '.dll',
+                       '.so', '.dylib', '.bin'}
+
+        for rel_path in changed_files:
+            abs_path = os.path.join(self.project_root, rel_path)
+            if not os.path.exists(abs_path):
+                continue
+            ext = os.path.splitext(rel_path)[1].lower()
+            if ext in binary_exts:
+                continue
+            try:
+                with open(abs_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+
+                if ext == '.py':
+                    try:
+                        ast.parse(content)
+                    except SyntaxError as e:
+                        syntax_errors.append({
+                            "file": rel_path, "line": e.lineno,
+                            "msg": e.msg, "type": "SYNTAX_ERROR (Python)"
+                        })
+                elif ext in ['.rs', '.c', '.cpp', '.h', '.hpp', '.java', '.cs',
+                             '.js', '.ts', '.jsx', '.tsx', '.go', '.php', '.swift', '.kt']:
+                    ob = content.count('{')
+                    cb = content.count('}')
+                    if ob != cb:
+                        syntax_errors.append({
+                            "file": rel_path,
+                            "msg": f"Unbalanced braces {{}} (Open: {ob}, Close: {cb})",
+                            "type": f"SYNTAX_ERROR ({ext[1:].upper()})"
+                        })
+            except UnicodeDecodeError:
+                continue
+            except Exception as e:
+                syntax_errors.append({"file": rel_path, "msg": str(e), "type": "READ_ERROR"})
+
+        # --- Symbol mismatch: sadece değişen dosyalar ---
+        code_struct = self.recipe_data.get("code_structure", [])
+        quantizer = HMPUQuantizer()
+        mismatch_files = []
+        total_context_symbols = 0
+        total_mismatched = 0
+
+        for file_obj in code_struct:
+            if not isinstance(file_obj, dict):
+                continue
+            file_path = file_obj.get("path", "")
+            if not file_path or file_path not in changed_set:
+                continue
+
+            abs_path = os.path.join(self.project_root, file_path)
+            if not os.path.exists(abs_path):
+                continue
+
+            struct = file_obj.get("structure", {})
+            ctx_classes = set(struct.get("classes", []))
+            ctx_functions = set(struct.get("functions", []))
+            ctx_symbols = ctx_classes | ctx_functions
+            total_context_symbols += len(ctx_symbols)
+            if not ctx_symbols:
+                continue
+
+            try:
+                with open(abs_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                ext = os.path.splitext(file_path)[1]
+                result = quantizer.process_content(content, file_ext=ext)
+                disk_struct = result.get("structure", {})
+                disk_symbols = set(disk_struct.get("classes", [])) | set(disk_struct.get("functions", []))
+            except Exception:
+                continue
+
+            added = disk_symbols - ctx_symbols
+            removed = ctx_symbols - disk_symbols
+            if added or removed:
+                total_mismatched += len(added) + len(removed)
+                mismatch_files.append({
+                    "file": file_path,
+                    "added_symbols": list(added)[:10],
+                    "removed_symbols": list(removed)[:10],
+                    "added_count": len(added),
+                    "removed_count": len(removed)
+                })
+
+        mismatch_ratio = total_mismatched / total_context_symbols if total_context_symbols > 0 else 0.0
+        mismatch = {
+            "total_context_symbols": total_context_symbols,
+            "total_mismatched": total_mismatched,
+            "mismatch_files": mismatch_files,
+            "mismatch_count": len(mismatch_files),
+            "mismatch_ratio": round(mismatch_ratio, 3)
+        }
+
+        # --- BBC Matematik: S, C, P → BBCScalar (verify_full ile aynı) ---
+        total_checked = len(changed_files) or 1
+        syntax_error_ratio = len(syntax_errors) / total_checked
+
+        s_val = max(0.0, min(1.0, 1.0 - syntax_error_ratio))
+        s_state = STABLE if s_val >= 0.8 else WEAK if s_val >= 0.5 else UNSTABLE if s_val >= 0.2 else DEGENERATE
+        S = BBCScalar(s_val, state=s_state, metadata={"origin": "semantic"})
+
+        chaos_samples = []
+        for mf in mismatch_files[:5]:
+            chaos_samples.extend(mf.get("added_symbols", []) + mf.get("removed_symbols", []))
+        if chaos_samples:
+            chaos_text = " ".join(str(s) for s in chaos_samples)
+            c_val = max(0.0, min(1.0, self._calculate_chaos(chaos_text) / 8.0))
+        else:
+            c_val = max(0.0, min(1.0, mismatch_ratio))
+        c_state = STABLE if c_val <= 0.1 else WEAK if c_val <= 0.3 else UNSTABLE if c_val <= 0.6 else DEGENERATE
+        C = BBCScalar(c_val, state=c_state, metadata={"origin": "semantic"})
+
+        stale_ratio = freshness.get("stale_ratio", 0.0)
+        p_val = max(0.0, min(1.0, 1.0 - stale_ratio))
+        p_state = STABLE if p_val >= 0.9 else WEAK if p_val >= 0.7 else UNSTABLE if p_val >= 0.4 else DEGENERATE
+        P = BBCScalar(p_val, state=p_state, metadata={"origin": "semantic"})
+
+        # Aura Field Score
+        aura_score_scalar = BBCScalar(0.0, state=DEGENERATE, metadata={"origin": "semantic"})
+        confidence_scalar = BBCScalar(0.0, state=DEGENERATE, metadata={"origin": "math"})
+        field_stability = float('inf')
+        governor_used = False
+
+        try:
+            from .hmpu_core import HMPU_Governor
+            governor = HMPU_Governor()
+            aura_raw = governor.aura_field_score(float(S), float(C), float(P))
+            field_stability = governor.get_field_stability()
+            governor_used = True
+
+            combined_state = S._determine_new_state(C.state)
+            combined_state_2 = BBCScalar(0, state=combined_state)._determine_new_state(P.state)
+            aura_score_scalar = BBCScalar(aura_raw, state=combined_state_2, metadata={"origin": "math"})
+
+            if not math.isinf(field_stability) and field_stability > 0:
+                conf_val = 1.0 / (1.0 + math.log10(field_stability))
+                conf_val = min(max(conf_val, 0.0), 1.0)
+                conf_state = STABLE if conf_val >= 0.7 else WEAK if conf_val >= 0.4 else UNSTABLE
+                confidence_scalar = BBCScalar(conf_val, state=conf_state, metadata={"origin": "math"})
+        except Exception:
+            w_s = BBCScalar(0.6, state=STABLE, metadata={"origin": "math"})
+            w_c = BBCScalar(0.2, state=STABLE, metadata={"origin": "math"})
+            w_p = BBCScalar(0.2, state=STABLE, metadata={"origin": "math"})
+            one = BBCScalar(1.0, state=STABLE, metadata={"origin": "math"})
+            aura_score_scalar = (w_s * S) + (w_c * (one - C)) + (w_p * P)
+            confidence_scalar = aura_score_scalar
+
+        if aura_score_scalar.state in [UNSTABLE, DEGENERATE]:
+            aura_score_scalar = OmegaOperator.trigger(
+                BBCScalar(aura_score_scalar.value, state=aura_score_scalar.state,
+                          heal_count=aura_score_scalar.heal_count,
+                          metadata=aura_score_scalar.metadata)
+            )
+
+        final_state = aura_score_scalar.state
+        if final_state == STABLE and len(syntax_errors) == 0 and freshness.get("context_fresh", False):
+            verdict = "SEALED_STABLE"
+            verdict_icon = "💎"
+        elif final_state == WEAK:
+            verdict = "WEAK"
+            verdict_icon = "⚠️"
+        elif final_state == UNSTABLE:
+            verdict = "UNSTABLE"
+            verdict_icon = "🔴"
+        else:
+            verdict = "DEGENERATE"
+            verdict_icon = "💀"
+
+        return {
+            "syntax_errors": syntax_errors,
+            "syntax_error_count": len(syntax_errors),
+            "freshness": freshness,
+            "symbol_mismatch": mismatch,
+            "aura_field": {
+                "S_structure": {"value": round(float(S), 3), "state": S.state, "origin": S.origin},
+                "C_chaos": {"value": round(float(C), 3), "state": C.state, "origin": C.origin},
+                "P_pulse": {"value": round(float(P), 3), "state": P.state, "origin": P.origin},
+                "aura_score": {"value": round(float(aura_score_scalar), 4), "state": aura_score_scalar.state, "origin": aura_score_scalar.origin},
+                "field_stability": round(field_stability, 4) if not math.isinf(field_stability) else "inf",
+                "confidence": {"value": round(float(confidence_scalar), 3), "state": confidence_scalar.state},
+                "governor_used": governor_used
+            },
+            "verdict": verdict,
+            "verdict_icon": verdict_icon,
+            "changed_only": {
+                "mode": "changed_only",
+                "files_checked": len(changed_files),
+                "files_with_errors": len(syntax_errors),
+                "files_with_mismatch": len(mismatch_files),
+            }
+        }

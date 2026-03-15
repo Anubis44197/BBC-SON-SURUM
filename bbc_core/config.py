@@ -16,6 +16,11 @@ class BBCConfig:
     # Analysis Limits
     MAX_FILES = 2000 # Maximum files to scan in a project
     
+    # Incremental Analysis
+    CHANGE_INDEX_FILE = "change_index.json"
+    CONTEXT_SEGMENTS_FILE = "context_segments.json"
+    INCREMENTAL_HASH_ALGO = "sha256"
+    
     # BBC isolation directory - all output goes here
     BBC_DIR = ".bbc"
     
