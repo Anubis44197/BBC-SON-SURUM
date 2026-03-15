@@ -125,6 +125,99 @@ class TelemetryLogger:
             return []
 
 
+    # ------------------------------------------------------------------
+    # Feedback Telemetry — Command Performance Tracking (v8.6)
+    # ------------------------------------------------------------------
+
+    def log_command(self, command: str, duration_sec: float,
+                    files: int = 0, tokens_saved: int = 0,
+                    savings_pct: float = 0.0, mode: str = None,
+                    success: bool = True, extra: dict = None):
+        """
+        Log a BBC command execution with performance metrics.
+        This powers the 'bbc telemetry' summary dashboard.
+        """
+        data = {
+            "command": command,
+            "duration_sec": round(duration_sec, 3),
+            "files": files,
+            "tokens_saved": tokens_saved,
+            "savings_pct": round(savings_pct, 1),
+            "success": success,
+        }
+        if mode:
+            data["mode"] = mode
+        if extra:
+            data.update(extra)
+        self.log_event("COMMAND_COMPLETE", data)
+
+    def get_command_history(self, limit: int = 100) -> list:
+        """Return recent COMMAND_COMPLETE events."""
+        all_events = self.get_recent_events(limit=500)
+        return [e for e in all_events if e.get("event") == "COMMAND_COMPLETE"][-limit:]
+
+    def generate_summary(self) -> dict:
+        """
+        Generate a telemetry summary from all logged command events.
+        Returns aggregated stats: total commands, total time, total tokens saved,
+        command breakdown, avg duration per command, trend data.
+        """
+        history = self.get_command_history(limit=1000)
+        if not history:
+            return {
+                "total_commands": 0,
+                "total_duration_sec": 0,
+                "total_tokens_saved": 0,
+                "commands": {},
+                "recent": [],
+            }
+
+        total_cmds = len(history)
+        total_duration = sum(e.get("data", {}).get("duration_sec", 0) for e in history)
+        total_tokens = sum(e.get("data", {}).get("tokens_saved", 0) for e in history)
+        total_files = sum(e.get("data", {}).get("files", 0) for e in history)
+        successes = sum(1 for e in history if e.get("data", {}).get("success", True))
+
+        # Per-command breakdown
+        cmd_stats = {}
+        for e in history:
+            d = e.get("data", {})
+            cmd = d.get("command", "unknown")
+            if cmd not in cmd_stats:
+                cmd_stats[cmd] = {"count": 0, "total_sec": 0, "tokens_saved": 0, "files": 0}
+            cmd_stats[cmd]["count"] += 1
+            cmd_stats[cmd]["total_sec"] += d.get("duration_sec", 0)
+            cmd_stats[cmd]["tokens_saved"] += d.get("tokens_saved", 0)
+            cmd_stats[cmd]["files"] += d.get("files", 0)
+
+        for cmd in cmd_stats:
+            c = cmd_stats[cmd]
+            c["avg_sec"] = round(c["total_sec"] / c["count"], 3) if c["count"] > 0 else 0
+            c["total_sec"] = round(c["total_sec"], 3)
+
+        # Recent 10
+        recent = []
+        for e in history[-10:]:
+            d = e.get("data", {})
+            recent.append({
+                "ts": e.get("ts", ""),
+                "command": d.get("command", "?"),
+                "duration": d.get("duration_sec", 0),
+                "tokens_saved": d.get("tokens_saved", 0),
+                "success": d.get("success", True),
+            })
+
+        return {
+            "total_commands": total_cmds,
+            "total_duration_sec": round(total_duration, 2),
+            "total_tokens_saved": total_tokens,
+            "total_files_processed": total_files,
+            "success_rate": round(successes / total_cmds * 100, 1) if total_cmds > 0 else 0,
+            "commands": cmd_stats,
+            "recent": recent,
+        }
+
+
 # ─── Global singleton ───────────────────────────────────────
 _global_telemetry = None
 

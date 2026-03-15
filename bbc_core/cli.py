@@ -623,6 +623,11 @@ def main():
     pack_parser.add_argument("--json", action="store_true",
                              help="Output raw JSON to stdout")
 
+    # telemetry command - Feedback Dashboard
+    telemetry_parser = subparsers.add_parser("telemetry", help="Show BBC performance telemetry dashboard")
+    telemetry_parser.add_argument("--json", action="store_true", help="Output raw JSON")
+    telemetry_parser.add_argument("--limit", type=int, default=10, help="Number of recent commands to show")
+
     # clean command
     clean_parser = subparsers.add_parser("clean", help="Clean temporary files and caches")
     
@@ -816,6 +821,41 @@ def main():
             print(f"  Confidence:     {conf_info.get('value', 'N/A')}  [{conf_info.get('state', 'N/A')}]")
         print(f"\n  VERDICT: {report['verdict_icon']} {report['verdict']}")
         print(f"{'='*60}")
+    elif args.command == "telemetry":
+        from bbc_core.telemetry import get_telemetry
+        tele = get_telemetry()
+        summary = tele.generate_summary()
+
+        if getattr(args, "json", False):
+            print(json.dumps(summary, indent=2, ensure_ascii=False))
+        else:
+            print(f"\n{'='*60}")
+            print(f" 📊 BBC FEEDBACK TELEMETRY DASHBOARD")
+            print(f"{'='*60}")
+            print(f"  Total Commands:    {summary['total_commands']}")
+            print(f"  Total Duration:    {summary['total_duration_sec']}s")
+            print(f"  Total Tokens Saved:{summary['total_tokens_saved']:,}")
+            print(f"  Files Processed:   {summary.get('total_files_processed', 0):,}")
+            print(f"  Success Rate:      {summary.get('success_rate', 0)}%")
+
+            cmd_stats = summary.get("commands", {})
+            if cmd_stats:
+                print(f"\n{'─'*60}")
+                print(f"  Command Breakdown:")
+                for cmd, stats in sorted(cmd_stats.items(), key=lambda x: x[1]["count"], reverse=True):
+                    print(f"    {cmd:20s}  {stats['count']:3d}x  avg {stats['avg_sec']:.2f}s  saved {stats['tokens_saved']:,} tokens")
+
+            recent = summary.get("recent", [])
+            limit = getattr(args, "limit", 10)
+            if recent:
+                print(f"\n{'─'*60}")
+                print(f"  Recent Commands (last {min(limit, len(recent))}):")
+                for r in recent[-limit:]:
+                    icon = "✓" if r.get("success", True) else "✗"
+                    print(f"    {icon} {r['ts']}  {r['command']:15s}  {r['duration']:.2f}s  saved {r['tokens_saved']:,}")
+
+            print(f"{'='*60}\n")
+
     elif args.command == "pack":
         ctx_path = getattr(args, "context", None)
         if not ctx_path:

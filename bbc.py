@@ -358,8 +358,17 @@ def main():
     compile_parser.add_argument("--out", default=None, help="Output path for compiled context")
     compile_parser.add_argument("--json", action="store_true", help="Output raw JSON to stdout")
 
+    # Telemetry (Feedback Dashboard)
+    telemetry_parser = subparsers.add_parser("telemetry", help="Show BBC performance telemetry dashboard")
+    telemetry_parser.add_argument("--json", action="store_true", help="Output raw JSON")
+    telemetry_parser.add_argument("--limit", type=int, default=10, help="Number of recent commands")
+
     args = parser.parse_args()
     cli = BBCCLI()
+
+    # --- Telemetry: start timer for all commands ---
+    _tele_start = time.time()
+    _tele_command = args.command or "help"
 
     if args.command == "start":
         cli.start(args.path, args.background, args.force)
@@ -483,6 +492,13 @@ def main():
             print("    Run 'bbc start' to enable live defense.")
             
         print("="*40 + "\n")
+    elif args.command == "telemetry":
+        telemetry_cmd = ["telemetry"]
+        if getattr(args, "json", False):
+            telemetry_cmd.append("--json")
+        if getattr(args, "limit", 10) != 10:
+            telemetry_cmd.extend(["--limit", str(args.limit)])
+        cli.run_command(telemetry_cmd)
     elif args.command == "pack":
         project_resolved = str(Path(getattr(args, 'path', '.')).resolve())
         ctx_file = str(Path(project_resolved) / ".bbc" / "bbc_context.json")
@@ -630,6 +646,42 @@ def main():
                     print(f"[BBC] Error: {e}")
     else:
         parser.print_help()
+
+    # --- Telemetry: record command execution ---
+    if _tele_command and _tele_command not in ("help", "telemetry", None):
+        try:
+            import json as _tele_json
+            from bbc_core.telemetry import get_telemetry
+            _tele_duration = time.time() - _tele_start
+            _tele = get_telemetry()
+            _tele_tokens = 0
+            _tele_files = 0
+            _tele_pct = 0.0
+            try:
+                _p = str(Path(getattr(args, 'path', '.')).resolve())
+                _candidates = [
+                    str(Path(_p) / ".bbc" / "bbc_context.json"),
+                    str(Path(".").resolve() / ".bbc" / "bbc_context.json"),
+                ]
+                for _cf in _candidates:
+                    if os.path.exists(_cf):
+                        with open(_cf, "r", encoding="utf-8") as _f:
+                            _cm = _tele_json.load(_f).get("metrics", {})
+                        _tele_tokens = int(_cm.get("unified_tokens_saved", 0) or 0)
+                        _tele_files = int(_cm.get("files_scanned", 0) or 0)
+                        _tele_pct = float(_cm.get("unified_savings_pct", 0.0) or 0)
+                        break
+            except Exception:
+                pass
+            _tele.log_command(
+                command=_tele_command,
+                duration_sec=_tele_duration,
+                files=_tele_files,
+                tokens_saved=_tele_tokens,
+                savings_pct=_tele_pct,
+            )
+        except Exception:
+            pass
 
 if __name__ == "__main__":
     main()
