@@ -517,7 +517,7 @@ USAGE
         return exports
 
 
-def inject_to_project(context_path: str, project_path: str = None, optimize: bool = True) -> Dict[str, str]:
+def inject_to_project(context_path: str, project_path: str = None, optimize: bool = True, active_command: str = None) -> Dict[str, str]:
     """
     BBC Smart Context Injection - Detects installed IDEs and AI extensions,
     then injects BBC config to each one. Uses ide_auto_config.py for detection.
@@ -705,19 +705,31 @@ If any step fails: STOP and report to user
     optimized_context_paths: Dict[str, str] = {}
     adapter_cache: Dict[str, BBCAgentAdapter] = {str(context_file): adapter}
 
-    def _task_for_format(format_type: str) -> str:
+    def _static_task_for_format(format_type: str) -> str:
         if format_type in {"copilot_md", "cursor_rules", "kilo_rules"}:
             return "bugfix"
         if format_type in {"vscode_json", "jetbrains_xml", "gemini_xml", "zed_json", "theia_json"}:
             return "review"
         return "feature"
 
+    def _task_for_format(format_type: str, active_command: str = None) -> str:
+        # Dynamic mapping based on last active BBC command
+        if active_command:
+            if active_command == "verify":
+                return "bugfix"
+            if active_command == "patch":
+                return "refactor"
+            if active_command == "impact":
+                return "review"
+        # Fallback to static mapping
+        return _static_task_for_format(format_type)
+
     def _get_optimized_context_path(format_type: str) -> str:
         """Return context path optimized for the target format type."""
         if not optimize:
             return str(context_file)
 
-        task = _task_for_format(format_type)
+        task = _task_for_format(format_type, active_command)
         if task in optimized_context_paths:
             return optimized_context_paths[task]
 

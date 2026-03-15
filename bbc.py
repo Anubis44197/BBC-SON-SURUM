@@ -456,6 +456,7 @@ def main():
                 ctx_file,
                 project_resolved,
                 optimize=not getattr(args, "no_optimize", False),
+                active_command="inject",
             )
             print(f"\n[BBC] Injection complete — {len(created)} target(s):")
             for label, path in created.items():

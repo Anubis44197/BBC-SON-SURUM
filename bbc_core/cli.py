@@ -1189,6 +1189,7 @@ def main():
                 recipe_path,
                 project_path,
                 optimize=not getattr(args, "no_optimize", False),
+                active_command="inject",
             )
 
             if not silent:
@@ -1236,6 +1237,7 @@ def main():
                 context_path,
                 project_path,
                 optimize=not getattr(args, "no_optimize", False),
+                active_command="bootstrap",
             )
         except Exception as e:
             print(f"[ERROR] Bootstrap inject failed: {e}")
