@@ -660,6 +660,8 @@ def main():
                               help="Proceed with inject even if context is detected as stale")
     inject_parser.add_argument("--force", action="store_true",
                               help="Force full re-injection and ignore checks")
+    inject_parser.add_argument("--no-optimize", action="store_true",
+                              help="Disable agent-specific optimized context injection")
 
     # bootstrap command - Analyze + Inject in one step
     bootstrap_parser = subparsers.add_parser("bootstrap", help="Analyze project and inject IDE/agent instructions (one-step)")
@@ -671,6 +673,8 @@ def main():
                                  help="Skip confirmation prompt")
     bootstrap_parser.add_argument("--silent", action="store_true",
                                  help="Minimal output")
+    bootstrap_parser.add_argument("--no-optimize", action="store_true",
+                                 help="Disable agent-specific optimized context injection")
 
     # audit command - Report BBC traces in a project
     audit_parser = subparsers.add_parser("audit", help="Audit BBC traces (context/injected files/.bbc) in a project")
@@ -1181,7 +1185,11 @@ def main():
             print(f"{'-'*70}")
         
         try:
-            created_files = inject_to_project(recipe_path, project_path)
+            created_files = inject_to_project(
+                recipe_path,
+                project_path,
+                optimize=not getattr(args, "no_optimize", False),
+            )
 
             if not silent:
                 print(f"\n[OK] Successfully injected BBC context to {len(created_files)} AI assistants:\n")
@@ -1224,7 +1232,11 @@ def main():
 
         context_path = BBCConfig.get_context_path(project_path) if out_name == "bbc_context.json" else os.path.abspath(out_name)
         try:
-            created_files = inject_to_project(context_path, project_path)
+            created_files = inject_to_project(
+                context_path,
+                project_path,
+                optimize=not getattr(args, "no_optimize", False),
+            )
         except Exception as e:
             print(f"[ERROR] Bootstrap inject failed: {e}")
             sys.exit(1)

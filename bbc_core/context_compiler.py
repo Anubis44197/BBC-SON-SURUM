@@ -191,6 +191,17 @@ class TaskContextCompiler:
                     score = min(1.0, code_lines / 500.0) * profile["priority_weight"].get("structure", 0.6)
                     scored_files[path] = max(scored_files.get(path, 0), score)
 
+        # 7. Fallback for task profiles that require target file but none was provided
+        #    (or target could not be resolved). Prevent empty compiled contexts.
+        if not scored_files:
+            for recipe in self.code_structure:
+                path = recipe.get("path", "")
+                stats = recipe.get("stats", {})
+                code_lines = stats.get("code_lines", 0)
+                if code_lines > 0:
+                    score = min(1.0, code_lines / 500.0) * 0.5
+                    scored_files[path] = max(scored_files.get(path, 0), score)
+
         # Sort by score and cap
         max_files = profile["max_files"]
         ranked = sorted(scored_files.items(), key=lambda x: x[1], reverse=True)[:max_files]

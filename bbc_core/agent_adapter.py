@@ -517,7 +517,7 @@ USAGE
         return exports
 
 
-def inject_to_project(context_path: str, project_path: str = None) -> Dict[str, str]:
+def inject_to_project(context_path: str, project_path: str = None, optimize: bool = True) -> Dict[str, str]:
     """
     BBC Smart Context Injection - Detects installed IDEs and AI extensions,
     then injects BBC config to each one. Uses ide_auto_config.py for detection.
@@ -702,24 +702,71 @@ If any step fails: STOP and report to user
         return json.dumps(cfg, indent=2, ensure_ascii=False)
 
     adapter = BBCAgentAdapter(str(context_file))
+    optimized_context_paths: Dict[str, str] = {}
+    adapter_cache: Dict[str, BBCAgentAdapter] = {str(context_file): adapter}
+
+    def _task_for_format(format_type: str) -> str:
+        if format_type in {"copilot_md", "cursor_rules", "kilo_rules"}:
+            return "bugfix"
+        if format_type in {"vscode_json", "jetbrains_xml", "gemini_xml", "zed_json", "theia_json"}:
+            return "review"
+        return "feature"
+
+    def _get_optimized_context_path(format_type: str) -> str:
+        """Return context path optimized for the target format type."""
+        if not optimize:
+            return str(context_file)
+
+        task = _task_for_format(format_type)
+        if task in optimized_context_paths:
+            return optimized_context_paths[task]
+
+        try:
+            from bbc_core.context_compiler import TaskContextCompiler
+
+            compiler = TaskContextCompiler(str(context_file))
+            compiled = compiler.compile(task=task)
+
+            out_path = project_root / ".bbc" / f"agent_context_{task}.json"
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(json.dumps(compiled, indent=2, ensure_ascii=False, default=str), encoding="utf-8")
+
+            optimized_context_paths[task] = str(out_path)
+            return str(out_path)
+        except Exception:
+            return str(context_file)
+
+    def _adapter_for_format(format_type: str) -> BBCAgentAdapter:
+        ctx_path = _get_optimized_context_path(format_type)
+        if ctx_path not in adapter_cache:
+            adapter_cache[ctx_path] = BBCAgentAdapter(ctx_path)
+        return adapter_cache[ctx_path]
+
+    def _context_ref_for_format(format_type: str) -> str:
+        ctx_abs = _get_optimized_context_path(format_type)
+        try:
+            return os.path.relpath(ctx_abs, str(project_root)).replace("\\", "/")
+        except Exception:
+            return ".bbc/bbc_context.json"
 
     def _render_tool_content(format_type: str, label: str) -> str:
         if format_type == "copilot_md":
-            return adapter.to_copilot_prompt()
+            return _adapter_for_format(format_type).to_copilot_prompt()
         if format_type == "cursor_rules":
-            return adapter.to_cursor_context()
+            return _adapter_for_format(format_type).to_cursor_context()
         if format_type == "gemini_xml":
-            return adapter.to_gemini_context()
+            return _adapter_for_format(format_type).to_gemini_context()
         if format_type == "kilo_rules":
-            return adapter.to_kilo_context()
+            return _adapter_for_format(format_type).to_kilo_context()
         if format_type == "vscode_json":
-            return adapter.to_vscode_context()
+            return _adapter_for_format(format_type).to_vscode_context()
         if format_type == "jetbrains_xml":
+            context_ref = _context_ref_for_format(format_type)
             return f"""<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <project version=\"4\">
   <component name=\"BBCAIAssistant\">
     <option name=\"enabled\" value=\"true\" />
-    <option name=\"contextFile\" value=\".bbc/bbc_context.json\" />
+    <option name=\"contextFile\" value=\"{context_ref}\" />
     <option name=\"enforcement\" value=\"{enforcement}\" />
     <option name=\"failPolicy\" value=\"{fail_policy}\" />
     <option name=\"instructionsVersion\" value=\"{instr_version}\" />
@@ -730,6 +777,7 @@ If any step fails: STOP and report to user
         if format_type == "native_rules":
             return instructions
         if format_type == "ext_json":
+            context_ref = _context_ref_for_format(format_type)
             return _ext_json({
                 "agent": label,
                 "instructionsVersion": instr_version,
@@ -737,24 +785,27 @@ If any step fails: STOP and report to user
                 "enforcement": enforcement,
                 "failPolicy": fail_policy,
                 "contextFresh": context_fresh,
-                "contextPath": ".bbc/bbc_context.json",
+                "contextPath": context_ref,
+                "optimizedInjection": optimize,
             })
         if format_type == "zed_json":
+            context_ref = _context_ref_for_format(format_type)
             return json.dumps({
                 "assistant": {
                     "enabled": True,
                     "rules": instructions,
-                    "context_path": ".bbc/bbc_context.json",
+                    "context_path": context_ref,
                     "enforcement": enforcement,
                     "fail_policy": fail_policy,
                 }
             }, indent=2, ensure_ascii=False)
         if format_type == "theia_json":
+            context_ref = _context_ref_for_format(format_type)
             return json.dumps({
                 "bbc": {
                     "enabled": True,
                     "instructions_file": ".bbc/BBC_INSTRUCTIONS.md",
-                    "context_file": ".bbc/bbc_context.json",
+                    "context_file": context_ref,
                     "enforcement": enforcement,
                     "fail_policy": fail_policy,
                 }

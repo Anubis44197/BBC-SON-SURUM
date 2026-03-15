@@ -334,6 +334,7 @@ def main():
     # Inject (Agent Instruction Injection)
     inject_parser = subparsers.add_parser("inject", help="Inject BBC instructions into AI agent config files")
     inject_parser.add_argument("path", nargs="?", default=".", help="Project path (default: current directory)")
+    inject_parser.add_argument("--no-optimize", action="store_true", help="Disable agent-specific optimized context injection")
 
     # Hooks (Git Hook Generator)
     hooks_parser = subparsers.add_parser("hooks", help="Install/remove BBC git hooks for team automation")
@@ -451,7 +452,11 @@ def main():
         ctx_file = str(Path(project_resolved) / ".bbc" / "bbc_context.json")
         if Path(ctx_file).exists():
             from bbc_core.agent_adapter import inject_to_project
-            created = inject_to_project(ctx_file, project_resolved)
+            created = inject_to_project(
+                ctx_file,
+                project_resolved,
+                optimize=not getattr(args, "no_optimize", False),
+            )
             print(f"\n[BBC] Injection complete — {len(created)} target(s):")
             for label, path in created.items():
                 print(f"  [{label}] {path}")
