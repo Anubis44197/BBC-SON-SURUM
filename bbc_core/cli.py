@@ -612,6 +612,17 @@ def main():
     compile_parser.add_argument("--json", action="store_true",
                                 help="Output raw JSON to stdout")
 
+    # pack command - Semantic Packer
+    pack_parser = subparsers.add_parser("pack", help="Semantically compress context for minimal token usage")
+    pack_parser.add_argument("--context", default=None,
+                             help="Path to bbc_context.json or compiled context (default: auto-detect)")
+    pack_parser.add_argument("--aggressive", action="store_true",
+                             help="Aggressive mode: deeper compression, removes dep graph")
+    pack_parser.add_argument("--out", default=None,
+                             help="Output path (default: .bbc/packed_context.json)")
+    pack_parser.add_argument("--json", action="store_true",
+                             help="Output raw JSON to stdout")
+
     # clean command
     clean_parser = subparsers.add_parser("clean", help="Clean temporary files and caches")
     
@@ -805,6 +816,57 @@ def main():
             print(f"  Confidence:     {conf_info.get('value', 'N/A')}  [{conf_info.get('state', 'N/A')}]")
         print(f"\n  VERDICT: {report['verdict_icon']} {report['verdict']}")
         print(f"{'='*60}")
+    elif args.command == "pack":
+        ctx_path = getattr(args, "context", None)
+        if not ctx_path:
+            for candidate in [".bbc/bbc_context.json", "bbc_context.json"]:
+                if os.path.exists(candidate):
+                    ctx_path = candidate
+                    break
+        if not ctx_path or not os.path.exists(ctx_path):
+            print("[ERROR] BBC context not found. Run 'bbc analyze' first.")
+            sys.exit(1)
+
+        with open(ctx_path, "r", encoding="utf-8") as f:
+            context = json.load(f)
+
+        from bbc_core.semantic_packer import SemanticPacker
+        packer = SemanticPacker(aggressive=getattr(args, "aggressive", False))
+        packed = packer.pack(context)
+
+        if getattr(args, "json", False):
+            print(json.dumps(packed, indent=2, ensure_ascii=False, default=str))
+        else:
+            m = packed.get("metrics", {})
+            mode = m.get("packing_mode", "safe")
+            before = m.get("packing_before_bytes", 0)
+            after = m.get("packing_after_bytes", 0)
+            pct = m.get("packing_savings_pct", 0)
+            collapsed = m.get("packing_collapsed_files", 0)
+            aliases = packed.get("_path_aliases", {})
+            shared = packed.get("_shared_imports", {})
+
+            print(f"\n{'='*60}")
+            print(f" 📦 BBC SEMANTIC PACKING COMPLETE")
+            print(f"{'='*60}")
+            print(f"  Mode:       {mode.upper()}")
+            print(f"  Before:     {before:,} bytes")
+            print(f"  After:      {after:,} bytes")
+            print(f"  Saved:      {before - after:,} bytes ({pct}%)")
+            print(f"{'─'*60}")
+            print(f"  Collapsed:  {collapsed} low-value file(s)")
+            print(f"  Shared imports: {len(shared)} deduplicated")
+            print(f"  Path aliases:   {len(aliases)} prefix(es)")
+            if aliases:
+                for alias, prefix in aliases.items():
+                    print(f"    {alias} → {prefix}")
+            print(f"{'─'*60}")
+
+            out_path = getattr(args, "out", None)
+            saved_path = packer.save_packed(packed, out_path)
+            print(f"  [OK] Saved to: {saved_path}")
+            print(f"{'='*60}\n")
+
     elif args.command == "compile":
         # Auto-detect context
         ctx_path = getattr(args, "context", None)

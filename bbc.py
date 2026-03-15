@@ -340,6 +340,13 @@ def main():
     hooks_parser.add_argument("path", nargs="?", default=".", help="Project path")
     hooks_parser.add_argument("--remove", action="store_true", help="Remove BBC hooks")
 
+    # Pack (Semantic Packer)
+    pack_parser = subparsers.add_parser("pack", help="Semantically compress context for minimal token usage")
+    pack_parser.add_argument("--path", default=".", help="Project path (default: current directory)")
+    pack_parser.add_argument("--aggressive", action="store_true", help="Deeper compression, removes dep graph")
+    pack_parser.add_argument("--out", default=None, help="Output path for packed context")
+    pack_parser.add_argument("--json", action="store_true", help="Output raw JSON to stdout")
+
     # Compile (Task-Aware Context Compiler)
     compile_parser = subparsers.add_parser("compile", help="Compile task-aware context (bugfix/feature/refactor/review)")
     compile_parser.add_argument("--task", required=True,
@@ -476,6 +483,21 @@ def main():
             print("    Run 'bbc start' to enable live defense.")
             
         print("="*40 + "\n")
+    elif args.command == "pack":
+        project_resolved = str(Path(getattr(args, 'path', '.')).resolve())
+        ctx_file = str(Path(project_resolved) / ".bbc" / "bbc_context.json")
+        if not Path(ctx_file).exists():
+            print(f"[BBC] Context not found: {ctx_file}")
+            print(f"[BBC] Run 'bbc analyze' first.")
+        else:
+            pack_cmd = ["pack", "--context", ctx_file]
+            if getattr(args, "aggressive", False):
+                pack_cmd.append("--aggressive")
+            if getattr(args, "out", None):
+                pack_cmd.extend(["--out", args.out])
+            if getattr(args, "json", False):
+                pack_cmd.append("--json")
+            cli.run_command(pack_cmd)
     elif args.command == "compile":
         project_resolved = str(Path(getattr(args, 'path', '.')).resolve())
         ctx_file = str(Path(project_resolved) / ".bbc" / "bbc_context.json")
