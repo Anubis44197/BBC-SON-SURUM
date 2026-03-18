@@ -1,0 +1,13 @@
+bbc.py usr/lib/bbc-master/
+run_bbc.py usr/lib/bbc-master/
+bbc_daemon.py usr/lib/bbc-master/
+bbc_installer.py usr/lib/bbc-master/
+bbc.sh usr/lib/bbc-master/
+bbc.bat usr/lib/bbc-master/
+setup.sh usr/lib/bbc-master/
+setup.bat usr/lib/bbc-master/
+install_global.sh usr/lib/bbc-master/
+install_global.bat usr/lib/bbc-master/
+uninstall.sh usr/lib/bbc-master/
+uninstall.bat usr/lib/bbc-master/
+bbc_core usr/lib/bbc-master/

@@ -1,48 +1,67 @@
 BBC v8.3 Installation Instructions
 ===================================
 
-OPTION A: ONE-COMMAND SETUP (RECOMMENDED)
-------------------------------------------
+RECOMMENDED MODEL (CLEAN): BBC OUTSIDE PROJECT
+----------------------------------------------
+1. Install BBC once in a central folder:
+   git clone https://github.com/Anubis44197/BBC-SON-SURUM.git <BBC_HOME>
+2. Run global installer script (one time):
+   install_global.bat    (Windows)
+   bash install_global.sh (Linux/macOS)
+3. For each project:
+   cd your-project
+   python <BBC_HOME>/bbc.py install .         (Windows/Linux/macOS)
+   OR
+   bash <BBC_HOME>/setup.sh .                 (Linux/macOS)
+
+Project footprint stays focused on:
+- .bbc/
+- detected IDE integration files
+
+MANUAL CLEAN MODEL SETUP
+------------------------
+1. git clone https://github.com/Anubis44197/BBC-SON-SURUM.git <BBC_HOME>
+2. pip install -r <BBC_HOME>/requirements.txt
+3. cd your-project
+4. python <BBC_HOME>/bbc.py start .
+
+LEGACY EMBEDDED MODE (BACKWARD COMPATIBILITY)
+----------------------------------------------
 1. cd your-project
-2. git clone https://github.com/Anubis44197/BBC.git
+2. git clone https://github.com/Anubis44197/BBC-SON-SURUM.git
 3. BBC\setup.bat          (Windows)
    bash BBC/setup.sh      (Linux/macOS)
 
-This automatically installs dependencies and starts BBC.
+ONE-COMMAND REMOVE
+------------------
+- Project cleanup only:
+  python <BBC_HOME>/bbc.py uninstall . --force
+- Preview first (safe):
+  python <BBC_HOME>/bbc.py uninstall . --dry-run
+- Global uninstall script:
+   uninstall.bat          (Windows)
+   bash uninstall.sh      (Linux/macOS)
 
-OPTION B: INSTALL COMMAND
---------------------------
-1. cd your-project
-2. git clone https://github.com/Anubis44197/BBC.git
-3. python BBC/bbc.py install .
+LEGACY -> CLEAN MODEL MIGRATION
+-------------------------------
+- Preview migration (safe):
+   python <BBC_HOME>/bbc.py migrate-clean .
+- Apply migration (remove in-project BBC folder, keep .bbc):
+   python <BBC_HOME>/bbc.py migrate-clean . --apply --force
 
-OPTION C: MANUAL SETUP
------------------------
-1. cd your-project
-2. git clone https://github.com/Anubis44197/BBC.git
-3. pip install -r BBC/requirements.txt
-4. python BBC/bbc.py start .
-
-FIRST USAGE:
------------
-1. Clone BBC into your project folder
-2. Run setup.bat (Windows) or setup.sh (Linux/macOS)
-3. That's it! Your AI assistants now understand your code.
-
-UPDATE BBC:
+UPDATE BBC
 ----------
-cd BBC
+cd <BBC_HOME>
 git pull origin main
 
-TROUBLESHOOTING:
+TROUBLESHOOTING
 ---------------
 - Python not found? Install Python 3.8+ from python.org
-- BBC not found? Make sure you're in the BBC folder
-- AI assistants not working? Run: python bbc.py start -f . (force refresh)
+- AI assistants not working? Run: python <BBC_HOME>/bbc.py start -f .
 - Check logs: .bbc/logs/
 
-SUPPORT:
---------
+SUPPORT
+-------
 Documentation: USER_GUIDE.md
 Quick start: QUICK_START.md
 

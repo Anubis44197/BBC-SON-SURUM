@@ -19,22 +19,28 @@ if [ ! -f "$SCRIPT_DIR/bbc.py" ]; then
     exit 1
 fi
 
-# No arguments → default: start with current directory
+# No arguments -> default: start with current directory
 if [ $# -eq 0 ]; then
     python3 "$SCRIPT_DIR/bbc.py" start "$(pwd)"
     exit $?
 fi
 
+# Help flags should always show the user-facing CLI help
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+    python3 "$SCRIPT_DIR/bbc.py" --help
+    exit $?
+fi
+
 # Commands that need current directory as default path
 case "$1" in
-    start|menu|analyze|audit|verify|purge)
+    start|menu|analyze|audit|verify|purge|install|watch|uninstall|migrate-clean)
         if [ $# -eq 1 ]; then
             python3 "$SCRIPT_DIR/bbc.py" "$1" "$(pwd)"
         else
             python3 "$SCRIPT_DIR/bbc.py" "$@"
         fi
         ;;
-    stop|status|serve)
+    stop|status|serve|inject|hooks|patch|impact|compile|telemetry|pack|check)
         python3 "$SCRIPT_DIR/bbc.py" "$@"
         ;;
     *)

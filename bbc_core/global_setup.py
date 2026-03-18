@@ -69,7 +69,7 @@ def generate_rules(target_dir_str=None, force=False):
     # 1. AI Context — BBC kimlik bilgisi
     ai_context = {
         "system": "BBC (Bitter Brain Context)",
-        "version": "8.3",
+        "version": "8.3.0",
         "enforcement": "STRICT",
         "rules_source": str(target_dir),
         "core_rules": [
@@ -161,7 +161,7 @@ Before making any change, consider:
 
     # Kurulum tamamlandı marker'ı oluştur
     marker.write_text(
-        json.dumps({"installed_at": __import__("datetime").datetime.now().isoformat(), "version": "8.3"}),
+        json.dumps({"installed_at": __import__("datetime").datetime.now().isoformat(), "version": "8.3.0"}),
         encoding="utf-8"
     )
 

@@ -2,24 +2,27 @@
 
 ## 🎯 Get BBC Working in 5 Minutes
 
-### Step 1: Clone BBC into Your Project
+### Step 1: Install BBC Outside Your Project (Recommended)
 
 ```bash
-cd your-project
-git clone https://github.com/Anubis44197/BBC.git
+git clone https://github.com/Anubis44197/BBC-SON-SURUM.git <BBC_HOME>
+
+# one-time global install
+install_global.bat        # Windows
+bash install_global.sh    # Linux/macOS
 ```
 
 ### Step 2: One-Command Setup
 
 ```bash
 # Windows (automatic)
-BBC\setup.bat
+python <BBC_HOME>/bbc.py install .
 
 # Linux/macOS (automatic)
-bash BBC/setup.sh
+bash <BBC_HOME>/setup.sh .
 
 # Or use the install command
-python BBC/bbc.py install .
+python <BBC_HOME>/bbc.py install .
 ```
 
 All three options do the same thing: install dependencies + analyze + inject + start daemon.
@@ -27,8 +30,31 @@ All three options do the same thing: install dependencies + analyze + inject + s
 ### Alternative: Manual Setup
 
 ```bash
-pip install -r BBC/requirements.txt
-python BBC/bbc.py start .
+pip install -r <BBC_HOME>/requirements.txt
+python <BBC_HOME>/bbc.py start .
+```
+
+### Legacy Embedded Mode (Backward Compatibility)
+
+```bash
+cd your-project
+git clone https://github.com/Anubis44197/BBC-SON-SURUM.git
+BBC\setup.bat           # Windows
+bash BBC/setup.sh        # Linux/macOS
+```
+
+To migrate legacy projects to clean model later:
+
+```bash
+python <BBC_HOME>/bbc.py migrate-clean .                # preview
+python <BBC_HOME>/bbc.py migrate-clean . --apply --force
+```
+
+To fully uninstall BBC globally later:
+
+```bash
+uninstall.bat             # Windows
+bash uninstall.sh         # Linux/macOS
 ```
 
 **BBC will:**

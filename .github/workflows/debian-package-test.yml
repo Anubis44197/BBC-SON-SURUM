@@ -1,0 +1,36 @@
+name: Debian Package Test
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "packaging/debian/**"
+      - "pyproject.toml"
+      - "setup.py"
+      - "requirements.txt"
+
+jobs:
+  build-deb:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Debian packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev debhelper dh-python devscripts python3-setuptools python3-all
+
+      - name: Prepare debian metadata
+        run: |
+          rm -rf debian
+          cp -r packaging/debian debian
+          chmod +x debian/rules
+
+      - name: Build source and binary packages
+        run: |
+          dpkg-buildpackage -us -uc -b
+
+      - name: List generated artifacts
+        run: |
+          ls -la ..

@@ -475,11 +475,16 @@ def clean_system():
     return cleaned
 
 
-def purge_bbc(project_path: str = ".", silent: bool = False):
+def purge_bbc(project_path: str = ".", silent: bool = False, dry_run: bool = False):
     """
     Complete BBC removal - removes ALL BBC traces from a project.
     Use when user wants to completely stop using BBC.
     After purge, no BBC file or directory remains in the project.
+
+    Args:
+        project_path: Target project root
+        silent: Minimal output mode
+        dry_run: If True, only report what would be removed
     """
     import shutil
     from bbc_core.agent_adapter import cleanup_injected_configs
@@ -493,11 +498,12 @@ def purge_bbc(project_path: str = ".", silent: bool = False):
         print(f"{'-'*60}")
     
     # 1. Remove all injected AI config files
-    injected = cleanup_injected_configs(project_root, dry_run=False)
+    injected = cleanup_injected_configs(project_root, dry_run=dry_run)
     for f in injected:
         removed.append(f)
         if not silent:
-            print(f"  [OK] {os.path.relpath(f, project_root)}")
+            marker = "[PLAN]" if dry_run else "[OK]"
+            print(f"  {marker} {os.path.relpath(f, project_root)}")
     
     # 2. Remove BBC output files from project root
     bbc_root_files = [
@@ -510,26 +516,36 @@ def purge_bbc(project_path: str = ".", silent: bool = False):
     for fname in bbc_root_files:
         fpath = os.path.join(project_root, fname)
         if os.path.exists(fpath):
-            try:
-                os.remove(fpath)
+            if dry_run:
                 removed.append(fpath)
                 if not silent:
-                    print(f"  [OK] {fname}")
-            except Exception as e:
-                if not silent:
-                    print(f"  [ERR] {fname}: {e}")
+                    print(f"  [PLAN] {fname}")
+            else:
+                try:
+                    os.remove(fpath)
+                    removed.append(fpath)
+                    if not silent:
+                        print(f"  [OK] {fname}")
+                except Exception as e:
+                    if not silent:
+                        print(f"  [ERR] {fname}: {e}")
     
     # 3. Remove .bbc/ isolation directory (logs, indices, cache, weights, daemon)
     bbc_dir = os.path.join(project_root, ".bbc")
     if os.path.isdir(bbc_dir):
-        try:
-            shutil.rmtree(bbc_dir)
+        if dry_run:
             removed.append(bbc_dir)
             if not silent:
-                print(f"  [OK] .bbc/ (entire directory)")
-        except Exception as e:
-            if not silent:
-                print(f"  [ERR] .bbc/: {e}")
+                print(f"  [PLAN] .bbc/ (entire directory)")
+        else:
+            try:
+                shutil.rmtree(bbc_dir)
+                removed.append(bbc_dir)
+                if not silent:
+                    print(f"  [OK] .bbc/ (entire directory)")
+            except Exception as e:
+                if not silent:
+                    print(f"  [ERR] .bbc/: {e}")
     
     # 4. Remove legacy logs/ directory if it exists and is empty or BBC-only
     legacy_logs = os.path.join(project_root, "logs")
@@ -539,18 +555,24 @@ def purge_bbc(project_path: str = ".", silent: bool = False):
             bbc_log_names = {"state_manager.log", "bbc_math.log", "realtime_tokens.log", "chaos_test.log"}
             contents = set(os.listdir(legacy_logs))
             if contents.issubset(bbc_log_names) or len(contents) == 0:
-                shutil.rmtree(legacy_logs)
                 removed.append(legacy_logs)
                 if not silent:
-                    print(f"  [OK] logs/ (legacy BBC logs)")
+                    marker = "[PLAN]" if dry_run else "[OK]"
+                    print(f"  {marker} logs/ (legacy BBC logs)")
+                if not dry_run:
+                    shutil.rmtree(legacy_logs)
         except Exception as e:
             if not silent:
                 print(f"  [ERR] logs/: {e}")
     
     if not silent:
         print(f"{'-'*60}")
-        print(f"[PURGE] Complete. {len(removed)} items removed.")
-        print(f"[PURGE] BBC has been fully removed from this project.")
+        if dry_run:
+            print(f"[PURGE] Dry-run complete. {len(removed)} item(s) would be removed.")
+            print(f"[PURGE] Run without --dry-run to apply changes.")
+        else:
+            print(f"[PURGE] Complete. {len(removed)} items removed.")
+            print(f"[PURGE] BBC has been fully removed from this project.")
     return removed
 
 
@@ -637,6 +659,8 @@ def main():
                               help="Project path to purge (default: current directory)")
     purge_parser.add_argument("--force", action="store_true",
                               help="Skip confirmation prompt")
+    purge_parser.add_argument("--dry-run", action="store_true",
+                              help="Show what would be removed without deleting files")
     purge_parser.add_argument("--silent", action="store_true", help="Minimal output")
     
     # agent command - Generate IDE-specific contexts
@@ -687,6 +711,8 @@ def main():
                                help="Project path to cleanup (default: current directory)")
     cleanup_parser.add_argument("--force", action="store_true",
                                help="Skip confirmation prompt")
+    cleanup_parser.add_argument("--dry-run", action="store_true",
+                               help="Show what would be deleted without deleting files")
     cleanup_parser.add_argument("--silent", action="store_true", help="Minimal output")
 
     # adaptive command - BBC Adaptive Mode
@@ -1100,6 +1126,11 @@ def main():
     elif args.command == "purge":
         project_path = os.path.abspath(args.path)
         silent = getattr(args, "silent", False)
+        dry_run = getattr(args, "dry_run", False)
+
+        if dry_run:
+            purge_bbc(project_path, silent=silent, dry_run=True)
+            sys.exit(0)
         
         if not args.force:
             if getattr(args, "silent", False):
@@ -1118,7 +1149,7 @@ def main():
                 print("[CANCEL] Purge aborted.")
                 sys.exit(0)
         
-        purge_bbc(project_path, silent=silent)
+        purge_bbc(project_path, silent=silent, dry_run=False)
     elif args.command == "agent":
         from bbc_core.agent_adapter import run_adapter_validation
         result = run_adapter_validation(args.recipe)
@@ -1279,6 +1310,12 @@ def main():
                 rel_path = os.path.relpath(f, project_path)
                 print(f"   [DEL] {rel_path}")
         
+        if getattr(args, "dry_run", False):
+            if not silent:
+                print(f"\n[INFO] Dry-run mode enabled. No files were deleted.")
+                print(f"{'='*70}\n")
+            sys.exit(0)
+
         if not args.force:
             if silent:
                 print("[ERROR] Cleanup requires --force when used with --silent")

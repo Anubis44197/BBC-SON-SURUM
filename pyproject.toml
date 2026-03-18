@@ -2,6 +2,67 @@
 requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "bbc-master"
+version = "8.3.0"
+description = "Bitter Brain Context - AI Assistant Context Manager"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [
+    { name = "BBC Development Team", email = "bbc@example.com" },
+]
+keywords = ["ai", "assistant", "context", "ide", "development", "tools"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Editors :: Integrated Development Environments (IDE)",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "scipy>=1.10.0",
+    "psutil>=5.9.0",
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "pydantic>=2.5.0",
+    "requests>=2.31.0",
+    "pyarrow>=14.0.0",
+    "tiktoken>=0.5.0",
+    "python-dotenv>=1.0.0",
+    "aiohttp>=3.9.0",
+    "rich",
+    "pytest>=7.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+bbc = "bbc:main"
+
+[project.urls]
+Homepage = "https://github.com/Anubis44197/BBC-SON-SURUM"
+Source = "https://github.com/Anubis44197/BBC-SON-SURUM"
+Issues = "https://github.com/Anubis44197/BBC-SON-SURUM/issues"
+
+[tool.setuptools]
+include-package-data = true
+zip-safe = false
+py-modules = ["bbc", "run_bbc", "bbc_daemon", "bbc_installer"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["bbc_core*"]
+
 [tool.ruff]
 target-version = "py38"
 line-length = 120

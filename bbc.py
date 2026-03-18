@@ -11,6 +11,7 @@ import signal
 import subprocess
 import time
 import json
+import shutil
 from pathlib import Path
 
 # Add BBC modules to path
@@ -223,6 +224,85 @@ class BBCCLI:
         if force: cmd.append("--force")
         self.run_command(cmd)
 
+    def uninstall(self, path=".", force=False, dry_run=False, remove_global=False):
+        """User-friendly uninstall: project cleanup and optional global package uninstall."""
+        project_resolved = str(Path(path).resolve())
+
+        # 1) Project traces cleanup
+        purge_cmd = ["purge", project_resolved]
+        if dry_run:
+            purge_cmd.append("--dry-run")
+        elif force:
+            purge_cmd.append("--force")
+        self.run_command(purge_cmd)
+
+        # 2) Optional global package uninstall
+        if remove_global and not dry_run:
+            print("[BBC] Removing global BBC package (if installed)...")
+            result = subprocess.call([
+                sys.executable, "-m", "pip", "uninstall", "-y", "bbc-master", "bbc"
+            ])
+            if result == 0:
+                print("[BBC] Global package uninstall completed.")
+            else:
+                print("[BBC] Global package uninstall returned non-zero status; package may not be installed.")
+
+    def migrate_clean(self, path=".", dry_run=True, force=False):
+        """Migrate legacy project layout to clean model (BBC outside project, .bbc preserved)."""
+        project_root = Path(path).resolve()
+        candidate_names = ["BBC", "bbc", "BBC-main", "BBC-master"]
+
+        candidates = []
+        for name in candidate_names:
+            candidate = project_root / name
+            if not candidate.is_dir():
+                continue
+            if self._is_legacy_bbc_dir(candidate):
+                candidates.append(candidate)
+
+        print(f"[BBC] Clean-model migration target: {project_root}")
+
+        if not candidates:
+            print("[BBC] No embedded/legacy BBC directory found in project root.")
+            print("[BBC] Project already appears clean-model compatible.")
+            return
+
+        print("[BBC] Migration plan:")
+        for c in candidates:
+            print(f"  [PLAN] Remove legacy tool directory: {c}")
+        print("  [KEEP] Preserve project .bbc/ context and all source code")
+
+        if dry_run:
+            print("[BBC] Dry-run complete. Re-run with --apply to execute migration.")
+            return
+
+        if not force:
+            print("[BBC] Confirmation required: rerun with --force to apply migration.")
+            return
+
+        removed = 0
+        for c in candidates:
+            try:
+                shutil.rmtree(c)
+                removed += 1
+                print(f"  [OK] Removed: {c}")
+            except Exception as e:
+                print(f"  [ERR] Could not remove {c}: {e}")
+
+        print(f"[BBC] Migration completed. Removed {removed} legacy directory(s).")
+        print("[BBC] Clean model active: use external BBC tool path for future commands.")
+
+    @staticmethod
+    def _is_legacy_bbc_dir(path: Path) -> bool:
+        """Return True when a directory looks like an embedded BBC clone."""
+        required_files = [
+            path / "bbc.py",
+            path / "run_bbc.py",
+            path / "requirements.txt",
+            path / "bbc_core" / "cli.py",
+        ]
+        return all(p.exists() for p in required_files)
+
     def install(self, project_path: str = ".", force: bool = False):
         """One-command BBC install: pip install deps + analyze + inject + start"""
         print(f"[BBC] One-Command Install starting...")
@@ -291,6 +371,21 @@ def main():
     purge_parser = subparsers.add_parser("purge", help="Complete BBC Removal")
     purge_parser.add_argument("path", nargs="?", default=".", help="Project path (default: current directory)")
     purge_parser.add_argument("--force", action="store_true", help="Skip confirmation")
+    purge_parser.add_argument("--dry-run", action="store_true", help="Preview removals without deleting files")
+
+    # Uninstall (project + optional global tool)
+    uninstall_parser = subparsers.add_parser("uninstall", help="One-command uninstall (project cleanup + optional global remove)")
+    uninstall_parser.add_argument("path", nargs="?", default=".", help="Project path (default: current directory)")
+    uninstall_parser.add_argument("--force", action="store_true", help="Skip confirmation prompts")
+    uninstall_parser.add_argument("--dry-run", action="store_true", help="Preview actions without deleting files")
+    uninstall_parser.add_argument("--global", dest="global_remove", action="store_true",
+                                  help="Also try to uninstall globally installed BBC package")
+
+    # Migrate legacy embedded project layout -> clean model
+    migrate_clean_parser = subparsers.add_parser("migrate-clean", help="Migrate legacy in-project BBC layout to clean model")
+    migrate_clean_parser.add_argument("path", nargs="?", default=".", help="Project path (default: current directory)")
+    migrate_clean_parser.add_argument("--apply", action="store_true", help="Apply migration changes (default: dry-run)")
+    migrate_clean_parser.add_argument("--force", action="store_true", help="Skip confirmation safeguard when --apply is used")
 
     # Menu (Interactive)
     menu_parser = subparsers.add_parser("menu", help="Interactive BBC Menu")
@@ -439,7 +534,23 @@ def main():
     elif args.command == "audit":
         cli.run_command(["audit", args.path])
     elif args.command == "purge":
-        cli.purge(args.path, args.force)
+        if getattr(args, "dry_run", False):
+            cli.run_command(["purge", str(Path(args.path).resolve()), "--dry-run"])
+        else:
+            cli.purge(args.path, args.force)
+    elif args.command == "uninstall":
+        cli.uninstall(
+            path=args.path,
+            force=getattr(args, "force", False),
+            dry_run=getattr(args, "dry_run", False),
+            remove_global=getattr(args, "global_remove", False),
+        )
+    elif args.command == "migrate-clean":
+        cli.migrate_clean(
+            path=args.path,
+            dry_run=not getattr(args, "apply", False),
+            force=getattr(args, "force", False),
+        )
     elif args.command == "menu":
         from bbc_core.global_menu import main as menu_main
         menu_main(str(Path(args.path).resolve()), loop=True)

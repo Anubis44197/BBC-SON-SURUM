@@ -1,9 +1,10 @@
 @echo off
 REM BBC v8.3 - One-Command Setup (Windows)
-REM Usage: Clone BBC into your project, then run this script
-REM   cd your-project
-REM   git clone https://github.com/Anubis44197/BBC.git
-REM   BBC\setup.bat
+REM Usage (recommended isolated mode):
+REM   1) Keep BBC in a central folder (outside projects)
+REM   2) cd your-project
+REM   3) C:\path\to\BBC\setup.bat [optional-project-path]
+REM Backward-compatible embedded usage also works.
 
 echo.
 echo ============================================
@@ -20,13 +21,22 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM Detect project path (parent of BBC folder)
+REM Detect BBC home path
 set "BBC_DIR=%~dp0"
 set "BBC_DIR=%BBC_DIR:~0,-1%"
 
-REM If BBC is inside a project folder, use parent as project path
-for %%I in ("%BBC_DIR%") do set "PROJECT_DIR=%%~dpI"
-set "PROJECT_DIR=%PROJECT_DIR:~0,-1%"
+REM Detect project path
+if "%~1"=="" (
+    set "PROJECT_DIR=%CD%"
+) else (
+    for %%I in ("%~1") do set "PROJECT_DIR=%%~fI"
+)
+
+REM Backward compatibility: if user runs setup from BBC folder itself, use parent as project
+if /I "%PROJECT_DIR%"=="%BBC_DIR%" (
+    for %%I in ("%BBC_DIR%") do set "PROJECT_DIR=%%~dpI"
+    set "PROJECT_DIR=%PROJECT_DIR:~0,-1%"
+)
 
 echo [BBC] BBC directory:     %BBC_DIR%
 echo [BBC] Project directory:  %PROJECT_DIR%

@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>bbc-master</id>
+    <version>8.3.0</version>
+    <title>BBC</title>
+    <authors>BBC Development Team</authors>
+    <projectUrl>https://github.com/Anubis44197/BBC-SON-SURUM</projectUrl>
+    <licenseUrl>https://github.com/Anubis44197/BBC-SON-SURUM/blob/main/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Bitter Brain Context - AI Assistant Context Manager</description>
+    <summary>Sealed context orchestration for AI coding tools.</summary>
+    <tags>bbc ai assistant context copilot cursor</tags>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>

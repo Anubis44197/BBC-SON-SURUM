@@ -8,6 +8,7 @@ import sys
 import json
 import time
 import threading
+import subprocess
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Optional
@@ -91,10 +92,10 @@ class BBCAutoDetector:
                 print(f"[BBC AUTO] run_bbc.py not found at {run_bbc}")
                 return False
             
-            import subprocess
+            analyze_timeout = self._get_analyze_timeout_seconds()
             result = subprocess.run(
                 [sys.executable, str(run_bbc), "analyze", str(project_path), "--silent"],
-                capture_output=True, text=True, timeout=120
+                capture_output=True, text=True, timeout=analyze_timeout
             )
             if result.returncode != 0:
                 err = (result.stderr or "").strip()[:200]
@@ -129,9 +130,24 @@ class BBCAutoDetector:
                 print(f"[BBC AUTO] Installation incomplete, missing: {missing}")
                 return False
                 
+        except subprocess.TimeoutExpired:
+            print(
+                "[BBC AUTO] Analysis timed out. "
+                "Increase BBC_ANALYZE_TIMEOUT_SECONDS (e.g. 1800 for 30 minutes)."
+            )
+            return False
         except Exception as e:
             print(f"[BBC AUTO] Auto-installation error: {e}")
             return False
+
+    def _get_analyze_timeout_seconds(self) -> int:
+        """Read analyze timeout from env with a safe, large default for big repositories."""
+        raw_value = os.environ.get("BBC_ANALYZE_TIMEOUT_SECONDS", "900").strip()
+        try:
+            timeout = int(raw_value)
+        except ValueError:
+            timeout = 900
+        return max(60, timeout)
     
     def start_bbc_monitoring(self, project_path: Path):
         """Start BBC monitoring automatically"""

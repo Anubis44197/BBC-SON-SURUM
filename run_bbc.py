@@ -38,7 +38,14 @@ except ImportError:
 
 
 # --- 4. GHOST FEATURES ACTIVATION ---
-def run_post_analysis_checks(project_path="."):
+def _env_flag(name: str, default: bool = False) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def run_post_analysis_checks(project_path=".", emit_console: bool = False):
     """Analiz sonrası tüm BBC doğrulama ve stabilite kontrollerini çalıştırır."""
     # 1. Verifier — Syntax & Structural Integrity
     try:
@@ -49,10 +56,25 @@ def run_post_analysis_checks(project_path="."):
         if os.path.exists(ctx_path):
             verifier = BBCVerifier(ctx_path)
             errors = verifier.verify_syntax_only()
-            if errors:
-                print(f"\n\033[33m[!] BBC Verifier: Found {len(errors)} potential logic issues.\033[0m")
-            else:
-                print(f"\n\033[32m[OK] BBC Verifier: Project structural integrity confirmed.\033[0m")
+
+            # Persist verifier summary so feature remains active even when terminal output is suppressed.
+            try:
+                with open(ctx_path, "r", encoding="utf-8") as f:
+                    ctx = json.load(f)
+                ctx.setdefault("metrics", {})
+                ctx["metrics"]["post_verify_syntax_errors"] = len(errors)
+                ctx["metrics"]["post_verify_checked"] = True
+                ctx["metrics"]["post_verify_updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+                with open(ctx_path, "w", encoding="utf-8") as f:
+                    json.dump(ctx, f, indent=2, ensure_ascii=False)
+            except Exception:
+                pass
+
+            if emit_console:
+                if errors:
+                    print(f"\n\033[33m[!] BBC Verifier: Found {len(errors)} potential logic issues.\033[0m")
+                else:
+                    print(f"\n\033[32m[OK] BBC Verifier: Project structural integrity confirmed.\033[0m")
     except Exception: pass
 
     # 2. Telemetry Matrix — Operational Stability
@@ -204,7 +226,8 @@ if __name__ == "__main__":
 
             # Post-Analysis Ghost Features
             if command in ["analyze", "bootstrap", "inject"]:
-                run_post_analysis_checks(_resolve_project_path())
+                show_post_verify = _env_flag("BBC_SHOW_POST_VERIFY", default=False)
+                run_post_analysis_checks(_resolve_project_path(), emit_console=show_post_verify)
 
         except SystemExit: pass
         except Exception as e:

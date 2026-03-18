@@ -4,7 +4,7 @@
 
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v8.6%20STABLE-green)](https://github.com/Anubis44197/BBC)
+[![Version](https://img.shields.io/badge/version-v8.6%20STABLE-green)](https://github.com/Anubis44197/BBC-SON-SURUM)
 
 ---
 
@@ -31,13 +31,50 @@ Scan Project  →  Build Sealed Context  →  Detect Active IDE  →  Inject Onl
 - Python 3.8+
 - Git
 
-### Option A: One-Command Setup (Recommended)
+### Option A: One-Command Setup (Recommended, Clean Model)
 
-Clone BBC into your project and run the setup script:
+Keep BBC in a central folder outside your project, then run setup against any project.
+
+```bash
+# 1) Install BBC once (outside projects)
+git clone https://github.com/Anubis44197/BBC-SON-SURUM.git <BBC_HOME>
+
+# one-time global install
+install_global.bat        # Windows
+bash install_global.sh    # Linux/macOS
+
+# 2) Run setup for your project
+cd your-project
+
+# Windows
+python <BBC_HOME>/bbc.py install .
+
+# Linux / macOS
+bash <BBC_HOME>/setup.sh .
+```
+
+This installs dependencies and starts BBC for the selected project.
+Project footprint remains focused on `.bbc/` and detected IDE config files.
+
+### Option B: Manual Setup (Cross-Platform)
+
+```bash
+# 1. Install BBC once (outside projects)
+git clone https://github.com/Anubis44197/BBC-SON-SURUM.git <BBC_HOME>
+pip install -r <BBC_HOME>/requirements.txt
+
+# 2. Run BBC on any project
+cd your-project
+python <BBC_HOME>/bbc.py start .
+```
+
+### Option C: Legacy Embedded Mode
+
+If you explicitly want BBC inside a project (legacy mode), you can still use embedded setup:
 
 ```bash
 cd your-project
-git clone https://github.com/Anubis44197/BBC.git
+git clone https://github.com/Anubis44197/BBC-SON-SURUM.git
 
 # Windows
 BBC\setup.bat
@@ -46,33 +83,20 @@ BBC\setup.bat
 bash BBC/setup.sh
 ```
 
-This automatically installs dependencies and starts BBC on your project.
-
-### Option B: Manual Setup
-
-```bash
-# 1. Clone BBC into your project
-cd your-project
-git clone https://github.com/Anubis44197/BBC.git
-
-# 2. Install dependencies
-pip install -r BBC/requirements.txt
-
-# 3. Start BBC
-python BBC/bbc.py start .
-```
-
-### Option C: Install Command
-
-If you've already cloned BBC, use the `install` command for one-step setup:
-
-```bash
-python BBC/bbc.py install .
-```
-
-This runs `pip install` + `analyze` + `inject` + `start daemon` in one command.
+This mode is supported for backward compatibility, but clean model is recommended.
 
 > **Tip:** Add the BBC directory to your PATH to use `python bbc.py start` from anywhere.
+
+### Option D: System Package Managers (Maintainer Templates)
+
+Repository now includes starter templates for OS package channels:
+
+- Homebrew formula template: `packaging/homebrew/bbc.rb`
+- Debian/Ubuntu packaging skeleton: `packaging/debian/`
+- Chocolatey package template: `packaging/choco/`
+
+These templates are intended for maintainers and require release checksums/URLs before publishing.
+For day-to-day development installs, continue using `pip install -e .` or the global install scripts.
 
 ---
 

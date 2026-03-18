@@ -14,6 +14,25 @@ class AttributionTracer:
         self.project_root = project_root
         self.symbol_map = {} # {symbol_name: defined_in_file}
         self.reference_map = defaultdict(list) # {symbol_name: [used_in_file1, used_in_file2]}
+        self.ignore_dirs = {
+            '.git', '.svn', '.hg',
+            'node_modules', 'vendor', 'packages',
+            '.venv', 'venv', '__pycache__',
+            'dist', 'build', 'out', 'target',
+            '.cache', 'coverage',
+            '.idea', '.vscode', '.cursor', '.clinerules', '.bbc',
+            'logs', 'tmp', '.temp',
+        }
+
+    def _iter_source_files(self, target_extensions):
+        """Yield source files while skipping heavyweight/non-source directories."""
+        for root, dirs, files in os.walk(self.project_root):
+            dirs[:] = [d for d in dirs if d not in self.ignore_dirs]
+            for file in files:
+                if file.lower().endswith(target_extensions):
+                    path = os.path.join(root, file)
+                    rel_path = os.path.relpath(path, self.project_root)
+                    yield path, rel_path
         
     def scan_project(self, target_extensions=None):
         """Projedeki tüm tanımları ve kullanımları tarar."""
@@ -23,12 +42,8 @@ class AttributionTracer:
         print(f"[*] Attribution Tracer: Scanning dependency network in {self.project_root}...")
         
         # 1. PASS: Tanımları Bul (Definition Scan)
-        for root, _, files in os.walk(self.project_root):
-            for file in files:
-                if file.lower().endswith(target_extensions):
-                    path = os.path.join(root, file)
-                    rel_path = os.path.relpath(path, self.project_root)
-                    self._extract_definitions(path, rel_path)
+        for path, rel_path in self._iter_source_files(target_extensions):
+            self._extract_definitions(path, rel_path)
                     
         print(f"[*] Knowledge Base: Found {len(self.symbol_map)} global symbols.")
 
@@ -36,13 +51,9 @@ class AttributionTracer:
         # (Optimizasyon: Sadece ilişkili olabilecek dosyaları tara)
         # Şimdilik basitlik adına aynı dosya setini tarıyoruz.
         count = 0
-        for root, _, files in os.walk(self.project_root):
-            for file in files:
-                if file.lower().endswith(target_extensions):
-                    path = os.path.join(root, file)
-                    rel_path = os.path.relpath(path, self.project_root)
-                    self._find_references(path, rel_path)
-                    count += 1
+        for path, rel_path in self._iter_source_files(target_extensions):
+            self._find_references(path, rel_path)
+            count += 1
         
         print(f"[*] Trace Complete: Mapped {len(self.reference_map)} cross-file references across {count} files.")
 

@@ -1,0 +1,5 @@
+bbc-master (8.3.0-1) unstable; urgency=medium
+
+  * Initial Debian packaging template.
+
+ -- BBC Development Team <bbc@example.com>  Wed, 18 Mar 2026 00:00:00 +0000

@@ -1,9 +1,10 @@
 #!/bin/bash
 # BBC v8.3 - One-Command Setup (Linux/Mac)
-# Usage: Clone BBC into your project, then run this script
-#   cd your-project
-#   git clone https://github.com/Anubis44197/BBC.git
-#   bash BBC/setup.sh
+# Usage (recommended isolated mode):
+#   1) Keep BBC in a central folder (outside projects)
+#   2) cd your-project
+#   3) bash /path/to/BBC/setup.sh [optional-project-path]
+# Backward-compatible embedded usage also works.
 
 echo ""
 echo "============================================"
@@ -17,9 +18,20 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
-# Detect paths
+# Detect BBC home path
 BBC_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_DIR="$(dirname "$BBC_DIR")"
+
+# Detect project path
+if [ -n "$1" ]; then
+    PROJECT_DIR="$(cd "$1" && pwd)"
+else
+    PROJECT_DIR="$(pwd)"
+fi
+
+# Backward compatibility: if setup is executed from BBC home itself, use parent as project
+if [ "$PROJECT_DIR" = "$BBC_DIR" ]; then
+    PROJECT_DIR="$(dirname "$BBC_DIR")"
+fi
 
 echo "[BBC] BBC directory:     $BBC_DIR"
 echo "[BBC] Project directory:  $PROJECT_DIR"

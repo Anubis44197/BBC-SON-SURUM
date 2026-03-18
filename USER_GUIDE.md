@@ -11,20 +11,26 @@
 
 ## 🚀 Installation
 
-### Method 1: Clone & Run (Recommended)
+### Method 1: Clean Model (Recommended)
 ```bash
-git clone https://github.com/Anubis44197/BBC.git
-cd BBC
-pip install -r requirements.txt
-python bbc.py start /path/to/your/project
+git clone https://github.com/Anubis44197/BBC-SON-SURUM.git <BBC_HOME>
+pip install -r <BBC_HOME>/requirements.txt
+python <BBC_HOME>/bbc.py start /path/to/your/project
 ```
 
 ### Method 2: pip Install (Development)
 ```bash
-git clone https://github.com/Anubis44197/BBC.git
+git clone https://github.com/Anubis44197/BBC-SON-SURUM.git
 cd BBC
 pip install -e .
 python bbc.py start /path/to/your/project
+```
+
+### Method 3: Legacy Embedded (Backward Compatibility)
+```bash
+cd /path/to/your/project
+git clone https://github.com/Anubis44197/BBC-SON-SURUM.git
+python BBC/bbc.py start .
 ```
 
 ## 🎯 First Steps
@@ -58,8 +64,26 @@ python bbc.py start .
 | `python bbc.py serve --port 3333` | Start REST API server |
 | `python bbc.py audit [path]` | Audit BBC traces in project |
 | `python bbc.py purge [path]` | Complete BBC removal |
+| `python bbc.py uninstall [path]` | One-command uninstall (project cleanup + optional global remove) |
+| `python bbc.py migrate-clean [path]` | Migrate legacy in-project BBC folder to clean model |
 | `python bbc.py stop [path]` | Stop BBC daemon |
 | `python bbc.py status [path]` | Show system status |
+
+Uninstall examples:
+```bash
+# Preview only
+python bbc.py uninstall . --dry-run
+
+# Remove BBC traces from project
+python bbc.py uninstall . --force
+
+# Also try global package uninstall
+python bbc.py uninstall . --force --global
+
+# Migrate old in-project BBC folder to clean model
+python bbc.py migrate-clean .                # preview (dry-run)
+python bbc.py migrate-clean . --apply --force
+```
 
 ### Engine Commands (run_bbc.py)
 | Command | Description |

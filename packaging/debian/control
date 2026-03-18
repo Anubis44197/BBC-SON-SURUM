@@ -1,0 +1,14 @@
+Source: bbc-master
+Section: utils
+Priority: optional
+Maintainer: BBC Development Team <bbc@example.com>
+Build-Depends: debhelper-compat (= 13), python3, python3-setuptools, python3-pip
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+
+Package: bbc-master
+Architecture: all
+Depends: ${misc:Depends}, ${python3:Depends}
+Description: Bitter Brain Context - AI Assistant Context Manager
+ BBC analyzes project structure and injects sealed context instructions
+ for supported AI coding tools.
