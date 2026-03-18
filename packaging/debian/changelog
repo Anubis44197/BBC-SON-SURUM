@@ -1,4 +1,4 @@
-bbc-master (8.3.0-1) unstable; urgency=medium
+bbc-master (8.3.0) unstable; urgency=medium
 
   * Initial Debian packaging template.
 

@@ -12,6 +12,8 @@ on:
 jobs:
   build-deb:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,6 +31,7 @@ jobs:
 
       - name: Build source and binary packages
         run: |
+          dpkg-checkbuilddeps
           dpkg-buildpackage -us -uc -b
 
       - name: List generated artifacts
