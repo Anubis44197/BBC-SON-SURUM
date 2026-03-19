@@ -126,7 +126,7 @@ class TelemetryLogger:
 
 
     # ------------------------------------------------------------------
-    # Feedback Telemetry — Command Performance Tracking (v8.6)
+    # Feedback Telemetry — Command Performance Tracking (v8.3)
     # ------------------------------------------------------------------
 
     def log_command(self, command: str, duration_sec: float,
