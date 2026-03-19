@@ -93,7 +93,7 @@ class BBCVerifier:
 
         errors = []
 
-        excluded_dirs = BBCConfig.get_scan_excluded_dirs()
+        excluded_dirs = BBCConfig.get_forbidden_scan_dirs()
         configured_exts = BBCConfig.get_scan_extensions()
         syntax_exts = {
             '.py', '.rs', '.c', '.cpp', '.h', '.hpp', '.java', '.cs',
