@@ -3,9 +3,11 @@ import json
 import os
 import asyncio
 import hashlib
+from collections import Counter
 from .hmpu_engine import HMPUEngine
 from .state_manager import StateManager
 from .hmpu_indexer import HMPUIndexer
+from .config import BBCConfig
 
 # Import the Polyglot Quantizer (tek dogruluk kaynagi: bbc_core)
 from .hmpu_quantizer import HMPUQuantizer
@@ -50,24 +52,39 @@ class BBCNativeAdapter:
         total_lines = 0
         total_code_lines = 0
         
-        # Polyglot Extension List
-        exts = ('.py', '.md', '.json', '.js', '.jsx', '.ts', '.tsx', '.html', '.css', '.sql', '.rs', '.go', '.c', '.cpp', '.h', '.hpp', '.java', '.cs', '.php', '.rb', '.swift', '.kt')
-        forbidden_dirs = {"node_modules", ".venv", "dist", "build", ".git", "__pycache__", "target", ".bbc"}
+        # Shared scan policy
+        exts = BBCConfig.get_scan_extensions()
+        forbidden_dirs = BBCConfig.get_forbidden_scan_dirs()
         comment_prefixes = ('#', '//', '/*', '*')
+        skipped_dirs_count = 0
+        skipped_non_source_files = 0
+        skipped_output_file = 0
+        discovered_total_files = 0
+        top_level_skip_counts = Counter()
         
         if not silent:
             print(f"[*] Polyglot Scan Started: {root_to_scan}")
 
         # RECURSIVE SCAN & QUANTIZATION
         for root, dirs, files in os.walk(root_to_scan):
-            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in forbidden_dirs]
+            original_dirs = list(dirs)
+            dirs[:] = [d for d in dirs if d not in forbidden_dirs]
+            removed_dirs = [d for d in original_dirs if d not in dirs]
+            skipped_dirs_count += len(removed_dirs)
+            if removed_dirs:
+                rel_root = os.path.relpath(root, root_to_scan)
+                root_prefix = "" if rel_root == "." else rel_root.replace("\\", "/") + "/"
+                for d in removed_dirs:
+                    top_level_skip_counts[root_prefix + d] += 1
             
             for file in files:
+                discovered_total_files += 1
                 if file.lower().endswith(exts):
                     file_path = os.path.join(root, file)
                     
                     # Skip the output file itself (Self-Reference Prevention)
                     if output_file_abs and os.path.abspath(file_path) == output_file_abs:
+                        skipped_output_file += 1
                         continue
 
                     try:
@@ -116,6 +133,8 @@ class BBCNativeAdapter:
                         if count % 1000 == 0 and not silent:
                             print(f"[*] Progress: {count:,} files processed...")
                     except Exception: continue
+                else:
+                    skipped_non_source_files += 1
                 if len(files_found) >= 100000:
                     if not silent:
                         print(f"[WARN] File limit reached (100,000). Remaining files skipped.")
@@ -163,6 +182,20 @@ class BBCNativeAdapter:
             }
         }
 
+        context_json["scan_report"] = {
+            "source_extensions": list(exts),
+            "excluded_dirs": sorted(forbidden_dirs),
+            "files_discovered": discovered_total_files,
+            "files_scanned": len(files_found),
+            "files_skipped_non_source": skipped_non_source_files,
+            "files_skipped_output_file": skipped_output_file,
+            "excluded_dirs_hits": skipped_dirs_count,
+            "top_excluded_paths": [
+                {"path": key, "hits": value}
+                for key, value in top_level_skip_counts.most_common(20)
+            ],
+        }
+
         # Estimate context size without full serialization (v7.2 optimized)
         # Approximate: each recipe ~200 bytes avg, skeleton ~50 bytes per file
         est_recipe_bytes = len(project_recipes) * 200
@@ -186,7 +219,6 @@ class BBCNativeAdapter:
             if not silent:
                 print("[*] Symbol Pipeline: Extracting symbols...")
 
-            from .config import BBCConfig
             extractor = SymbolExtractor()
             symbol_results = extractor.extract_from_directory(
                 root_to_scan, max_files=BBCConfig.MAX_FILES
@@ -410,6 +442,18 @@ class BBCNativeAdapter:
                 "reanalyzed": len(new_recipes),
                 "cached": len(all_files) - len(new_recipes),
             }
+        }
+
+        context_json["scan_report"] = {
+            "mode": "incremental",
+            "source_extensions": list(BBCConfig.get_scan_extensions()),
+            "excluded_dirs": sorted(BBCConfig.get_forbidden_scan_dirs()),
+            "files_total": len(all_files),
+            "files_reanalyzed": len(new_recipes),
+            "files_cached": len(all_files) - len(new_recipes),
+            "files_added": len(diff["added"]),
+            "files_changed": len(diff["changed"]),
+            "files_removed": len(diff["removed"]),
         }
 
         est_recipe_bytes = len(all_recipes) * 200

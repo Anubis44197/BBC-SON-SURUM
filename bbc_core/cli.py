@@ -13,6 +13,10 @@ from bbc_core.native_adapter import BBCNativeAdapter
 from bbc_core.bbc_scalar import BBCEncoder
 from bbc_core.config import BBCConfig
 
+
+def _write_json_atomic(path: str, payload: Dict[str, Any]) -> None:
+    BBCConfig.atomic_write_json(path, payload, encoder_cls=BBCEncoder)
+
 def estimate_tokens_from_bytes(byte_count: int) -> int:
     """Fast token estimate that avoids a second full filesystem scan."""
     try:
@@ -53,8 +57,7 @@ class BBCCLI:
         # Ensure the output is saved to the CWD (where command is run)
         # output_file is already relative or absolute as provided by argparse
         
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(context, f, indent=2, ensure_ascii=False, cls=BBCEncoder)
+        _write_json_atomic(output_file, context)
 
         try:
             _write_project_snapshot(target_path, output_file)
@@ -85,8 +88,7 @@ class BBCCLI:
         context["metrics"]["unified_source"] = "analyze"
         context["metrics"]["unified_updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
         try:
-            with open(output_file, 'w', encoding='utf-8') as f:
-                json.dump(context, f, indent=2, ensure_ascii=False, cls=BBCEncoder)
+            _write_json_atomic(output_file, context)
         except Exception as e:
             print(f"[WARN] Metrics persist error: {e}", file=sys.stderr)
         
@@ -135,8 +137,7 @@ class BBCCLI:
             target_path, output_file=output_file, silent=silent
         )
 
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(context, f, indent=2, ensure_ascii=False, cls=BBCEncoder)
+        _write_json_atomic(output_file, context)
 
         try:
             _write_project_snapshot(target_path, output_file)
@@ -165,8 +166,7 @@ class BBCCLI:
         context["metrics"]["unified_source"] = "analyze_incremental"
         context["metrics"]["unified_updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
         try:
-            with open(output_file, 'w', encoding='utf-8') as f:
-                json.dump(context, f, indent=2, ensure_ascii=False, cls=BBCEncoder)
+            _write_json_atomic(output_file, context)
         except Exception:
             pass
 
@@ -229,13 +229,12 @@ def _is_context_stale(project_root: str, context_path: str) -> bool:
 
     newest_mtime = 0.0
     try:
+        exts = BBCConfig.get_scan_extensions()
+        forbidden_dirs = BBCConfig.get_forbidden_scan_dirs()
         for root, dirs, files in os.walk(project_root):
-            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ["node_modules", ".venv", "dist", "build", ".git", "__pycache__", ".bbc"]]
+            dirs[:] = [d for d in dirs if d not in forbidden_dirs]
             for file in files:
-                if file.lower().endswith((
-                    '.py', '.md', '.json', '.js', '.ts', '.html', '.css', '.sql', '.rs', '.go', '.c', '.cpp',
-                    '.h', '.hpp', '.java', '.cs', '.php', '.rb', '.swift', '.kt'
-                )):
+                if file.lower().endswith(exts):
                     try:
                         mtime = os.path.getmtime(os.path.join(root, file))
                         if mtime > newest_mtime:
@@ -260,19 +259,13 @@ def _collect_project_fingerprint(project_root: str) -> Dict[str, Dict[str, Any]]
     project_root = os.path.abspath(project_root)
     fingerprint: Dict[str, Dict[str, Any]] = {}
 
+    exts = BBCConfig.get_scan_extensions()
+    forbidden_dirs = BBCConfig.get_forbidden_scan_dirs()
     for root, dirs, files in os.walk(project_root):
-        dirs[:] = [
-            d for d in dirs
-            if not d.startswith('.') and d not in [
-                "node_modules", ".venv", "dist", "build", ".git", "__pycache__", ".bbc"
-            ]
-        ]
+        dirs[:] = [d for d in dirs if d not in forbidden_dirs]
 
         for file in files:
-            if not file.lower().endswith((
-                '.py', '.md', '.json', '.js', '.ts', '.html', '.css', '.sql', '.rs', '.go', '.c', '.cpp',
-                '.h', '.hpp', '.java', '.cs', '.php', '.rb', '.swift', '.kt'
-            )):
+            if not file.lower().endswith(exts):
                 continue
             abs_path = os.path.join(root, file)
             try:
@@ -295,8 +288,7 @@ def _write_project_snapshot(project_root: str, context_path: str) -> str:
         "created_at": time.time(),
         "files": _collect_project_fingerprint(project_root),
     }
-    with open(snapshot_path, 'w', encoding='utf-8') as f:
-        json.dump(payload, f, indent=2, ensure_ascii=False, cls=BBCEncoder)
+    BBCConfig.atomic_write_json(snapshot_path, payload, encoder_cls=BBCEncoder)
     return snapshot_path
 
 

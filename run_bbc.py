@@ -56,8 +56,7 @@ def run_post_analysis_checks(project_path=".", emit_console: bool = False):
                 ctx["metrics"]["post_verify_syntax_errors"] = len(errors)
                 ctx["metrics"]["post_verify_checked"] = True
                 ctx["metrics"]["post_verify_updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
-                with open(ctx_path, "w", encoding="utf-8") as f:
-                    json.dump(ctx, f, indent=2, ensure_ascii=False)
+                BBCConfig.atomic_write_json(ctx_path, ctx)
             except Exception:
                 pass
 

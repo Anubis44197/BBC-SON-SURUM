@@ -1,6 +1,7 @@
 import re
 import os
 from collections import defaultdict
+from .config import BBCConfig
 
 class AttributionTracer:
     """
@@ -14,15 +15,9 @@ class AttributionTracer:
         self.project_root = project_root
         self.symbol_map = {} # {symbol_name: defined_in_file}
         self.reference_map = defaultdict(list) # {symbol_name: [used_in_file1, used_in_file2]}
-        self.ignore_dirs = {
-            '.git', '.svn', '.hg',
-            'node_modules', 'vendor', 'packages',
-            '.venv', 'venv', '__pycache__',
-            'dist', 'build', 'out', 'target',
-            '.cache', 'coverage',
-            '.idea', '.vscode', '.cursor', '.clinerules', '.bbc',
-            'logs', 'tmp', '.temp',
-        }
+        self.ignore_dirs = BBCConfig.get_forbidden_scan_dirs({
+            '.svn', '.hg', 'vendor', 'packages', 'out', '.temp', '.clinerules'
+        })
 
     def _iter_source_files(self, target_extensions):
         """Yield source files while skipping heavyweight/non-source directories."""

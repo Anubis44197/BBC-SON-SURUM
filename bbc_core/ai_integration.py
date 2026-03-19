@@ -10,6 +10,7 @@ import atexit
 from datetime import datetime
 from typing import Dict, Any
 from pathlib import Path
+from .config import BBCConfig
 
 from .realtime_token_counter import start_monitoring, update_token_usage, end_monitoring, get_current_metrics
 from .terminal_monitor import start_live_monitoring, stop_live_monitoring, print_final_summary
@@ -98,8 +99,7 @@ class BBCAIIntegration:
             metrics["unified_current_file"] = current_file
 
         try:
-            with open(ctx_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
+            BBCConfig.atomic_write_json(str(ctx_path), data)
         except Exception:
             pass
     

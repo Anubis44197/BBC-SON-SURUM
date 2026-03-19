@@ -12,6 +12,7 @@ import threading
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Optional
+from bbc_core.config import BBCConfig
 
 class BBCDaemon:
     """BBC Background Daemon"""
@@ -191,14 +192,12 @@ class BBCDaemon:
     
     def _scan_project_files(self, project_path: Path) -> set:
         """Projedeki kaynak files tara, relative path set'i return"""
-        exts = ('.py', '.md', '.json', '.js', '.jsx', '.ts', '.tsx', '.html', '.css',
-                '.sql', '.rs', '.go', '.c', '.cpp', '.h', '.hpp', '.java', '.cs',
-                '.php', '.rb', '.swift', '.kt')
-        forbidden_dirs = {'node_modules', '.venv', 'dist', 'build', '.git', '__pycache__', 'target', '.bbc'}
+        exts = BBCConfig.get_scan_extensions()
+        forbidden_dirs = BBCConfig.get_forbidden_scan_dirs()
         found = set()
         try:
             for root, dirs, files in os.walk(str(project_path)):
-                dirs[:] = [d for d in dirs if not d.startswith('.') and d not in forbidden_dirs]
+                dirs[:] = [d for d in dirs if d not in forbidden_dirs]
                 for f in files:
                     if f.lower().endswith(exts):
                         rel = os.path.relpath(os.path.join(root, f), str(project_path))
@@ -323,6 +322,10 @@ class BBCDaemon:
                                         reason = f"{stale_count} modified file(s)"
                             except Exception as e:
                                 self._log(f"[WATCH] Freshness check error: {e}")
+                                self._record_watch_health(
+                                    status="FRESHNESS_ERROR",
+                                    freshness_error=str(e)
+                                )
                         
                         # 3) Yeniden analysis gerekiyorsa run + Aura feedback
                         if needs_reanalysis:
@@ -347,11 +350,14 @@ class BBCDaemon:
                             if success:
                                 known_files = current_files
                                 self._update_config(project_path, "RESEALED")
+                                self._record_watch_health(status="OK")
                                 self._log("[WATCH] Context resealed successfully")
                             else:
+                                self._record_watch_health(status="RESEAL_FAILED")
                                 self._log("[WATCH] Re-analysis failed")
                         else:
                             known_files = current_files
+                            self._record_watch_health(status="OK")
                     
                     # 5 saniyede bir dongu
                     time.sleep(5)
@@ -374,10 +380,54 @@ class BBCDaemon:
         }
         
         try:
-            with open(self.config_file, "w", encoding="utf-8") as f:
-                json.dump(config, f, indent=2)
+            if self.config_file.exists():
+                try:
+                    with open(self.config_file, "r", encoding="utf-8") as f:
+                        old_cfg = json.load(f)
+                    if isinstance(old_cfg, dict):
+                        watch_health = old_cfg.get("watch_health")
+                        if isinstance(watch_health, dict):
+                            config["watch_health"] = watch_health
+                except Exception:
+                    pass
+            BBCConfig.atomic_write_json(str(self.config_file), config)
         except Exception as e:
             self._log(f"Failed to update config: {e}")
+
+    def _record_watch_health(self, status: str, freshness_error: str = ""):
+        """Persist watch-loop health so users can audit daemon reliability."""
+        try:
+            cfg = {}
+            if self.config_file.exists():
+                try:
+                    with open(self.config_file, "r", encoding="utf-8") as f:
+                        loaded = json.load(f)
+                    if isinstance(loaded, dict):
+                        cfg = loaded
+                except Exception:
+                    cfg = {}
+
+            watch = cfg.get("watch_health", {}) if isinstance(cfg.get("watch_health", {}), dict) else {}
+            watch.setdefault("freshness_error_count", 0)
+            watch.setdefault("last_ok_at", "")
+            watch.setdefault("last_error_at", "")
+            watch.setdefault("last_error", "")
+
+            now = datetime.now().isoformat()
+            if status == "FRESHNESS_ERROR":
+                watch["freshness_error_count"] = int(watch.get("freshness_error_count", 0)) + 1
+                watch["last_error_at"] = now
+                watch["last_error"] = freshness_error[:500]
+            elif status == "OK":
+                watch["last_ok_at"] = now
+            else:
+                watch["last_error_at"] = now
+                watch["last_error"] = status
+
+            cfg["watch_health"] = watch
+            BBCConfig.atomic_write_json(str(self.config_file), cfg)
+        except Exception:
+            pass
 
 def main():
     """Daemon CLI fonksiyonu"""
