@@ -19,7 +19,7 @@ Scan Project  →  Build Sealed Context  →  Detect Active IDE  →  Inject Onl
 ```
 
 1. **Scan:** Extracts all classes, functions, and imports via AST analysis
-2. **Compress:** Reduces a 100,000-token project to ~10,000 tokens (**89%+ savings**)
+2. **Compress:** Builds a compact context model for faster and cleaner AI guidance
 3. **Smart Detect:** Identifies your **currently active IDE and installed AI extensions**
 4. **Inject:** Writes BBC rules only to detected tools — nothing else is touched
 
@@ -178,10 +178,9 @@ Previous versions created config folders for 20+ tools regardless of whether the
 ### 📊 Stability Engine
 BBC continuously evaluates project health and verification confidence to keep AI work aligned with the current sealed context.
 
-### 💾 Token Savings
-```
-Source: 132,000 tokens  →  Context: 14,000 tokens  |  89% savings  |  9.4x faster
-```
+### 💾 Context Reduction
+BBC internally tracks context-size reduction metrics in `.bbc/bbc_context.json`.
+User-facing terminal output is intentionally kept concise and does not print token-savings banners.
 
 ### 🔄 Real-time Re-sealing
 BBC's daemon (`bbc_daemon.py`) actively monitors your project for changes every 30 seconds:
@@ -329,17 +328,6 @@ Intelligent context compression without losing meaning:
 bbc pack --aggressive
 ```
 
-### 📊 Feedback Telemetry Dashboard (Sprint 4)
-Track BBC performance and token savings over time:
-
-- **Command history** — duration, files, tokens saved per command
-- **Aggregated stats** — total savings, success rate, command breakdown
-- **Recent activity** — last N executions with outcomes
-
-```bash
-bbc telemetry
-```
-
 ### 🤖 Agent-Specific Optimized Injection (Sprint 5)
 Inject per-task optimized contexts tailored to each AI tool:
 
@@ -382,9 +370,8 @@ All user-facing commands go through `bbc.py` — the single entry point:
 | `bbc impact <file>` | Semantic impact analysis of a file change |
 | `bbc patch [path]` | Detect and auto-fix code issues (dry-run by default) |
 | `bbc compile --task <type> --file <path>` | Compile task-aware context (bugfix/feature/refactor/review) |
-| `bbc pack` | Semantically compress context for minimal token usage |
+| `bbc pack` | Semantically compress context for minimal context size |
 | `bbc pack --aggressive` | Deeper compression, removes dep graph |
-| `bbc telemetry` | Show BBC performance dashboard |
 | `bbc inject [path]` | Inject BBC instructions into AI agent config files |
 | `bbc inject [path] --no-optimize` | Inject without task-specific optimization |
 | `bbc hooks [path]` | Install/remove BBC git hooks for team automation |

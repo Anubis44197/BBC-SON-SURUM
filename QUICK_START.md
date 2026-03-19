@@ -77,24 +77,11 @@ Open your favorite IDE (VS Code, PyCharm, etc.) and start coding with AI assista
 When you run `bbc start`, you'll see something like:
 
 ```
-======================================================================
->>> BBC ANALYSIS COMPLETE
-======================================================================
-[INFO] 83 Classes | 465 Functions | 398 Imports
-[INFO] Normal:178,414 -> BBC:14,313 | Saved:92.0%
-======================================================================
-```
-
-And a token savings report:
-```
-╭──────────────────────────────────╮
-│  BBC HMPU v8.3 Aura Insights 💎  │
-│  STABLE                          │
-│  ██████████████████████████████  │
-│  ███████████████░░░░░ 90.4%      │
-│  Saved: 125,601 Tokens | $3.77   │
-│  | 10.4x Faster                  │
-╰──────────────────────────────────╯
+[BBC] Analysis complete
+[BBC] Files scanned: 83 | Time: 1.24s
+[BBC] Symbols: 465 classes | 398 functions | 210 imports
+[BBC] Status: SEALED
+[BBC] Context: /path/to/project/.bbc/bbc_context.json
 ```
 
 ## 🔧 IDE Auto-Detection

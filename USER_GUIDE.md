@@ -142,21 +142,10 @@ BBC seals the context with `constraint_status: "verified"`. This means:
 - Unknown symbols trigger warnings
 - Code blocks marked as sealed cannot be modified
 
-## 📊 Token Savings Report
+## 📊 Analysis Output
 
-After each analysis, BBC shows a visual report:
-```
-╭──────────────────────────────────╮
-│  BBC HMPU v8.3 Aura Insights 💎  │
-│  STABLE                          │
-│  ██████████████████████████████  │
-│  ███████████████░░░░░ 90.4%      │
-│  Saved: 125,601 Tokens | $3.77   │
-│  | 10.4x Faster                  │
-│  Stability: 2.38 (Cond) |        │
-│  Confidence: 73% | Files: 61     │
-╰──────────────────────────────────╯
-```
+After each analysis, BBC prints concise status output (files, symbols, seal state, and context path).
+Detailed metrics remain in `.bbc/bbc_context.json`.
 
 ## 🔧 Advanced Usage
 
@@ -175,7 +164,7 @@ python bbc.py serve --port 3333
 #   GET  /health               → Server health + memory
 #   GET  /api/project_context  → Full sealed BBC context
 #   GET  /api/symbol_analysis  → Symbol graph + critical symbols
-#   GET  /api/stats            → Token savings + stability stats
+#   GET  /api/stats            → Runtime and stability stats
 #   POST /api/analyze          → Analyze a single file
 ```
 
