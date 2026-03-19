@@ -4,6 +4,7 @@ import os
 import sys
 import platform
 import json
+import time
 
 # Platform tespiti
 PLATFORM = platform.system().lower()

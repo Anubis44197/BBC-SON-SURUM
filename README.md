@@ -1,10 +1,10 @@
-# 🧠 BBC — Bitter Brain Context v8.6
+# 🧠 BBC — Bitter Brain Context v8.3
 
 > **Zero-Hallucination AI Coding Framework** — Analyzes your project, detects your active IDE, and provides AI assistants with a verified sealed context.
 
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v8.6%20STABLE-green)](https://github.com/Anubis44197/BBC-SON-SURUM)
+[![Version](https://img.shields.io/badge/version-v8.3.0%20STABLE-green)](https://github.com/Anubis44197/BBC-SON-SURUM)
 
 ---
 
@@ -30,6 +30,12 @@ Scan Project  →  Build Sealed Context  →  Detect Active IDE  →  Inject Onl
 ### Requirements
 - Python 3.8+
 - Git
+
+For contributors (tests and lint):
+
+```bash
+pip install -r requirements-dev.txt
+```
 
 ### Option A: One-Command Setup (Recommended, Clean Model)
 
@@ -289,7 +295,7 @@ python bbc.py patch . --apply
 
 ---
 
-## 🚀 BBC 8.6 Sprint Enhancements
+## 🚀 Recent Sprint Enhancements
 
 ### 🔄 Incremental Analysis & Changed-Only Verify (Sprint 1)
 BBC now tracks file hashes and only re-analyses what changed:
@@ -472,7 +478,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 <div align="center">
 
-**BBC v8.6 STABLE** — Your AI assistants now see your project through a verified sealed context.
+**BBC v8.3 STABLE** — Your AI assistants now see your project through a verified sealed context.
 
 *No hallucinations. No guesswork. Only verified context.*
 

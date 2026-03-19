@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.8"
 license = { text = "MIT" }
 authors = [
-    { name = "BBC Development Team", email = "bbc@example.com" },
+    { name = "BBC Development Team" },
 ]
 keywords = ["ai", "assistant", "context", "ide", "development", "tools"]
 classifiers = [
@@ -42,6 +42,10 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "aiohttp>=3.9.0",
     "rich",
+]
+
+[project.optional-dependencies]
+dev = [
     "pytest>=7.0.0",
     "ruff>=0.1.0",
 ]
@@ -75,7 +79,7 @@ exclude = [
 ]
 
 [tool.ruff.lint]
-# Sadece kritik hatalari yakala — gereksiz warning uretme
+# Catch only critical errors to avoid noisy lint output
 select = [
     "E9",   # Runtime errors (SyntaxError, etc.)
     "F63",  # Invalid comparisons
