@@ -40,7 +40,7 @@ case "$1" in
             python3 "$SCRIPT_DIR/bbc.py" "$@"
         fi
         ;;
-    stop|status|serve|inject|hooks|patch|impact|compile|telemetry|pack|check)
+    stop|status|serve|inject|hooks|patch|impact|compile|pack|check)
         python3 "$SCRIPT_DIR/bbc.py" "$@"
         ;;
     *)

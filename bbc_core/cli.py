@@ -9,27 +9,17 @@ from typing import Any, Dict
 # Ensure bbc_core can be imported if run from root
 sys.path.append(os.getcwd())
 
-try:
-    import tiktoken
-    TIKTOKEN_AVAILABLE = True
-except ImportError:
-    TIKTOKEN_AVAILABLE = False
-
 from bbc_core.native_adapter import BBCNativeAdapter
 from bbc_core.bbc_scalar import BBCEncoder
 from bbc_core.config import BBCConfig
 
-def count_tokens(text: str) -> int:
-    """Count tokens using tiktoken (cl100k_base encoding for GPT-4/Copilot)"""
-    if not TIKTOKEN_AVAILABLE:
-        # Fallback to rough estimate
-        return len(text) // 4
-    
+def estimate_tokens_from_bytes(byte_count: int) -> int:
+    """Fast token estimate that avoids a second full filesystem scan."""
     try:
-        encoding = tiktoken.get_encoding("cl100k_base")
-        return len(encoding.encode(text))
+        value = int(byte_count)
     except Exception:
-        return len(text) // 4
+        value = 0
+    return max(0, value // 4)
 
 
 class BBCCLI:
@@ -75,35 +65,10 @@ class BBCCLI:
             print(f"[+] Analysis complete. Context saved to: {os.path.abspath(output_file)}")
         m = context.get("metrics", {})
 
-        # Read actual file contents for token counting (always, regardless of silent mode)
-        raw_content = ""
-        context_content = ""
-        
-        try:
-            for root, dirs, files in os.walk(target_path):
-                dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ["node_modules", ".venv", "dist", "build", ".git", "__pycache__"]]
-                for file in files:
-                    if file.lower().endswith(('.py', '.md', '.json', '.js', '.ts', '.html', '.css', '.log', '.sql', '.rs', '.go', '.c', '.cpp', '.h', '.hpp', '.java', '.cs', '.php', '.rb', '.swift', '.kt')):
-                        file_path = os.path.join(root, file)
-                        try:
-                            with open(file_path, 'r', encoding='utf-8') as f:
-                                raw_content += f.read() + "\n"
-                        except Exception:
-                            continue
-        except Exception as e:
-            if not silent:
-                print(f"[WARN] Raw content read error: {e}", file=sys.stderr)
-        
-        # Read context JSON
-        try:
-            context_content = json.dumps(context, ensure_ascii=False)
-        except Exception:
-            context_content = str(context)
-        
-        # Count tokens with tiktoken
-        raw_tokens = count_tokens(raw_content) if raw_content else m.get('raw_bytes', 0) // 4
-        context_tokens = count_tokens(context_content)
-        saved_tokens = raw_tokens - context_tokens
+        # Use existing byte metrics to avoid expensive second scan.
+        raw_tokens = estimate_tokens_from_bytes(m.get("raw_bytes", 0))
+        context_tokens = estimate_tokens_from_bytes(m.get("context_bytes", 0))
+        saved_tokens = max(0, raw_tokens - context_tokens)
         savings_pct = (saved_tokens / raw_tokens * 100) if raw_tokens > 0 else 0
         
         # Persist token metrics into bbc_context.json so other tools can read them
@@ -141,33 +106,13 @@ class BBCCLI:
                 total_imports += len(structure.get("imports", []))
         
         if not silent:
-            # Visual output - NEW DESIGN
-            print(f"\n{'='*70}")
-            print(f">>> BBC ANALYSIS COMPLETE")
-            print(f"{'='*70}")
-            
-            # Progress bar
             files_scanned = m.get('files_scanned', 0)
-            print(f"[{'#'*30}] 100% ({files_scanned:,}) | {bbc_time:.2f}s")
-            print(f"{'-'*70}")
-            
-            # Symbols line
-            print(f"[INFO] {total_classes:,} Classes | {total_functions:,} Functions | {total_imports:,} Imports")
-            
-            # Compression line (file tokens vs context tokens - NOT real AI savings)
-            print(f"[INFO] Source:{raw_tokens:,} tokens -> Context:{context_tokens:,} tokens | Compression:{savings_pct:.1f}%")
-            
-            # Status line
+            print("\n[BBC] Analysis complete")
+            print(f"[BBC] Files scanned: {files_scanned:,} | Time: {bbc_time:.2f}s")
+            print(f"[BBC] Symbols: {total_classes:,} classes | {total_functions:,} functions | {total_imports:,} imports")
             status = "SEALED" if context.get("constraint_status") in ["sealed", "verified"] else "OPEN"
-            print(f"[INFO] Status: {status} | Errors: run 'verify' to check")
-            
-            print(f"{'='*70}")
-            
-            # CLEAN MODE: BBC remains silent and only updates the bbc_context.json.
-            
-            print(f"\n[OK] BBC Context Secured: {os.path.abspath(output_file)}")
-            print(f"[TIP] AI assistants will now see the verified logic structure.")
-            print(f"{'='*70}\n")
+            print(f"[BBC] Status: {status}")
+            print(f"[BBC] Context: {os.path.abspath(output_file)}\n")
 
     async def run_analysis_incremental(self, target_path, output_file, silent: bool = False):
         """Incremental analysis — only re-processes changed files."""
@@ -201,30 +146,10 @@ class BBCCLI:
         inc_info = context.get("incremental", {})
         mode = inc_info.get("mode", "full")
 
-        # Token counting (same as full analysis)
-        raw_content = ""
-        try:
-            for root, dirs, files in os.walk(target_path):
-                dirs[:] = [d for d in dirs if not d.startswith('.') and d not in
-                           ["node_modules", ".venv", "dist", "build", ".git", "__pycache__"]]
-                for file in files:
-                    if file.lower().endswith(('.py', '.md', '.json', '.js', '.ts', '.html',
-                                              '.css', '.sql', '.rs', '.go', '.c', '.cpp',
-                                              '.h', '.hpp', '.java', '.cs', '.php', '.rb',
-                                              '.swift', '.kt')):
-                        fp = os.path.join(root, file)
-                        try:
-                            with open(fp, 'r', encoding='utf-8') as f:
-                                raw_content += f.read() + "\n"
-                        except Exception:
-                            continue
-        except Exception:
-            pass
-
-        context_content = json.dumps(context, ensure_ascii=False, default=str)
-        raw_tokens = count_tokens(raw_content) if raw_content else context.get("metrics", {}).get("raw_bytes", 0) // 4
-        context_tokens = count_tokens(context_content)
-        saved_tokens = raw_tokens - context_tokens
+        # Use byte metrics; avoid full-tree second pass for token counting.
+        raw_tokens = estimate_tokens_from_bytes(context.get("metrics", {}).get("raw_bytes", 0))
+        context_tokens = estimate_tokens_from_bytes(context.get("metrics", {}).get("context_bytes", 0))
+        saved_tokens = max(0, raw_tokens - context_tokens)
         savings_pct = (saved_tokens / raw_tokens * 100) if raw_tokens > 0 else 0
 
         context.setdefault("metrics", {})
@@ -249,11 +174,9 @@ class BBCCLI:
         m = context.get("metrics", {})
 
         if not silent:
-            print(f"\n{'='*70}")
-            print(f">>> BBC INCREMENTAL ANALYSIS COMPLETE ({mode.upper()})")
-            print(f"{'='*70}")
             files_scanned = m.get('files_scanned', 0)
-            print(f"[{'#'*30}] 100% ({files_scanned:,}) | {bbc_time:.2f}s")
+            print(f"\n[BBC] Incremental analysis complete ({mode.upper()})")
+            print(f"[BBC] Files scanned: {files_scanned:,} | Time: {bbc_time:.2f}s")
 
             if mode == "incremental":
                 print(f"[INCR] +{inc_info.get('added', 0)} added | ~{inc_info.get('changed', 0)} changed | -{inc_info.get('removed', 0)} removed")
@@ -263,10 +186,7 @@ class BBCCLI:
             else:
                 print(f"[FULL] First run — full analysis performed.")
 
-            print(f"[INFO] Source:{raw_tokens:,} tokens -> Context:{context_tokens:,} tokens | Compression:{savings_pct:.1f}%")
-            print(f"{'='*70}")
-            print(f"\n[OK] BBC Context Secured: {os.path.abspath(output_file)}")
-            print(f"{'='*70}\n")
+            print(f"[BBC] Context: {os.path.abspath(output_file)}\n")
 
 
 def _is_context_stale(project_root: str, context_path: str) -> bool:
@@ -635,7 +555,7 @@ def main():
                                 help="Output raw JSON to stdout")
 
     # pack command - Semantic Packer
-    pack_parser = subparsers.add_parser("pack", help="Semantically compress context for minimal token usage")
+    pack_parser = subparsers.add_parser("pack", help="Semantically compress context for minimal context size")
     pack_parser.add_argument("--context", default=None,
                              help="Path to bbc_context.json or compiled context (default: auto-detect)")
     pack_parser.add_argument("--aggressive", action="store_true",
@@ -644,11 +564,6 @@ def main():
                              help="Output path (default: .bbc/packed_context.json)")
     pack_parser.add_argument("--json", action="store_true",
                              help="Output raw JSON to stdout")
-
-    # telemetry command - Feedback Dashboard
-    telemetry_parser = subparsers.add_parser("telemetry", help="Show BBC performance telemetry dashboard")
-    telemetry_parser.add_argument("--json", action="store_true", help="Output raw JSON")
-    telemetry_parser.add_argument("--limit", type=int, default=10, help="Number of recent commands to show")
 
     # clean command
     clean_parser = subparsers.add_parser("clean", help="Clean temporary files and caches")
@@ -851,41 +766,6 @@ def main():
             print(f"  Confidence:     {conf_info.get('value', 'N/A')}  [{conf_info.get('state', 'N/A')}]")
         print(f"\n  VERDICT: {report['verdict_icon']} {report['verdict']}")
         print(f"{'='*60}")
-    elif args.command == "telemetry":
-        from bbc_core.telemetry import get_telemetry
-        tele = get_telemetry()
-        summary = tele.generate_summary()
-
-        if getattr(args, "json", False):
-            print(json.dumps(summary, indent=2, ensure_ascii=False))
-        else:
-            print(f"\n{'='*60}")
-            print(f" 📊 BBC FEEDBACK TELEMETRY DASHBOARD")
-            print(f"{'='*60}")
-            print(f"  Total Commands:    {summary['total_commands']}")
-            print(f"  Total Duration:    {summary['total_duration_sec']}s")
-            print(f"  Total Tokens Saved:{summary['total_tokens_saved']:,}")
-            print(f"  Files Processed:   {summary.get('total_files_processed', 0):,}")
-            print(f"  Success Rate:      {summary.get('success_rate', 0)}%")
-
-            cmd_stats = summary.get("commands", {})
-            if cmd_stats:
-                print(f"\n{'─'*60}")
-                print(f"  Command Breakdown:")
-                for cmd, stats in sorted(cmd_stats.items(), key=lambda x: x[1]["count"], reverse=True):
-                    print(f"    {cmd:20s}  {stats['count']:3d}x  avg {stats['avg_sec']:.2f}s  saved {stats['tokens_saved']:,} tokens")
-
-            recent = summary.get("recent", [])
-            limit = getattr(args, "limit", 10)
-            if recent:
-                print(f"\n{'─'*60}")
-                print(f"  Recent Commands (last {min(limit, len(recent))}):")
-                for r in recent[-limit:]:
-                    icon = "✓" if r.get("success", True) else "✗"
-                    print(f"    {icon} {r['ts']}  {r['command']:15s}  {r['duration']:.2f}s  saved {r['tokens_saved']:,}")
-
-            print(f"{'='*60}\n")
-
     elif args.command == "pack":
         ctx_path = getattr(args, "context", None)
         if not ctx_path:
@@ -973,9 +853,9 @@ def main():
             print(f"  Files:      {tc.get('files_included', 0)}/{tc.get('files_total', 0)} ({tc.get('file_reduction_pct', 0)}% reduction)")
             print(f"  Lines:      {m.get('code_lines', 0):,} code lines included")
             print(f"{'─'*60}")
-            print(f"  Full ctx:   ~{m.get('full_context_tokens_est', 0):,} tokens")
-            print(f"  Compiled:   ~{m.get('compiled_tokens_est', 0):,} tokens")
-            print(f"  Savings:    {m.get('task_savings_pct', 0)}% token reduction")
+            print(f"  Full ctx estimate:    ~{m.get('full_context_tokens_est', 0):,}")
+            print(f"  Compiled estimate:    ~{m.get('compiled_tokens_est', 0):,}")
+            print(f"  Reduction:            {m.get('task_savings_pct', 0)}%")
             print(f"{'─'*60}")
 
             # Show included files

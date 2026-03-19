@@ -660,7 +660,6 @@ Using BBC context is FASTER and MORE ACCURATE than scanning files yourself.
 - BBC context includes HMPU-compressed token-optimized project structure
 - It contains verified symbol relationships (classes, functions, imports, call graphs)
 - It has integrity checksums — if you use symbols not in the context, you risk hallucination
-- Using BBC context reduces your token consumption by {savings_pct}%
 - The project has been analyzed: {file_count} files, status: {status}
 
 ## RULES (MANDATORY — enforcement: {enforcement})
@@ -678,7 +677,6 @@ If any step fails: STOP and report to user
 ## PROJECT SNAPSHOT
 - Status: {status}
 - Files: {file_count}
-- Token Savings: {savings_pct}%
 - Freshness: {freshness_str}
 - Enforcement: {enforcement}
 - Fail Policy: {fail_policy}

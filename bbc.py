@@ -32,38 +32,6 @@ def _update_context_freshness(ctx_file: str, fresh: bool) -> None:
         pass
 
 
-def _print_transaction_report(project_path: str, source: str) -> None:
-    """Print BBC token savings / aura report after a completed operation."""
-    try:
-        from bbc_core.config import BBCConfig
-
-        project_resolved = str(Path(project_path).resolve())
-        ctx_file = BBCConfig.get_context_path(project_resolved)
-
-        if os.path.exists(ctx_file):
-            try:
-                with open(ctx_file, "r", encoding="utf-8") as f:
-                    ctx = json.load(f)
-                ctx.setdefault("metrics", {})
-                ctx["metrics"]["unified_status"] = "COMPLETED"
-                ctx["metrics"]["unified_source"] = source
-                ctx["metrics"]["unified_updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
-                with open(ctx_file, "w", encoding="utf-8") as f:
-                    json.dump(ctx, f, indent=2, ensure_ascii=False)
-            except Exception:
-                pass
-
-        old_argv = sys.argv[:]
-        try:
-            sys.argv = ["run_bbc", source, project_resolved]
-            from run_bbc import print_transaction_report
-            print_transaction_report()
-        finally:
-            sys.argv = old_argv
-    except Exception as e:
-        print(f"[BBC] Report error: {e}")
-
-
 class BBCCLI:
     """BBC Command Line Interface v8.3"""
 
@@ -135,14 +103,14 @@ class BBCCLI:
                 except Exception as e:
                     print(f"[WARN] Could not start daemon automatically: {e}")
             
-            # Start IDE terminal watch (foreground) — shows HMPU report after each AI operation
+            # Start IDE terminal watch (foreground)
             self._watch_and_report(project_resolved)
         else:
             print(f"[BBC] Initialization failed.")
             sys.exit(1)
 
     def _watch_and_report(self, project_path: str):
-        """Watch .bbc/last_activity.json and print HMPU report after each AI operation in IDE terminal"""
+        """Watch .bbc/last_activity.json and print concise activity notifications."""
         activity_file = Path(project_path) / ".bbc" / "last_activity.json"
         print(f"[BBC] IDE Terminal Watch active. Monitoring AI operations...")
         print(f"[BBC] Press Ctrl+C to stop watching.\n")
@@ -163,10 +131,9 @@ class BBCCLI:
                             last_epoch = current_epoch
                             quiet_since = time.time()
                     
-                    # If we have pending activity and enough quiet time passed, print report
+                    # If we have pending activity and enough quiet time passed, print summary.
                     if quiet_since and (time.time() - quiet_since) >= DEBOUNCE_SECONDS:
                         quiet_since = None
-                        # Re-read activity info for display
                         try:
                             with open(activity_file, "r", encoding="utf-8") as f:
                                 data = json.load(f)
@@ -174,14 +141,6 @@ class BBCCLI:
                             print(f"\n[BBC] Activity detected: {changed_file}")
                         except Exception:
                             pass
-                        
-                        # Print HMPU transaction report
-                        try:
-                            sys.argv = ["run_bbc", "analyze", project_path]
-                            from run_bbc import print_transaction_report
-                            print_transaction_report()
-                        except Exception as e:
-                            print(f"[BBC] Report error: {e}")
                 
                 except (json.JSONDecodeError, PermissionError):
                     pass
@@ -191,20 +150,12 @@ class BBCCLI:
             print(f"\n[BBC] Watch stopped.")
 
     def watch(self, project_path: str = "."):
-        """Watch mode - monitor AI operations and print HMPU reports in IDE terminal"""
+        """Watch mode - monitor AI operations in IDE terminal."""
         project_resolved = str(Path(project_path).resolve())
         ctx_file = Path(project_resolved) / ".bbc" / "bbc_context.json"
         if not ctx_file.exists():
             print(f"[BBC] Project not initialized. Run 'bbc start' first.")
             sys.exit(1)
-        
-        # Print initial report
-        try:
-            sys.argv = ["run_bbc", "analyze", project_resolved]
-            from run_bbc import print_transaction_report
-            print_transaction_report()
-        except Exception:
-            pass
         
         self._watch_and_report(project_resolved)
 
@@ -397,7 +348,7 @@ def main():
     install_parser.add_argument("--force", "-f", action="store_true", help="Force fresh install")
 
     # Watch (IDE Terminal Monitor)
-    watch_parser = subparsers.add_parser("watch", help="Watch AI operations and show HMPU reports in IDE terminal")
+    watch_parser = subparsers.add_parser("watch", help="Watch AI operations and show activity in IDE terminal")
     watch_parser.add_argument("path", nargs="?", default=".", help="Project path")
 
     stop_parser = subparsers.add_parser("stop", help="Stop BBC Daemon")
@@ -437,7 +388,7 @@ def main():
     hooks_parser.add_argument("--remove", action="store_true", help="Remove BBC hooks")
 
     # Pack (Semantic Packer)
-    pack_parser = subparsers.add_parser("pack", help="Semantically compress context for minimal token usage")
+    pack_parser = subparsers.add_parser("pack", help="Semantically compress context for minimal context size")
     pack_parser.add_argument("--path", default=".", help="Project path (default: current directory)")
     pack_parser.add_argument("--aggressive", action="store_true", help="Deeper compression, removes dep graph")
     pack_parser.add_argument("--out", default=None, help="Output path for packed context")
@@ -454,17 +405,8 @@ def main():
     compile_parser.add_argument("--out", default=None, help="Output path for compiled context")
     compile_parser.add_argument("--json", action="store_true", help="Output raw JSON to stdout")
 
-    # Telemetry (Feedback Dashboard)
-    telemetry_parser = subparsers.add_parser("telemetry", help="Show BBC performance telemetry dashboard")
-    telemetry_parser.add_argument("--json", action="store_true", help="Output raw JSON")
-    telemetry_parser.add_argument("--limit", type=int, default=10, help="Number of recent commands")
-
     args = parser.parse_args()
     cli = BBCCLI()
-
-    # --- Telemetry: start timer for all commands ---
-    _tele_start = time.time()
-    _tele_command = args.command or "help"
 
     if args.command == "start":
         cli.start(args.path, args.background, args.force)
@@ -572,7 +514,6 @@ def main():
             print(f"\n[BBC] Injection complete — {len(created)} target(s):")
             for label, path in created.items():
                 print(f"  [{label}] {path}")
-            _print_transaction_report(project_resolved, "inject")
         else:
             print(f"[BBC] Context not found: {ctx_file}")
             print(f"[BBC] Run 'bbc analyze {args.path}' first to generate the context.")
@@ -609,13 +550,6 @@ def main():
             print("    Run 'bbc start' to enable live defense.")
             
         print("="*40 + "\n")
-    elif args.command == "telemetry":
-        telemetry_cmd = ["telemetry"]
-        if getattr(args, "json", False):
-            telemetry_cmd.append("--json")
-        if getattr(args, "limit", 10) != 10:
-            telemetry_cmd.extend(["--limit", str(args.limit)])
-        cli.run_command(telemetry_cmd)
     elif args.command == "pack":
         project_resolved = str(Path(getattr(args, 'path', '.')).resolve())
         ctx_file = str(Path(project_resolved) / ".bbc" / "bbc_context.json")
@@ -696,7 +630,6 @@ def main():
             print(f"  Composite Risk:  {cr['value']}  [{cr['state']}]")
             print(f"\n  VERDICT: {report['verdict_icon']} {report['verdict']}")
             print(f"{'='*60}")
-            _print_transaction_report(project_resolved, "impact")
     elif args.command == "patch":
         project_resolved = str(Path(args.path).resolve())
         ctx_file = str(Path(project_resolved) / ".bbc" / "bbc_context.json")
@@ -740,7 +673,6 @@ def main():
             print(f"{'='*60}")
             if dry_run and report["total_patches"] > 0:
                 print(f"\n  💡 To apply safe patches: bbc patch {args.path} --apply")
-            _print_transaction_report(project_resolved, "patch")
     elif args.command == "hooks":
         from bbc_core.git_hooks import install_hooks, remove_hooks
         project_resolved = str(Path(args.path).resolve())
@@ -757,48 +689,11 @@ def main():
                 for h in result["installed"]:
                     print(f"[BBC] Hook: {h}")
                 print(f"[BBC] Hooks installed in {result['hooks_dir']}")
-                _print_transaction_report(project_resolved, "hooks")
             else:
                 for e in result.get("errors", []):
                     print(f"[BBC] Error: {e}")
     else:
         parser.print_help()
-
-    # --- Telemetry: record command execution ---
-    if _tele_command and _tele_command not in ("help", "telemetry", None):
-        try:
-            import json as _tele_json
-            from bbc_core.telemetry import get_telemetry
-            _tele_duration = time.time() - _tele_start
-            _tele = get_telemetry()
-            _tele_tokens = 0
-            _tele_files = 0
-            _tele_pct = 0.0
-            try:
-                _p = str(Path(getattr(args, 'path', '.')).resolve())
-                _candidates = [
-                    str(Path(_p) / ".bbc" / "bbc_context.json"),
-                    str(Path(".").resolve() / ".bbc" / "bbc_context.json"),
-                ]
-                for _cf in _candidates:
-                    if os.path.exists(_cf):
-                        with open(_cf, "r", encoding="utf-8") as _f:
-                            _cm = _tele_json.load(_f).get("metrics", {})
-                        _tele_tokens = int(_cm.get("unified_tokens_saved", 0) or 0)
-                        _tele_files = int(_cm.get("files_scanned", 0) or 0)
-                        _tele_pct = float(_cm.get("unified_savings_pct", 0.0) or 0)
-                        break
-            except Exception:
-                pass
-            _tele.log_command(
-                command=_tele_command,
-                duration_sec=_tele_duration,
-                files=_tele_files,
-                tokens_saved=_tele_tokens,
-                savings_pct=_tele_pct,
-            )
-        except Exception:
-            pass
 
 if __name__ == "__main__":
     main()

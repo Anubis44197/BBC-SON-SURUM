@@ -17,37 +17,20 @@ if sys.platform == 'win32':
         sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer)
 # -----------------------------
 
-def load_token_stats(project_path):
+def load_context_status(project_path):
     try:
         ctx_path = os.path.join(project_path, '.bbc', 'bbc_context.json')
         if os.path.exists(ctx_path):
             with open(ctx_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 metrics = data.get('metrics', {})
-                unified_used = metrics.get('unified_tokens_used')
-                unified_saved = metrics.get('unified_tokens_saved')
-                unified_normal = metrics.get('unified_tokens_normal')
                 status = metrics.get('unified_status', 'IDLE')
                 source = metrics.get('unified_source', 'analyze')
-
-                if unified_used is not None and unified_saved is not None:
-                    savings = int(unified_saved)
-                    normal = int(unified_normal) if unified_normal is not None else int(unified_used) + int(unified_saved)
-                    percent = metrics.get('unified_savings_pct')
-                    if percent is None:
-                        percent = (savings / normal * 100) if normal > 0 else 0.0
-                    return savings, float(percent), status, source
-
-                raw = metrics.get('raw_tokens')
-                optimized = metrics.get('context_tokens')
-                if raw is None or optimized is None:
-                    return 0, 0.0, status, source
-                savings = int(raw) - int(optimized)
-                percent = metrics.get('savings_pct', 0.0)
-                return savings, float(percent), status, source
+                files_scanned = int(metrics.get('files_scanned', 0) or 0)
+                return status, source, files_scanned
     except Exception:
         pass
-    return 0, 0.0, 'IDLE', 'none'
+    return 'IDLE', 'none', 0
 
 def main(project_path, loop: bool = False):
     # BBC home directory (where run_bbc.py lives)
@@ -60,16 +43,16 @@ def main(project_path, loop: bool = False):
     while True:
         print("")
         print("=" * 62)
-        savings, savings_pct, status, source = load_token_stats(project_path)
+        status, source, files_scanned = load_context_status(project_path)
 
         print("  BBC GLOBAL - PROJECT INTERFACE")
         print("=" * 62)
         print(f"  [STATUS]  {status}")
         print(f"  [SOURCE]  {source}")
-        if savings > 0:
-            print(f"  [COMPRESS] {savings:,} tokens ({savings_pct:.1f}%) reduction")
+        if files_scanned > 0:
+            print(f"  [FILES]   {files_scanned:,} scanned")
         else:
-            print(f"  [COMPRESS] N/A (run Analyze first)")
+            print("  [FILES]   N/A (run Analyze first)")
         print(f"  [TARGET]  {project_path}")
         print("-" * 62)
         print("  [1] ANALYZE   (Re-analyze project)")

@@ -87,6 +87,7 @@ class BBCAutoDetector:
             
             # Step 1: Analyze project and create bbc_context.json
             print(f"[BBC AUTO] Step 1/3: Analyzing project...")
+            print("[BBC AUTO] Analysis output will stream below. Duration depends on file count and complexity.")
             run_bbc = bbc_home / "run_bbc.py"
             if not run_bbc.exists():
                 print(f"[BBC AUTO] run_bbc.py not found at {run_bbc}")
@@ -94,12 +95,11 @@ class BBCAutoDetector:
             
             analyze_timeout = self._get_analyze_timeout_seconds()
             result = subprocess.run(
-                [sys.executable, str(run_bbc), "analyze", str(project_path), "--silent"],
-                capture_output=True, text=True, timeout=analyze_timeout
+                [sys.executable, str(run_bbc), "analyze", str(project_path)],
+                timeout=analyze_timeout
             )
             if result.returncode != 0:
-                err = (result.stderr or "").strip()[:200]
-                print(f"[BBC AUTO] Analysis failed: {err}")
+                print("[BBC AUTO] Analysis failed.")
                 return False
             print(f"[BBC AUTO] Step 1/3: Analysis complete")
             
@@ -132,8 +132,8 @@ class BBCAutoDetector:
                 
         except subprocess.TimeoutExpired:
             print(
-                "[BBC AUTO] Analysis timed out. "
-                "Increase BBC_ANALYZE_TIMEOUT_SECONDS (e.g. 1800 for 30 minutes)."
+                "[BBC AUTO] Analysis reached timeout. "
+                "Increase BBC_ANALYZE_TIMEOUT_SECONDS (e.g. 3600 for 60 minutes)."
             )
             return False
         except Exception as e:
@@ -142,11 +142,11 @@ class BBCAutoDetector:
 
     def _get_analyze_timeout_seconds(self) -> int:
         """Read analyze timeout from env with a safe, large default for big repositories."""
-        raw_value = os.environ.get("BBC_ANALYZE_TIMEOUT_SECONDS", "900").strip()
+        raw_value = os.environ.get("BBC_ANALYZE_TIMEOUT_SECONDS", "3600").strip()
         try:
             timeout = int(raw_value)
         except ValueError:
-            timeout = 900
+            timeout = 3600
         return max(60, timeout)
     
     def start_bbc_monitoring(self, project_path: Path):

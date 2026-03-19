@@ -24,6 +24,22 @@ class BBCNativeAdapter:
         """Computes SHA-256 hash of content for hallucination detection."""
         return hashlib.sha256(content.encode('utf-8')).hexdigest()
 
+    def _summarize_hierarchy(self, files: list):
+        """Keep only a preview list to avoid bloated context payloads on huge repos."""
+        raw_limit = os.environ.get("BBC_HIERARCHY_PREVIEW_LIMIT", "200").strip()
+        try:
+            preview_limit = int(raw_limit)
+        except ValueError:
+            preview_limit = 200
+        preview_limit = max(0, min(preview_limit, 5000))
+
+        sorted_files = sorted(files)
+        if preview_limit == 0:
+            return [], True, len(sorted_files), preview_limit
+        if len(sorted_files) <= preview_limit:
+            return sorted_files, False, len(sorted_files), preview_limit
+        return sorted_files[:preview_limit], True, len(sorted_files), preview_limit
+
     async def analyze_project(self, target_root, output_file=None, silent: bool = False):
         root_to_scan = os.path.abspath(target_root) if target_root else os.getcwd()
         output_file_abs = os.path.abspath(output_file) if output_file else None
@@ -116,6 +132,8 @@ class BBCNativeAdapter:
         import time as _time
         _generated_at = _time.strftime("%Y-%m-%dT%H:%M:%S")
 
+        hierarchy_preview, hierarchy_truncated, hierarchy_total, preview_limit = self._summarize_hierarchy(files_found)
+
         context_json = {
             "bbc_instructions_version": "1.0",
             "context_schema_version": "8.5",
@@ -126,7 +144,10 @@ class BBCNativeAdapter:
             "project_skeleton": {
                 "root": root_to_scan,
                 "file_count": len(files_found),
-                "hierarchy": files_found
+                "hierarchy": hierarchy_preview,
+                "hierarchy_total": hierarchy_total,
+                "hierarchy_truncated": hierarchy_truncated,
+                "hierarchy_preview_limit": preview_limit,
             },
             "code_structure": project_recipes,
             "dependency_graph": dependency_graph,
@@ -352,6 +373,8 @@ class BBCNativeAdapter:
             total_lines += stats.get("lines", 0)
             total_code_lines += stats.get("code_lines", 0)
 
+        hierarchy_preview, hierarchy_truncated, hierarchy_total, preview_limit = self._summarize_hierarchy(all_files)
+
         context_json = {
             "bbc_instructions_version": "1.0",
             "context_schema_version": "8.5",
@@ -362,7 +385,10 @@ class BBCNativeAdapter:
             "project_skeleton": {
                 "root": root_to_scan,
                 "file_count": len(all_files),
-                "hierarchy": sorted(all_files)
+                "hierarchy": hierarchy_preview,
+                "hierarchy_total": hierarchy_total,
+                "hierarchy_truncated": hierarchy_truncated,
+                "hierarchy_preview_limit": preview_limit,
             },
             "code_structure": all_recipes,
             "dependency_graph": dependency_graph,

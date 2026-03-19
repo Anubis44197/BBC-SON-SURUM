@@ -1,6 +1,7 @@
 import json
 import time
 import hashlib
+import os
 from pathlib import Path
 from .bbc_scalar import BBCScalar, STABLE, WEAK, SLEEPING, DEGENERATE, BBCEncoder
 
@@ -298,7 +299,8 @@ class HMPUIndexer:
         with open(str(base_path), "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, cls=BBCEncoder)
 
-        print(f"[FINALIZE] Pure Math Index saved to {base_path} ({len(self.vector_db)} vectors)")
+        if os.environ.get("BBC_VERBOSE_INDEX", "0").strip().lower() in {"1", "true", "yes", "on"}:
+            print(f"[FINALIZE] Pure Math Index saved to {base_path} ({len(self.vector_db)} vectors)")
         return str(base_path)
 
     def load_index(self, filepath: str):
@@ -313,7 +315,8 @@ class HMPUIndexer:
                     entry["hash"] = int(entry["v"])
                 self.vector_db.append(entry)
             self.index_type = data.get("type", data.get("index_type", "PURE_BINARY_128"))
-            print(f"[LOAD] Loaded {len(self.vector_db)} vectors from {filepath}")
+            if os.environ.get("BBC_VERBOSE_INDEX", "0").strip().lower() in {"1", "true", "yes", "on"}:
+                print(f"[LOAD] Loaded {len(self.vector_db)} vectors from {filepath}")
 
     def get_stats(self):
         """Return index statistics."""

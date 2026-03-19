@@ -78,7 +78,8 @@ class BBCVerifier:
                 all_symbols.update(self._extract_symbols(content))
         
         self.knowledge_map["global_symbols"] = all_symbols
-        print(f"[*] Knowledge Base Loaded: {len(all_symbols)} known symbols (Ultimate Polyglot Mode).")
+        if os.environ.get("BBC_VERIFIER_VERBOSE", "0").strip().lower() in {"1", "true", "yes", "on"}:
+            print(f"[*] Knowledge Base Loaded: {len(all_symbols)} known symbols (Ultimate Polyglot Mode).")
 
     def verify_syntax_only(self):
         """

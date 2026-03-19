@@ -22,6 +22,13 @@ class BBCMigratorEngine:
         
         skeleton = self.recipe.get("project_skeleton", {}).get("hierarchy", [])
         structures = self.recipe.get("code_structure", [])
+
+        # Fallback to paths from code_structure when hierarchy is summarized/truncated.
+        if not skeleton or len(skeleton) < len(structures):
+            skeleton = [
+                s.get("path", "") for s in structures
+                if isinstance(s, dict) and s.get("path")
+            ]
         
         # Mapping filename to index for fast lookup
         file_to_idx = {f: i for i, f in enumerate(skeleton)}
@@ -80,7 +87,8 @@ class BBCMigratorEngine:
         return stack
 
     def plan_migration(self, target_lang: str):
-        file_count = len(self.recipe.get('project_skeleton', {}).get('hierarchy', []))
+        skeleton = self.recipe.get('project_skeleton', {})
+        file_count = int(skeleton.get('file_count', len(skeleton.get('hierarchy', []))))
         print(f"[*] Building Dependency Graph for {file_count} files...")
         
         try:
