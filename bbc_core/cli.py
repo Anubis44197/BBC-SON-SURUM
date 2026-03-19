@@ -298,6 +298,10 @@ def audit_bbc_traces(project_path: str) -> Dict[str, Any]:
         "project_root": project_root,
         "exists": os.path.isdir(project_root),
         "paths": {},
+        "context_summary": {},
+        "scan_report": {},
+        "watch_health": {},
+        "warnings": [],
     }
 
     # v8.3 Core artifacts (must exist for proper operation)
@@ -333,6 +337,49 @@ def audit_bbc_traces(project_path: str) -> Dict[str, Any]:
             "is_dir": os.path.isdir(p),
             "category": "legacy",
         }
+
+    # Include transparent context and watchdog health details when available.
+    ctx_path = BBCConfig.get_context_path(project_root)
+    cfg_path = os.path.join(project_root, ".bbc", "config.json")
+
+    if os.path.exists(ctx_path):
+        try:
+            with open(ctx_path, "r", encoding="utf-8") as f:
+                ctx = json.load(f)
+
+            metrics = ctx.get("metrics", {}) if isinstance(ctx.get("metrics", {}), dict) else {}
+            symbol = ctx.get("symbol_analysis", {}) if isinstance(ctx.get("symbol_analysis", {}), dict) else {}
+            skeleton = ctx.get("project_skeleton", {}) if isinstance(ctx.get("project_skeleton", {}), dict) else {}
+
+            report["context_summary"] = {
+                "generated_at": ctx.get("generated_at"),
+                "constraint_status": ctx.get("constraint_status"),
+                "context_fresh": ctx.get("context_fresh"),
+                "files_scanned": metrics.get("files_scanned", skeleton.get("file_count", 0)),
+                "hierarchy_total": skeleton.get("hierarchy_total", skeleton.get("file_count", 0)),
+                "hierarchy_truncated": skeleton.get("hierarchy_truncated", False),
+                "total_lines": metrics.get("total_lines", 0),
+                "code_lines": metrics.get("code_lines", 0),
+                "raw_bytes": metrics.get("raw_bytes", 0),
+                "context_bytes": metrics.get("context_bytes", 0),
+                "compression_ratio": metrics.get("compression_ratio", 0),
+                "total_symbols": symbol.get("total_symbols", 0),
+                "total_calls": symbol.get("total_calls", 0),
+            }
+
+            if isinstance(ctx.get("scan_report", {}), dict):
+                report["scan_report"] = ctx.get("scan_report", {})
+        except Exception as e:
+            report["warnings"].append(f"context_read_error: {e}")
+
+    if os.path.exists(cfg_path):
+        try:
+            with open(cfg_path, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+            if isinstance(cfg.get("watch_health", {}), dict):
+                report["watch_health"] = cfg.get("watch_health", {})
+        except Exception as e:
+            report["warnings"].append(f"config_read_error: {e}")
 
     return report
 
@@ -1236,6 +1283,41 @@ def main():
                 continue
             status = "FOUND" if meta.get("exists") else "N/A"
             print(f"  [{status:7}] {name}")
+
+        context_summary = report.get("context_summary", {})
+        if context_summary:
+            print(f"{'-'*70}")
+            print("  Context Summary:")
+            print(f"  [INFO   ] generated_at:      {context_summary.get('generated_at', 'n/a')}")
+            print(f"  [INFO   ] constraint_status: {context_summary.get('constraint_status', 'n/a')}")
+            print(f"  [INFO   ] context_fresh:     {context_summary.get('context_fresh', 'n/a')}")
+            print(f"  [INFO   ] files_scanned:     {context_summary.get('files_scanned', 0)}")
+            print(f"  [INFO   ] total_symbols:     {context_summary.get('total_symbols', 0)}")
+            print(f"  [INFO   ] total_calls:       {context_summary.get('total_calls', 0)}")
+
+        scan_report = report.get("scan_report", {})
+        if scan_report:
+            print(f"{'-'*70}")
+            print("  Scan Report:")
+            print(f"  [INFO   ] files_discovered:  {scan_report.get('files_discovered', scan_report.get('files_total', 'n/a'))}")
+            print(f"  [INFO   ] files_scanned:     {scan_report.get('files_scanned', scan_report.get('files_reanalyzed', 'n/a'))}")
+            print(f"  [INFO   ] skipped_non_source:{scan_report.get('files_skipped_non_source', 'n/a')}")
+            print(f"  [INFO   ] excluded_dirs:     {len(scan_report.get('excluded_dirs', []))}")
+
+        watch_health = report.get("watch_health", {})
+        if watch_health:
+            print(f"{'-'*70}")
+            print("  Watch Health:")
+            print(f"  [INFO   ] freshness_errors:  {watch_health.get('freshness_error_count', 0)}")
+            print(f"  [INFO   ] last_ok_at:        {watch_health.get('last_ok_at', 'n/a')}")
+            print(f"  [INFO   ] last_error_at:     {watch_health.get('last_error_at', 'n/a')}")
+
+        warnings = report.get("warnings", [])
+        if warnings:
+            print(f"{'-'*70}")
+            print("  Warnings:")
+            for w in warnings:
+                print(f"  [WARN   ] {w}")
         print(f"{'='*70}\n")
 
     elif args.command == "adaptive":
