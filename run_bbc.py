@@ -45,6 +45,36 @@ def run_post_analysis_checks(project_path=".", emit_console: bool = False):
 
         ctx_path = BBCConfig.get_context_path(project_path)
         if os.path.exists(ctx_path):
+            # Large repositories can make syntax-only verify expensive; skip unless forced.
+            skip_threshold_raw = os.environ.get("BBC_POST_VERIFY_MAX_FILES", "0").strip()
+            try:
+                skip_threshold = max(0, int(skip_threshold_raw))
+            except Exception:
+                skip_threshold = 3000
+
+            force_post_verify = _env_flag("BBC_FORCE_POST_VERIFY", default=False)
+            if skip_threshold > 0 and not force_post_verify:
+                try:
+                    with open(ctx_path, "r", encoding="utf-8") as f:
+                        _ctx_probe = json.load(f)
+                    files_scanned = int(_ctx_probe.get("metrics", {}).get("files_scanned", 0) or 0)
+                    if files_scanned > skip_threshold:
+                        _ctx_probe.setdefault("metrics", {})
+                        _ctx_probe["metrics"]["post_verify_checked"] = False
+                        _ctx_probe["metrics"]["post_verify_skipped_reason"] = (
+                            f"large_repo:{files_scanned}>{skip_threshold}"
+                        )
+                        _ctx_probe["metrics"]["post_verify_updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+                        BBCConfig.atomic_write_json(ctx_path, _ctx_probe)
+                        if emit_console:
+                            print(
+                                f"\n[INFO] Post-verify skipped for large repo "
+                                f"({files_scanned} files > {skip_threshold})."
+                            )
+                        return
+                except Exception:
+                    pass
+
             verifier = BBCVerifier(ctx_path)
             errors = verifier.verify_syntax_only()
 

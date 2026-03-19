@@ -55,11 +55,27 @@ class BBCNativeAdapter:
         # Shared scan policy
         exts = BBCConfig.get_scan_extensions()
         forbidden_dirs = BBCConfig.get_forbidden_scan_dirs()
+        max_scan_files_raw = os.environ.get("BBC_MAX_SCAN_FILES", "").strip()
+        try:
+            max_scan_files = int(max_scan_files_raw) if max_scan_files_raw else int(BBCConfig.MAX_FILES)
+        except Exception:
+            max_scan_files = int(BBCConfig.MAX_FILES)
+        max_scan_files = max(1, max_scan_files)
+
+        enable_symbol_pipeline = os.environ.get("BBC_ENABLE_SYMBOL_PIPELINE", "1").strip().lower() in {"1", "true", "yes", "on"}
+        symbol_max_files_raw = os.environ.get("BBC_SYMBOL_MAX_FILES", "").strip()
+        try:
+            symbol_max_files = int(symbol_max_files_raw) if symbol_max_files_raw else max_scan_files
+        except Exception:
+            symbol_max_files = max_scan_files
+        symbol_max_files = max(1, symbol_max_files)
+
         comment_prefixes = ('#', '//', '/*', '*')
         skipped_dirs_count = 0
         skipped_non_source_files = 0
         skipped_output_file = 0
         discovered_total_files = 0
+        scan_limit_hit = False
         top_level_skip_counts = Counter()
         
         if not silent:
@@ -135,11 +151,12 @@ class BBCNativeAdapter:
                     except Exception: continue
                 else:
                     skipped_non_source_files += 1
-                if len(files_found) >= 100000:
+                if len(files_found) >= max_scan_files:
+                    scan_limit_hit = True
                     if not silent:
-                        print(f"[WARN] File limit reached (100,000). Remaining files skipped.")
+                        print(f"[WARN] File limit reached ({max_scan_files:,}). Remaining files skipped.")
                     break
-            if len(files_found) >= 100000: break
+            if len(files_found) >= max_scan_files: break
 
         if not silent:
             print(f"[*] Scan complete: {len(files_found)} files found.")
@@ -185,6 +202,8 @@ class BBCNativeAdapter:
         context_json["scan_report"] = {
             "source_extensions": list(exts),
             "excluded_dirs": sorted(forbidden_dirs),
+            "max_scan_files": max_scan_files,
+            "scan_limit_hit": scan_limit_hit,
             "files_discovered": discovered_total_files,
             "files_scanned": len(files_found),
             "files_skipped_non_source": skipped_non_source_files,
@@ -212,82 +231,88 @@ class BBCNativeAdapter:
         context_json["index_path"] = index_path
 
         # ─── SYMBOL PIPELINE (Opsiyonel — error verirse ana akisi bozmaz) ───
-        try:
-            from .symbol_extractor import SymbolExtractor
-            from .symbol_graph import SymbolGraphBuilder
-
-            if not silent:
-                print("[*] Symbol Pipeline: Extracting symbols...")
-
-            extractor = SymbolExtractor()
-            symbol_results = extractor.extract_from_directory(
-                root_to_scan, max_files=BBCConfig.MAX_FILES
-            )
-
-            if symbol_results:
-                # Sembol verilerini dict formatina cevir
-                symbols_data = [sr.to_dict() for sr in symbol_results]
-
-                # Kaynak files topla (only Python — AST call analysis for)
-                source_mapping = {}
-                for sr in symbol_results:
-                    fpath = os.path.join(root_to_scan, sr.file) if not os.path.isabs(sr.file) else sr.file
-                    if os.path.exists(fpath) and sr.language == "python":
-                        try:
-                            with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
-                                source_mapping[sr.file] = f.read()
-                        except Exception:
-                            pass
-
-                # Symbol Graph create
-                builder = SymbolGraphBuilder()
-                if source_mapping:
-                    graph = builder.build_with_source_mapping(symbols_data, source_mapping)
-                else:
-                    graph = builder.build_simple(symbols_data)
-
-                graph_data = graph.to_dict()
-                graph_stats = graph_data.get("graph_stats", {})
-
-                # Context'e symbol analysis sonuclarini ekle
-                context_json["symbol_analysis"] = {
-                    "total_symbols": graph_stats.get("total_symbols", len(symbols_data)),
-                    "total_calls": graph_stats.get("total_calls", 0),
-                    "internal_calls": graph_stats.get("internal_calls", 0),
-                    "external_calls": graph_stats.get("external_calls", 0),
-                    "files_with_symbols": len(symbol_results),
-                    "extractor_stats": extractor.get_stats(),
-                }
-
-                # Kritik symbols tespit et (en cok called ilk 20)
-                symbols_list = graph_data.get("symbols", [])
-                critical = sorted(
-                    symbols_list,
-                    key=lambda s: len(s.get("called_by", [])),
-                    reverse=True
-                )[:20]
-                context_json["symbol_analysis"]["critical_symbols"] = [
-                    {
-                        "symbol": s.get("symbol", ""),
-                        "type": s.get("type", ""),
-                        "file": s.get("file", ""),
-                        "called_by_count": len(s.get("called_by", [])),
-                    }
-                    for s in critical if s.get("called_by")
-                ]
+        if enable_symbol_pipeline:
+            try:
+                from .symbol_extractor import SymbolExtractor
+                from .symbol_graph import SymbolGraphBuilder
 
                 if not silent:
-                    sym_count = graph_stats.get("total_symbols", 0)
-                    call_count = graph_stats.get("total_calls", 0)
-                    crit_count = len(context_json["symbol_analysis"]["critical_symbols"])
-                    print(f"[*] Symbol Pipeline: {sym_count} symbols, {call_count} calls, {crit_count} critical")
+                    print("[*] Symbol Pipeline: Extracting symbols...")
 
-        except ImportError as e:
-            if not silent:
-                print(f"[WARN] Symbol Pipeline skipped (missing module): {e}")
-        except Exception as e:
-            if not silent:
-                print(f"[WARN] Symbol Pipeline error (non-critical): {e}")
+                extractor = SymbolExtractor()
+                symbol_results = extractor.extract_from_directory(
+                    root_to_scan, max_files=symbol_max_files
+                )
+
+                if symbol_results:
+                    # Sembol verilerini dict formatina cevir
+                    symbols_data = [sr.to_dict() for sr in symbol_results]
+
+                    # Kaynak files topla (only Python — AST call analysis for)
+                    source_mapping = {}
+                    for sr in symbol_results:
+                        fpath = os.path.join(root_to_scan, sr.file) if not os.path.isabs(sr.file) else sr.file
+                        if os.path.exists(fpath) and sr.language == "python":
+                            try:
+                                with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
+                                    source_mapping[sr.file] = f.read()
+                            except Exception:
+                                pass
+
+                    # Symbol Graph create
+                    builder = SymbolGraphBuilder()
+                    if source_mapping:
+                        graph = builder.build_with_source_mapping(symbols_data, source_mapping)
+                    else:
+                        graph = builder.build_simple(symbols_data)
+
+                    graph_data = graph.to_dict()
+                    graph_stats = graph_data.get("graph_stats", {})
+
+                    # Context'e symbol analysis sonuclarini ekle
+                    context_json["symbol_analysis"] = {
+                        "total_symbols": graph_stats.get("total_symbols", len(symbols_data)),
+                        "total_calls": graph_stats.get("total_calls", 0),
+                        "internal_calls": graph_stats.get("internal_calls", 0),
+                        "external_calls": graph_stats.get("external_calls", 0),
+                        "files_with_symbols": len(symbol_results),
+                        "extractor_stats": extractor.get_stats(),
+                    }
+
+                    # Kritik symbols tespit et (en cok called ilk 20)
+                    symbols_list = graph_data.get("symbols", [])
+                    critical = sorted(
+                        symbols_list,
+                        key=lambda s: len(s.get("called_by", [])),
+                        reverse=True
+                    )[:20]
+                    context_json["symbol_analysis"]["critical_symbols"] = [
+                        {
+                            "symbol": s.get("symbol", ""),
+                            "type": s.get("type", ""),
+                            "file": s.get("file", ""),
+                            "called_by_count": len(s.get("called_by", [])),
+                        }
+                        for s in critical if s.get("called_by")
+                    ]
+
+                    if not silent:
+                        sym_count = graph_stats.get("total_symbols", 0)
+                        call_count = graph_stats.get("total_calls", 0)
+                        crit_count = len(context_json["symbol_analysis"]["critical_symbols"])
+                        print(f"[*] Symbol Pipeline: {sym_count} symbols, {call_count} calls, {crit_count} critical")
+
+            except ImportError as e:
+                if not silent:
+                    print(f"[WARN] Symbol Pipeline skipped (missing module): {e}")
+            except Exception as e:
+                if not silent:
+                    print(f"[WARN] Symbol Pipeline error (non-critical): {e}")
+        else:
+            context_json["symbol_analysis"] = {
+                "enabled": False,
+                "reason": "disabled_by_default_set_BBC_ENABLE_SYMBOL_PIPELINE=1_to_enable"
+            }
 
         return context_json
 

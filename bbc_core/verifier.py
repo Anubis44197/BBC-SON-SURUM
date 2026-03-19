@@ -8,6 +8,7 @@ from collections import Counter
 from .attribution_tracer import AttributionTracer
 from .hmpu_quantizer import HMPUQuantizer
 from .bbc_scalar import BBCScalar, STABLE, WEAK, UNSTABLE, DEGENERATE, OmegaOperator, bbc_data_ingestion
+from .config import BBCConfig
 
 class BBCVerifier:
     """
@@ -91,17 +92,33 @@ class BBCVerifier:
             return []
 
         errors = []
+
+        excluded_dirs = BBCConfig.get_scan_excluded_dirs()
+        configured_exts = BBCConfig.get_scan_extensions()
+        syntax_exts = {
+            '.py', '.rs', '.c', '.cpp', '.h', '.hpp', '.java', '.cs',
+            '.js', '.ts', '.jsx', '.tsx', '.go', '.php', '.swift', '.kt',
+            '.rb', '.sql'
+        }
+        target_exts = syntax_exts.intersection(configured_exts)
         
         # Binary extensions to skip
         binary_exts = {'.png', '.jpg', '.jpeg', '.gif', '.ico', '.webp', '.ttf', '.woff', '.woff2', '.eot', '.pdf', '.zip', '.exe', '.dll', '.so', '.dylib', '.bin'}
         
         for root, dirs, files in os.walk(self.project_root):
-            dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ["node_modules", ".venv", "__pycache__", "target", "dist", "build", "vendor"]]
+            dirs[:] = [
+                d for d in dirs
+                if not d.startswith('.') and d.lower() not in excluded_dirs
+            ]
             
             for file in files:
                 full_path = os.path.join(root, file)
                 rel_path = os.path.relpath(full_path, self.project_root)
                 ext = os.path.splitext(file)[1].lower()
+
+                # Only inspect syntax-relevant source files.
+                if ext not in target_exts:
+                    continue
                 
                 # Skip binaries
                 if ext in binary_exts:
