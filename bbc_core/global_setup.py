@@ -1,16 +1,16 @@
 """
 BBC Global Setup — v8.3
-OS seviyesinde global IDE kuralları oluşturma.
+OS seviyesinde global IDE kurallari creation.
 
-bbc start çalıştığında otomatik olarak tetiklenir.
-Kullanıcının ek bir komut çalıştırmasına gerek yoktur.
+bbc start calistiginda otomatik olarak tetiklenir.
+Kullanicinin ek bir komut calistirmasina gerek yoktur.
 
 Windows: %APPDATA%\\BBC\\global_rules\\
 Linux/Mac: ~/.config/bbc/global_rules/
 
-Bu kurallar MÜŞTERİ projesine değil, OS seviyesinde config dizinine yazılır.
-Böylece henüz bbc start çalıştırılmamış projelerde bile
-IDE'ler BBC'nin temel kurallarını bilir.
+Bu kurallar MUSTERI projesine degil, OS seviyesinde config dizinine yazilir.
+Boylece henuz bbc start calistirilmamis projelerde bile
+IDE'ler BBC'nin temel kurallarini bilir.
 """
 import os
 import json
@@ -20,7 +20,7 @@ import pathlib
 
 def get_global_rules_dir() -> pathlib.Path:
     """
-    OS'a göre global BBC kural dizinini döndür.
+    OS'a gore global BBC kural dizinini return.
 
     Windows: %APPDATA%\\BBC\\global_rules
     macOS:   ~/.config/bbc/global_rules
@@ -37,7 +37,7 @@ def get_global_rules_dir() -> pathlib.Path:
 
 
 def is_setup_done() -> bool:
-    """Global kurulum zaten yapılmış mı kontrol et."""
+    """Global installation zaten yapilmis mi check et."""
     rules_dir = get_global_rules_dir()
     marker = rules_dir / ".bbc_global_setup_done"
     return marker.exists()
@@ -45,21 +45,21 @@ def is_setup_done() -> bool:
 
 def generate_rules(target_dir_str=None, force=False):
     """
-    OS seviyesinde global IDE kural dosyalarını oluştur.
+    OS seviyesinde global IDE kural files create.
 
     Args:
-        target_dir_str: Hedef dizin (None ise OS'a göre otomatik belirlenir)
-        force: True ise zaten kurulmuş olsa bile yeniden oluştur
+        target_dir_str: Hedef dizin (None ise OS'a gore otomatik belirlenir)
+        force: True ise zaten kurulmus olsa bile yeniden create
 
     Returns:
-        str: Oluşturulan dizin yolu veya None (zaten kuruluysa)
+        str: Olusturulan dizin yolu veya None (zaten kuruluysa)
     """
     if target_dir_str is None:
         target_dir = get_global_rules_dir()
     else:
         target_dir = pathlib.Path(target_dir_str)
 
-    # Zaten kurulmuşsa atla (force=True değilse)
+    # Zaten kurulmussa atla (force=True degilse)
     marker = target_dir / ".bbc_global_setup_done"
     if marker.exists() and not force:
         return None
@@ -84,7 +84,7 @@ def generate_rules(target_dir_str=None, force=False):
         json.dumps(ai_context, indent=2, ensure_ascii=False), encoding="utf-8"
     )
 
-    # 2. Cursor Rules — Cursor IDE global kuralları
+    # 2. Cursor Rules — Cursor IDE global kurallari
     cursor_rules = """# BBC Global Rules — Cursor IDE
 # These rules apply to ALL projects when BBC is active.
 
@@ -102,7 +102,7 @@ def generate_rules(target_dir_str=None, force=False):
 """
     (target_dir / ".cursorrules").write_text(cursor_rules, encoding="utf-8")
 
-    # 3. Windsurf Rules — Windsurf IDE global kuralları
+    # 3. Windsurf Rules — Windsurf IDE global kurallari
     windsurf_rules = """# BBC Global Rules — Windsurf IDE
 
 ## Architecture
@@ -118,7 +118,7 @@ def generate_rules(target_dir_str=None, force=False):
 """
     (target_dir / ".windsurfrules").write_text(windsurf_rules, encoding="utf-8")
 
-    # 4. Copilot Instructions — GitHub Copilot global talimatları
+    # 4. Copilot Instructions — GitHub Copilot global talimatlari
     copilot_instructions = """# BBC Global Instructions — GitHub Copilot
 
 You are a BBC-compliant AI coding assistant.
@@ -136,7 +136,7 @@ You are a BBC-compliant AI coding assistant.
 """
     (target_dir / "copilot-instructions.md").write_text(copilot_instructions, encoding="utf-8")
 
-    # 5. BBC Master Rules — Evrensel BBC kuralları
+    # 5. BBC Master Rules — Evrensel BBC kurallari
     bbc_rules = """# BBC Master Rules — v8.3
 
 ## Non-Negotiable Rules
@@ -159,7 +159,7 @@ Before making any change, consider:
 """
     (target_dir / "bbc_rules.md").write_text(bbc_rules, encoding="utf-8")
 
-    # Kurulum tamamlandı marker'ı oluştur
+    # Kurulum tamamlandi marker'i create
     marker.write_text(
         json.dumps({"installed_at": __import__("datetime").datetime.now().isoformat(), "version": "8.3.0"}),
         encoding="utf-8"
@@ -171,8 +171,8 @@ Before making any change, consider:
 
 def configure_vscode(global_rules_path=None):
     """
-    VS Code'un global BBC kurallarını bulması için bilgi ver.
-    Gerçek uygulamada %APPDATA%/Code/User/settings.json düzenlenir.
+    VS Code'un global BBC kurallarini bulmasi for bilgi ver.
+    Gercek uygulamada %APPDATA%/Code/User/settings.json duzenlenir.
     """
     if global_rules_path is None:
         global_rules_path = str(get_global_rules_dir())

@@ -34,7 +34,7 @@ class BBCAutoDetector:
             "go": [".go", "go.mod", "go.sum"],
             "rust": [".rs", "Cargo.toml", "src/main.rs"],
             "web": [".html", ".css", ".scss", "index.html"],
-            "generic": []  # Her proje
+            "generic": []  # Her project
         }
         
         import itertools
@@ -181,7 +181,7 @@ class BBCAutoDetector:
             return None
     
     def stop_bbc_monitoring(self):
-        """BBC monitoring'i durdur"""
+        """BBC monitoring'i stop"""
         if self.bbc_active:
             try:
                 from bbc_core.ai_integration import end_ai_session
@@ -203,7 +203,7 @@ class BBCAutoDetector:
         """Detect project and prepare/start BBC."""
         current_dir = Path(project_path).resolve() if project_path else Path.cwd()
         
-        # Proje mi diye kontrol et
+        # Project mi diye check et
         if not self._is_project_directory(current_dir):
             return False
         
@@ -213,21 +213,21 @@ class BBCAutoDetector:
                 print(f"[BBC AUTO] Already monitoring: {current_dir.name}")
                 return True
         
-        # BBC kurulu mu kontrol et
+        # BBC kurulu mu check et
         installed, missing_files = self.check_bbc_installed(current_dir)
         
         if not installed:
             print(f"[BBC AUTO] BBC not installed in {current_dir.name}")
             print(f"[BBC AUTO] Missing files: {missing_files}")
             
-            # Otomatik kurulum yap
+            # Otomatik installation yap
             if self.auto_install_bbc(current_dir):
                 installed = True
             else:
                 print(f"[BBC AUTO] Failed to install BBC")
                 return False
         
-        # BBC'yi başlat veya sadece hazırla
+        # BBC'yi start veya only hazirla
         if installed:
             if not start_monitoring:
                 return True
@@ -241,7 +241,7 @@ class BBCAutoDetector:
         if (path / ".git").exists():
             return True
         
-        # Proje dosyaları var mı?
+        # Project files var mi?
         project_indicators = [
             "package.json", "requirements.txt", "setup.py", "pyproject.toml",
             "Cargo.toml", "go.mod", "pom.xml", "build.gradle",
@@ -287,7 +287,7 @@ class BBCAutoDetector:
                         self.auto_detect_and_start()
                         last_project = current_dir
                     
-                    time.sleep(2)  # 2 saniyede bir kontrol
+                    time.sleep(2)  # 2 saniyede bir check
                     
                 except KeyboardInterrupt:
                     print(f"\n[BBC AUTO] Background monitoring stopped")
@@ -321,5 +321,5 @@ def start_background_monitoring():
     get_auto_detector().start_background_monitoring()
 
 def stop_bbc_auto():
-    """BBC otomatik sistemini durdur (global)"""
+    """BBC otomatik sistemini stop (global)"""
     get_auto_detector().stop_bbc_monitoring()

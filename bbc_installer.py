@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 BBC Universal Installer
-Tek komutla BBC kurulumu ve proje adaptasyonu
-Kullanım: python bbc_installer.py install [proje_yolu]
+One-command BBC setup and project adaptation
+Usage: python bbc_installer.py install [project_path]
 """
 
 import os
@@ -32,19 +32,19 @@ class BBCInstaller:
         print("-" * 50)
         
         try:
-            # 1. Proje kontrolü
+            # 1. Project check
             if not self._validate_project(target_path):
                 return False
             
-            # 2. BBC dosyalarını kopyala
+            # 2. BBC files kopyala
             if not self._copy_bbc_files(target_path):
                 return False
             
-            # 3. Bağımlılıkları kur
+            # 3. Bagimliliklari kur
             if not self._install_dependencies(target_path):
                 return False
             
-            # 4. Proje adaptasyonu (Analyze + Inject)
+            # 4. Project adaptasyonu (Analyze + Inject)
             if not self._adapt_project(target_path):
                 return False
             
@@ -68,15 +68,15 @@ class BBCInstaller:
             return False
     
     def _validate_project(self, project_path: Path) -> bool:
-        """Proje geçerliliğini kontrol et"""
+        """Project validity check et"""
         print("[INFO] [Step 1/5] Validating project...")
         
-        # Proje dizini kontrolü
+        # Project dizini check
         if not project_path.exists():
             print(f"[ERR] Project path does not exist: {project_path}")
             return False
         
-        # Proje tipi tespiti
+        # Project tipi tespiti
         project_types = {
             "Python": [".py", "requirements.txt", "setup.py", "pyproject.toml"],
             "JavaScript": [".js", "package.json", "node_modules"],
@@ -85,7 +85,7 @@ class BBCInstaller:
             "C/C++": [".c", ".cpp", ".h", "CMakeLists.txt", "Makefile"],
             "Go": [".go", "go.mod"],
             "Rust": [".rs", "Cargo.toml"],
-            "Generic": []  # Her proje
+            "Generic": []  # Her project
         }
         
         detected_type = "Generic"
@@ -106,7 +106,7 @@ class BBCInstaller:
         return True
     
     def _copy_bbc_files(self, project_path: Path) -> bool:
-        """BBC dosyalarını hedef projeye kopyala"""
+        """BBC files hedef projeye kopyala"""
         print("[INFO] [Step 2/5] Copying BBC files...")
 
         if not self.embed_core:
@@ -115,7 +115,7 @@ class BBCInstaller:
             return True
         
         try:
-            # Gerekli BBC dosyaları
+            # Gerekli BBC files
             bbc_files = [
                 "bbc.py",
                 "run_bbc.py",
@@ -131,7 +131,7 @@ class BBCInstaller:
                 "01_Engine",
             ]
             
-            # Dosyaları kopyala
+            # Dosyalari kopyala
             for file_name in bbc_files:
                 src = self.bbc_source / file_name
                 if src.exists():
@@ -156,11 +156,11 @@ class BBCInstaller:
             return False
     
     def _install_dependencies(self, project_path: Path) -> bool:
-        """Bağımlılıkları kur"""
+        """Bagimliliklari kur"""
         print("[INFO] [Step 3/5] Installing dependencies...")
         
         try:
-            # Virtual environment oluştur
+            # Virtual environment create
             venv_path = project_path / ".venv"
             if not venv_path.exists():
                 print("  [INFO] Creating virtual environment...")
@@ -195,7 +195,7 @@ class BBCInstaller:
         print("[INFO] [Step 4/5] Adapting project...")
         
         try:
-            # Virtual environment'daki python'ı kullan
+            # Virtual environment'daki python'i kullan
             venv_path = project_path / ".venv"
             if os.name == 'nt':  # Windows
                 python_path = venv_path / "Scripts" / "python.exe"
@@ -252,7 +252,7 @@ class BBCInstaller:
         """Kurulumu tamamla"""
         print("[INFO] [Step 5/5] Finalizing installation...")
         
-        # Kurulum kaydı oluştur
+        # Kurulum kaydi create
         install_record = {
             "installation_time": datetime.now().isoformat(),
             "bbc_version": "v8.3",
@@ -270,7 +270,7 @@ class BBCInstaller:
         with open(record_file, 'w', encoding='utf-8') as f:
             json.dump(install_record, f, indent=2, ensure_ascii=False)
         
-        # README oluştur
+        # README create
         readme_content = f"""# BBC Installation Completed
 
 This project is now protected with BBC (Bitter Brain Context).

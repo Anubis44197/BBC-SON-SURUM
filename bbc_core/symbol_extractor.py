@@ -1,12 +1,12 @@
 """
-BBC Symbol Extractor - Aşama 1: Symbol Bazlı Blast Radius Sistemi
+BBC Symbol Extractor - Asama 1: Symbol Bazli Blast Radius Sistemi
 
-Bu modül dosyalardan sembolleri (class, function, method, variable) çıkarır.
-- Python için AST modülü kullanır (deterministik)
-- Diğer diller için regex patterns kullanır (polyglot)
+Bu modul dosyalardan symbols (class, function, method, variable) cikarir.
+- Python for AST modulu uses (deterministik)
+- Diger diller for regex patterns uses (polyglot)
 - LLM/AI kullanmaz - tamamen deterministiktir
 
-Çıktı Formatı:
+Cikti Formati:
 {
   "file": "path/to/file.py",
   "symbols": [
@@ -41,7 +41,7 @@ class SymbolType(Enum):
 
 @dataclass
 class Symbol:
-    """Bir sembolü temsil eden veri sınıfı."""
+    """Bir sembolu temsil eden veri sinifi."""
     name: str
     type: str
     line: int
@@ -53,7 +53,7 @@ class Symbol:
     docstring: Optional[str] = None
     
     def to_dict(self) -> Dict[str, Any]:
-        """Sözlük formatına dönüştür."""
+        """Sozluk formatina donustur."""
         result = {
             "name": self.name,
             "type": self.type,
@@ -72,13 +72,13 @@ class Symbol:
 
 @dataclass
 class FileSymbols:
-    """Bir dosyadaki tüm sembolleri temsil eder."""
+    """Bir dosyadaki all symbols temsil eder."""
     file: str
     language: str
     symbols: List[Symbol] = field(default_factory=list)
     
     def to_dict(self) -> Dict[str, Any]:
-        """Sözlük formatına dönüştür."""
+        """Sozluk formatina donustur."""
         return {
             "file": self.file,
             "language": self.language,
@@ -86,12 +86,12 @@ class FileSymbols:
         }
     
     def to_json(self, indent: int = 2) -> str:
-        """JSON formatına dönüştür."""
+        """JSON formatina donustur."""
         return json.dumps(self.to_dict(), indent=indent, ensure_ascii=False)
 
 
 class PythonSymbolExtractor(ast.NodeVisitor):
-    """Python dosyalarından sembol çıkaran AST tabanlı extractor."""
+    """Python dosyalarindan symbol cikaran AST tabanli extractor."""
     
     def __init__(self, source_code: str, filename: str = "<unknown>"):
         self.source_code = source_code
@@ -101,17 +101,17 @@ class PythonSymbolExtractor(ast.NodeVisitor):
         self.lines = source_code.split('\n')
     
     def extract(self) -> List[Symbol]:
-        """Sembolleri çıkar ve döndür."""
+        """Sembolleri cikar ve return."""
         try:
             tree = ast.parse(self.source_code)
             self.visit(tree)
         except SyntaxError as e:
-            # Sözdizimi hatası durumunda boş liste döndür
+            # Sozdizimi error durumunda bos liste return
             pass
         return self.symbols
     
     def visit_ClassDef(self, node: ast.ClassDef):
-        """Sınıf tanımlarını ziyaret et."""
+        """Sinif tanimlarini ziyaret et."""
         symbol = Symbol(
             name=node.name,
             type=SymbolType.CLASS.value,
@@ -122,26 +122,26 @@ class PythonSymbolExtractor(ast.NodeVisitor):
         )
         self.symbols.append(symbol)
         
-        # Sınıf içindeki metodları çıkar
+        # Sinif icindeki metodlari cikar
         old_class = self.current_class
         self.current_class = node.name
         self.generic_visit(node)
         self.current_class = old_class
     
     def visit_FunctionDef(self, node: ast.FunctionDef):
-        """Fonksiyon tanımlarını ziyaret et."""
+        """Fonksiyon tanimlarini ziyaret et."""
         self._process_function(node)
     
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
-        """Async fonksiyon tanımlarını ziyaret et."""
+        """Async fonksiyon tanimlarini ziyaret et."""
         self._process_function(node)
     
     def _process_function(self, node: ast.FunctionDef | ast.AsyncFunctionDef):
-        """Fonksiyon/metod işleme."""
+        """Fonksiyon/metod isleme."""
         is_method = self.current_class is not None
         symbol_type = SymbolType.METHOD.value if is_method else SymbolType.FUNCTION.value
         
-        # Signature oluştur
+        # Signature create
         signature = self._get_function_signature(node)
         
         symbol = Symbol(
@@ -157,12 +157,12 @@ class PythonSymbolExtractor(ast.NodeVisitor):
         )
         self.symbols.append(symbol)
         
-        # İç içe fonksiyonları ziyaret etme (sadece üst seviye)
-        # Metodun içindeki değişkenleri çıkar
+        # Ic ice fonksiyonlari ziyaret etme (only ust seviye)
+        # Metodun icindeki degiskenleri cikar
         self._extract_variables(node)
     
     def _get_function_signature(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> str:
-        """Fonksiyon imzasını oluştur."""
+        """Fonksiyon imzasini create."""
         args = []
         for arg in node.args.args:
             arg_str = arg.arg
@@ -183,7 +183,7 @@ class PythonSymbolExtractor(ast.NodeVisitor):
         return sig
     
     def _get_decorator_name(self, decorator: ast.expr) -> str:
-        """Dekoratör adını al."""
+        """Dekorator adini al."""
         if isinstance(decorator, ast.Name):
             return decorator.id
         elif isinstance(decorator, ast.Attribute):
@@ -196,12 +196,12 @@ class PythonSymbolExtractor(ast.NodeVisitor):
         return "<unknown>"
     
     def _extract_variables(self, node: ast.FunctionDef | ast.AsyncFunctionDef):
-        """Fonksiyon içindeki yerel değişkenleri çıkar."""
+        """Fonksiyon icindeki yerel degiskenleri cikar."""
         for child in ast.walk(node):
             if isinstance(child, ast.Assign):
                 for target in child.targets:
                     if isinstance(target, ast.Name):
-                        # Büyük harfli değişkenleri constant olarak işaretle
+                        # Buyuk harfli degiskenleri constant olarak isaretle
                         is_constant = target.id.isupper() and '_' in target.id
                         symbol = Symbol(
                             name=target.id,
@@ -215,9 +215,9 @@ class PythonSymbolExtractor(ast.NodeVisitor):
 
 
 class RegexSymbolExtractor:
-    """Regex tabanlı sembol çıkarıcı (diğer diller için)."""
+    """Regex tabanli symbol cikarici (diger diller for)."""
     
-    # Dil başına regex pattern'leri
+    # Dil basina regex pattern'leri
     PATTERNS = {
         'javascript': {
             'class': r'class\s+(\w+)',
@@ -286,7 +286,7 @@ class RegexSymbolExtractor:
         self.lines = source_code.split('\n')
     
     def extract(self) -> List[Symbol]:
-        """Regex pattern'leri kullanarak sembolleri çıkar."""
+        """Regex pattern'leri kullanarak symbols cikar."""
         symbols = []
         
         if self.language not in self.PATTERNS:
@@ -298,7 +298,7 @@ class RegexSymbolExtractor:
         for line_num, line in enumerate(self.lines, 1):
             line_stripped = line.strip()
             
-            # Yorum satırlarını atla
+            # Yorum satirlarini atla
             if line_stripped.startswith('//') or line_stripped.startswith('#'):
                 continue
             
@@ -339,9 +339,9 @@ class RegexSymbolExtractor:
 
 
 class SymbolExtractor:
-    """Ana sembol çıkarıcı sınıfı - dil tespiti ve uygun extractor seçimi."""
+    """Ana symbol cikarici sinifi - dil tespiti ve uygun extractor secimi."""
     
-    # Dosya uzantısı -> dil eşleştirmesi
+    # File uzantisi -> dil eslestirmesi
     EXTENSION_MAP = {
         '.py': 'python',
         '.pyw': 'python',
@@ -370,13 +370,13 @@ class SymbolExtractor:
         }
     
     def detect_language(self, filepath: str) -> Optional[str]:
-        """Dosya yolundan dili tespit et."""
+        """File yolundan dili tespit et."""
         path = Path(filepath)
         ext = path.suffix.lower()
         return self.EXTENSION_MAP.get(ext)
     
     def extract_from_file(self, filepath: str) -> Optional[FileSymbols]:
-        """Bir dosyadan sembolleri çıkar."""
+        """Bir from file symbols cikar."""
         path = Path(filepath)
         
         if not path.exists():
@@ -397,15 +397,15 @@ class SymbolExtractor:
             return None
     
     def extract_from_source(self, source_code: str, filepath: str, language: str) -> FileSymbols:
-        """Kaynak kodundan sembolleri çıkar."""
+        """Kaynak kodundan symbols cikar."""
         symbols = []
         
         if language == 'python':
-            # Python için AST kullan
+            # Python for AST kullan
             extractor = PythonSymbolExtractor(source_code, filepath)
             symbols = extractor.extract()
         else:
-            # Diğer diller için regex kullan
+            # Diger diller for regex kullan
             extractor = RegexSymbolExtractor(source_code, language, filepath)
             symbols = extractor.extract()
         
@@ -418,7 +418,7 @@ class SymbolExtractor:
             symbols=symbols
         )
     
-    # native_adapter ile uyumlu yasaklı dizinler
+    # native_adapter ile uyumlu yasakli dizinler
     FORBIDDEN_DIRS = {
         "node_modules", ".venv", "dist", "build", ".git",
         "__pycache__", "target", ".bbc", ".old", "venv",
@@ -429,12 +429,12 @@ class SymbolExtractor:
                                extensions: Optional[List[str]] = None,
                                max_files: Optional[int] = None) -> List[FileSymbols]:
         """
-        Bir dizinden tüm dosyalardan sembolleri çıkar.
+        Bir dizinden all dosyalardan symbols cikar.
 
         Args:
             directory: Taranacak dizin
-            extensions: Dosya uzantıları (None ise EXTENSION_MAP kullanılır)
-            max_files: Performans limiti — en fazla bu kadar dosya işlenir (None ise BBCConfig.MAX_FILES)
+            extensions: File uzantilari (None ise EXTENSION_MAP is used)
+            max_files: Performans limiti — en fazla bu kadar file islenir (None ise BBCConfig.MAX_FILES)
         """
         from .config import BBCConfig
         if max_files is None:
@@ -448,7 +448,7 @@ class SymbolExtractor:
         files_processed = 0
 
         for root, dirs, files in os.walk(str(path)):
-            # Yasaklı dizinleri atla (native_adapter ile uyumlu)
+            # Yasakli dizinleri atla (native_adapter ile uyumlu)
             dirs[:] = [d for d in dirs if d not in self.FORBIDDEN_DIRS and not d.startswith('.')]
 
             for fname in sorted(files):
@@ -468,11 +468,11 @@ class SymbolExtractor:
         return results
     
     def get_stats(self) -> Dict[str, int]:
-        """İstatistikleri döndür."""
+        """Istatistikleri return."""
         return self.stats.copy()
     
     def export_to_json(self, results: List[FileSymbols], output_path: str):
-        """Sonuçları JSON dosyasına kaydet."""
+        """Sonuclari JSON dosyasina kaydet."""
         data = {
             'stats': self.stats,
             'files': [r.to_dict() for r in results]
@@ -483,7 +483,7 @@ class SymbolExtractor:
     
     @staticmethod
     def get_supported_languages() -> List[str]:
-        """Desteklenen dilleri döndür."""
+        """Desteklenen dilleri return."""
         return list(set(SymbolExtractor.EXTENSION_MAP.values()))
 
 

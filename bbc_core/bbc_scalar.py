@@ -213,7 +213,7 @@ class OmegaOperator:
             scalar.value = epsilon
             scalar.state = WEAK
             scalar.heal_count += 1
-        # DEGENERATE ise hiçbir değişiklik yapma
+        # DEGENERATE ise hicbir degisiklik yapma
         return scalar
 
 class BBCEncoder(json.JSONEncoder):

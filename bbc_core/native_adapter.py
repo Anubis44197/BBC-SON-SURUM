@@ -7,7 +7,7 @@ from .hmpu_engine import HMPUEngine
 from .state_manager import StateManager
 from .hmpu_indexer import HMPUIndexer
 
-# Import the Polyglot Quantizer (tek doğruluk kaynağı: bbc_core)
+# Import the Polyglot Quantizer (tek dogruluk kaynagi: bbc_core)
 from .hmpu_quantizer import HMPUQuantizer
 
 class BBCNativeAdapter:
@@ -178,7 +178,7 @@ class BBCNativeAdapter:
         index_path = self.indexer.finalize_and_save("bbc_main_memory", len(files_found))
         context_json["index_path"] = index_path
 
-        # ─── SYMBOL PIPELINE (Opsiyonel — hata verirse ana akışı bozmaz) ───
+        # ─── SYMBOL PIPELINE (Opsiyonel — error verirse ana akisi bozmaz) ───
         try:
             from .symbol_extractor import SymbolExtractor
             from .symbol_graph import SymbolGraphBuilder
@@ -193,10 +193,10 @@ class BBCNativeAdapter:
             )
 
             if symbol_results:
-                # Sembol verilerini dict formatına çevir
+                # Sembol verilerini dict formatina cevir
                 symbols_data = [sr.to_dict() for sr in symbol_results]
 
-                # Kaynak dosyaları topla (sadece Python — AST çağrı analizi için)
+                # Kaynak files topla (only Python — AST call analysis for)
                 source_mapping = {}
                 for sr in symbol_results:
                     fpath = os.path.join(root_to_scan, sr.file) if not os.path.isabs(sr.file) else sr.file
@@ -207,7 +207,7 @@ class BBCNativeAdapter:
                         except Exception:
                             pass
 
-                # Symbol Graph oluştur
+                # Symbol Graph create
                 builder = SymbolGraphBuilder()
                 if source_mapping:
                     graph = builder.build_with_source_mapping(symbols_data, source_mapping)
@@ -217,7 +217,7 @@ class BBCNativeAdapter:
                 graph_data = graph.to_dict()
                 graph_stats = graph_data.get("graph_stats", {})
 
-                # Context'e symbol analiz sonuçlarını ekle
+                # Context'e symbol analysis sonuclarini ekle
                 context_json["symbol_analysis"] = {
                     "total_symbols": graph_stats.get("total_symbols", len(symbols_data)),
                     "total_calls": graph_stats.get("total_calls", 0),
@@ -227,7 +227,7 @@ class BBCNativeAdapter:
                     "extractor_stats": extractor.get_stats(),
                 }
 
-                # Kritik sembolleri tespit et (en çok çağrılan ilk 20)
+                # Kritik symbols tespit et (en cok called ilk 20)
                 symbols_list = graph_data.get("symbols", [])
                 critical = sorted(
                     symbols_list,

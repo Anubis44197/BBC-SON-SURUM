@@ -14,10 +14,10 @@ class BBCNativeAdapter:
         self.stats = {"files_analyzed": 0, "total_bytes": 0}
         
     async def analyze_project(self, target_root, silent=True):
-        """Projeyi analiz et ve recipe oluştur (v8.3 Engine)"""
+        """Projeyi analysis et ve recipe create (v8.3 Engine)"""
         context_json = await self.internal.analyze_project(target_root, silent=silent)
         
-        # İstatistikleri güncelle (Legacy uyumluluk için)
+        # Istatistikleri update (Legacy compatibility for)
         metrics = context_json.get("metrics", {})
         self.stats["files_analyzed"] = metrics.get("files_scanned", 0)
         self.stats["total_bytes"] = metrics.get("raw_bytes", 0)
@@ -25,8 +25,8 @@ class BBCNativeAdapter:
         return context_json
     
     async def create_recipe_from_project(self, target_root, output_file="bbc_context.json"):
-        """Projeden recipe oluştur ve kaydet (v8.3 Engine)"""
-        # Projeyi analiz et
+        """Projeden recipe create ve kaydet (v8.3 Engine)"""
+        # Projeyi analysis et
         analysis = await self.analyze_project(target_root, silent=False)
         
         # Recipe'yi kaydet
@@ -44,13 +44,13 @@ class BBCNativeAdapter:
         }
     
     def get_stats(self):
-        """Mevcut istatistikleri getir"""
+        """Mevcut statistics getir"""
         return {
             "session_stats": self.stats,
             "persistent_stats": self.state_manager.get_stats()
         }
 
-# Geriye dönük uyumluluk için fonksiyon alias'ları (v7.2 Legacy Support)
+# Geriye donuk compatibility for fonksiyon alias'lari (v7.2 Legacy Support)
 async def create_recipe_tool(target_root, output_file="bbc_context.json"):
     adapter = BBCNativeAdapter()
     return await adapter.create_recipe_from_project(target_root, output_file)

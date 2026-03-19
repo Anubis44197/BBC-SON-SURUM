@@ -1,16 +1,16 @@
 """
 BBC Central Logger — v8.3
-Tüm BBC modülleri için tek merkezi loglama noktası.
+Single centralized logging point for all BBC modules.
 
-Kullanım:
+Usage:
     from .bbc_logger import get_logger
     logger = get_logger("ModuleName")
-    logger.info("mesaj")
+    logger.info("message")
 
-Konfigürasyon:
-    BBC_LOG_LEVEL env değişkeni ile log seviyesi ayarlanır (varsayılan: INFO)
-    Log dosyası: .bbc/logs/bbc_math.log
-    Konsol çıktısı: sadece WARNING ve üstü
+Configuration:
+    Log level is controlled by BBC_LOG_LEVEL (default: INFO)
+    Log file: .bbc/logs/bbc_math.log
+    Console output: WARNING and above only
 """
 import logging
 import os
@@ -22,7 +22,7 @@ _initialized = False
 
 
 def _init_logging():
-    """Loglama altyapısını bir kez başlat."""
+    """Loglama altyapisini bir kez start."""
     global _initialized
     if _initialized:
         return
@@ -36,11 +36,11 @@ def _init_logging():
 
     root_logger = logging.getLogger()
 
-    # Zaten handler varsa tekrar ekleme (çoklu init koruması)
+    # Zaten handler varsa tekrar ekleme (coklu init korumasi)
     if not root_logger.handlers:
         root_logger.setLevel(log_level)
 
-        # 1. Dosya handler — tüm log seviyeleri
+        # 1. File handler — all log seviyeleri
         try:
             file_handler = logging.FileHandler(
                 os.path.join(_BBC_LOG_DIR, "bbc_math.log"),
@@ -50,11 +50,11 @@ def _init_logging():
             file_handler.setFormatter(formatter)
             root_logger.addHandler(file_handler)
         except (OSError, PermissionError) as e:
-            # Dosyaya yazılamıyorsa sessizce devam et
+            # Dosyaya yazilamiyorsa sessizce devam et
             import sys
             print(f"[BBC Logger] File handler error: {e}", file=sys.stderr)
 
-        # 2. Konsol handler — sadece WARNING ve üstü (kullanıcıyı rahatsız etmemek için)
+        # 2. Konsol handler — only WARNING ve ustu (kullaniciyi rahatsiz etmemek for)
         console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.WARNING)
         console_handler.setFormatter(formatter)
@@ -65,10 +65,10 @@ def _init_logging():
 
 def get_logger(name="BBC"):
     """
-    BBC merkezi logger'ını döndür.
+    BBC merkezi logger'ini return.
 
     Args:
-        name: Logger ismi (modül adı önerilir, örn. "BBC_StateManager")
+        name: Logger ismi (modul adi onerilir, orn. "BBC_StateManager")
 
     Returns:
         logging.Logger instance
@@ -78,6 +78,6 @@ def get_logger(name="BBC"):
 
 
 def get_log_dir():
-    """BBC log dizinini döndür (.bbc/logs/)"""
+    """BBC log dizinini return (.bbc/logs/)"""
     os.makedirs(_BBC_LOG_DIR, exist_ok=True)
     return _BBC_LOG_DIR

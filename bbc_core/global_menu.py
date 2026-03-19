@@ -11,7 +11,7 @@ if sys.platform == 'win32':
         sys.stdout.reconfigure(encoding='utf-8')
         sys.stderr.reconfigure(encoding='utf-8')
     except AttributeError:
-        # Eski Python surumleri icin fallback
+        # Eski Python surumleri for fallback
         import codecs
         sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer)
         sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer)

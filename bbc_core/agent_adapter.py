@@ -972,7 +972,7 @@ If any step fails: STOP and report to user
         "supermaven":             ("Supermaven (JetBrains)",      ".idea/bbc-ai-assistant.xml",      "jetbrains_xml"),
     }
 
-    # Onceki BBC dosyalarini temizle (sadece BBC yazdigini dogrulayarak)
+    # Onceki BBC files temizle (only BBC yazdigini dogrulayarak)
     import shutil
     BBC_IDE_FILES = [
         ".cursorrules", ".clinerules",
@@ -1067,9 +1067,9 @@ If any step fails: STOP and report to user
         injected.append(f"{label} -> {rel_path}")
 
     # ------------------------------------------------------------
-    # ADIM 2: Kurulu AI EKLENTILERINI tara ve onlara da yaz
-    # Ornek: VS Code + Copilot + Cline yuklu => 2 dosya olusturulur
-    # IDE taninamazsa VS Code extension klasoru fallback olarak denenir
+    # STEP 2: Scan installed AI extensions and write config for them too
+    # Example: VS Code + Copilot + Cline installed => 2 files are created
+    # If IDE cannot be detected, VS Code extension directory is used as fallback
     # ------------------------------------------------------------
     try:
         if configurator:

@@ -21,8 +21,8 @@ class IDEAutoConfigurator:
         self.configs_created = []
     
     def detect_active_ide(self) -> Optional[str]:
-        """Aktif çalışma ortamındaki IDE'yi tespit eder."""
-        # 1. Ortam Değişkenleri ile Kesin Tespit
+        """Aktif operation ortamindaki IDE'yi tespit eder."""
+        # 1. Ortam Degiskenleri ile Kesin Tespit
         if os.environ.get("ANTIGRAVITY_SESSION") or os.environ.get("GEMINI_API_KEY"):
             return "antigravity"
         elif os.environ.get("VSCODE_PID") or os.environ.get("VSCODE_IPC_HOOK_CLI"):
@@ -34,7 +34,7 @@ class IDEAutoConfigurator:
         elif os.environ.get("CLINE_SESSION"):
             return "cline"
             
-        # 2. Process Ağacı Analizi (Dış terminalden çalıştırıldıysa IDE'yi bul)
+        # 2. Process Agaci Analizi (Dis terminalden calistirildiysa IDE'yi bul)
         try:
             import psutil
             current_process = psutil.Process(os.getpid())
@@ -186,7 +186,7 @@ class IDEAutoConfigurator:
         vim_found = False
         nvim_found = False
         
-        # Vim kontrolu
+        # Vim check
         for path in [Path("/usr/bin/vim"), Path("/usr/local/bin/vim")]:
             if path.exists():
                 self.detected_ides.append({
@@ -197,7 +197,7 @@ class IDEAutoConfigurator:
                 vim_found = True
                 break
         
-        # Neovim kontrolu
+        # Neovim check
         for path in [Path("/usr/bin/nvim"), Path("/usr/local/bin/nvim"),
                      Path.home() / "AppData" / "Local" / "nvim"]:
             if path.exists():
@@ -352,7 +352,7 @@ class IDEAutoConfigurator:
                 Path.home() / ".config" / "Code" / "User" / "globalStorage",
             ]
         
-        # Cursor icin de ayni yollar (VS Code tabanli)
+        # Cursor for de ayni yollar (VS Code tabanli)
         cursor_paths = []
         if self.system == "Windows":
             cursor_paths = [
@@ -551,7 +551,7 @@ class IDEAutoConfigurator:
                 return False
             vscode_dir.mkdir(exist_ok=True)
         
-        # Copilot ve diger eklentiler icin settings.json
+        # Copilot ve diger eklentiler for settings.json
         settings = {
             "github.copilot.chat.codeGeneration.instructions": [
                 {
@@ -560,7 +560,7 @@ class IDEAutoConfigurator:
             ]
         }
         
-        # Diger eklentiler icin ozel ayarlar
+        # Diger eklentiler for ozel ayarlar
         for plugin in self.detected_plugins:
             if plugin["type"] == "vscode_extension":
                 if plugin["id"] == "continue.continue":
@@ -614,7 +614,7 @@ class IDEAutoConfigurator:
                 return False
             idea_dir.mkdir(exist_ok=True)
         
-        # AI Assistant ve diger eklentiler icin XML config
+        # AI Assistant ve diger eklentiler for XML config
         ai_assistant_present = any(
             p["type"] == "jetbrains_plugin" and "AI Assistant" in p["name"]
             for p in self.detected_plugins
@@ -698,7 +698,7 @@ autocmd BufRead * let b:copilot_enabled = 1
             return False
     
     def configure_all(self, project_root: str = ".", create_missing: bool = False, silent: bool = False) -> List[str]:
-        """Tespit edilen tum IDElari ve eklentileri yapilandir"""
+        """Tespit edilen all IDElari ve eklentileri yapilandir"""
         root = Path(project_root).resolve()
         if not silent:
             print(f"\n[CONFIG] Configuration starting: {root}")

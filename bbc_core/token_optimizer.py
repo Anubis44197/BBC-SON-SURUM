@@ -1,13 +1,13 @@
 """
 BBC Token Optimizer (v1.0)
-Genel amaçlı token sıkıştırma aracı — Shannon entropy tabanlı
-adaptif örnekleme ve compact JSON optimizasyonu.
+Genel amacli token sikistirma araci — Shannon entropy tabanli
+adaptif ornekleme ve compact JSON optimizasyonu.
 
-BBC Matematiği:
-  - Shannon Chaos Density (dC/dt) ile veri karmaşıklığını ölçer
-  - Yüksek entropy → detaylı tut (önemli veri noktaları)
-  - Düşük entropy → agresif sıkıştır (tekrarlayan veriler)
-  - HMPU chaos_derivative_filter ile gürültü eliminasyonu
+BBC Matematigi:
+  - Shannon Chaos Density (dC/dt) ile veri karmasikligini olcer
+  - Yuksek entropy → detayli tut (onemli veri noktalari)
+  - Dusuk entropy → agresif sikistir (tekrarlayan veriler)
+  - HMPU chaos_derivative_filter ile gurultu eliminasyonu
 """
 
 import json
@@ -20,9 +20,9 @@ from .bbc_scalar import BBCScalar, STABLE, WEAK, UNSTABLE, DEGENERATE
 
 class TokenOptimizer:
     """
-    BBC Token Optimizer — Shannon entropy tabanlı adaptif sıkıştırma.
+    BBC Token Optimizer — Shannon entropy-based adaptive compression.
     
-    Kullanım:
+    Usage:
         optimizer = TokenOptimizer()
         result = optimizer.optimize(data, target_ratio=0.1)
     """
@@ -30,18 +30,18 @@ class TokenOptimizer:
     def __init__(self, max_field_length: int = 3, decimal_places: int = 2):
         """
         Args:
-            max_field_length: Compact JSON'da alan adı kısaltma uzunluğu
-            decimal_places: Sayılar için yuvarlama hassasiyeti
+            max_field_length: Compact JSON'da alan adi kisaltma uzunlugu
+            decimal_places: Sayilar for yuvarlama hassasiyeti
         """
         self.max_field_length = max_field_length
         self.decimal_places = decimal_places
 
-    # ─── Shannon Entropy (BBC HMPU formülü — BBCScalar native) ─────
+    # ─── Shannon Entropy (BBC HMPU formulu — BBCScalar native) ─────
 
     def _shannon_entropy(self, text: str) -> BBCScalar:
         """
-        Shannon Chaos Density — HMPU Governor ile aynı formül.
-        Sonuç BBCScalar olarak döner: değer + state + origin.
+        Shannon Chaos Density — HMPU Governor ile ayni formul.
+        Sonuc BBCScalar olarak returns: deger + state + origin.
         """
         if not text:
             return BBCScalar(0.0, state=STABLE, metadata={"origin": "math"})
@@ -50,12 +50,12 @@ class TokenOptimizer:
         entropy = sum(-(v / ln) * math.log2(v / ln) for v in cnt.values())
         if math.isnan(entropy):
             entropy = 0.0
-        # State: entropy seviyesine göre
+        # State: entropy seviyesine gore
         state = STABLE if entropy <= 3.0 else WEAK if entropy <= 5.0 else UNSTABLE if entropy <= 7.0 else DEGENERATE
         return BBCScalar(entropy, state=state, metadata={"origin": "math"})
 
     def _chunk_entropy(self, data: List[Any], chunk_size: int = 10) -> List[BBCScalar]:
-        """Veri listesini parçalara ayırıp her parçanın entropy'sini BBCScalar olarak hesaplar."""
+        """Veri listesini parcalara ayirip each parcanin entropy'sini BBCScalar olarak hesaplar."""
         entropies = []
         for i in range(0, len(data), chunk_size):
             chunk = data[i:i + chunk_size]
@@ -66,9 +66,9 @@ class TokenOptimizer:
     def _chaos_derivative_filter(self, entropies: List[BBCScalar], threshold: float = 0.4) -> List[int]:
         """
         Chaos Derivative Filter (dC/dt) — HMPU Governor Operator 1.
-        Ardışık chunk'lar arasındaki entropy farkı eşiği geçerse
-        o chunk'u 'sinyal' (faz değişimi) olarak işaretler.
-        Returns: sinyal içeren chunk indeksleri
+        Ardisik chunk'lar arasindaki entropy farki esigi gecerse
+        o chunk'u 'sinyal' (faz degisimi) olarak isaretler.
+        Returns: sinyal iceren chunk indeksleri
         """
         signal_indices = []
         prev_entropy = 0.0
@@ -80,29 +80,29 @@ class TokenOptimizer:
             prev_entropy = curr
         return signal_indices
 
-    # ─── Adaptif Örnekleme ────────────────────────────────────────
+    # ─── Adaptif Ornekleme ────────────────────────────────────────
 
     def adaptive_sample(self, data: List[Any], target_ratio: float = 0.1,
                         key_field: Optional[str] = None) -> List[Any]:
         """
-        Shannon entropy tabanlı adaptif örnekleme.
+        Shannon entropy tabanli adaptif ornekleme.
         
-        Yüksek entropy bölgelerden daha fazla, düşük entropy bölgelerden
-        daha az örnek alır. Bu sayede önemli veri noktaları korunurken
-        tekrarlayan veriler atılır.
+        Yuksek entropy bolgelerden daha fazla, dusuk entropy bolgelerden
+        daha az example alir. Bu sayede onemli veri noktalari korunurken
+        tekrarlayan veriler atilir.
         
-        BBC Matematiği:
+        BBC Matematigi:
           chunk_entropy = H(chunk)
           sample_weight = H(chunk) / max(H(all_chunks))
           sample_count = max(1, round(chunk_size * sample_weight * target_ratio))
         
         Args:
-            data: Örneklenecek veri listesi
-            target_ratio: Hedef sıkıştırma oranı (0.0-1.0, düşük = daha agresif)
-            key_field: Sıralama anahtarı (dict listesi için)
+            data: Orneklenecek veri listesi
+            target_ratio: Hedef sikistirma orani (0.0-1.0, dusuk = daha agresif)
+            key_field: Siralama anahtari (dict listesi for)
             
         Returns:
-            Adaptif olarak örneklenmiş veri listesi
+            Adaptif olarak orneklenmis veri listesi
         """
         if not data:
             return []
@@ -116,16 +116,16 @@ class TokenOptimizer:
         # Chunk boyutunu hesapla
         chunk_size = max(1, n // 10)
         
-        # Her chunk'ın entropy'sini hesapla (BBCScalar olarak döner)
+        # Her chunk'in entropy'sini hesapla (BBCScalar olarak returns)
         entropies = self._chunk_entropy(data, chunk_size)
         max_entropy = max(float(e) for e in entropies) if entropies else 1.0
         if max_entropy == 0:
             max_entropy = 1.0
         
-        # Chaos derivative filter: sinyal içeren chunk'ları işaretle
+        # Chaos derivative filter: sinyal iceren chunk'lari isaretle
         signal_indices = set(self._chaos_derivative_filter(entropies, threshold=0.4))
 
-        # Her chunk'tan BBCScalar entropy ağırlıklı örnekleme
+        # Her chunk'tan BBCScalar entropy agirlikli ornekleme
         sampled = []
         remaining_budget = target_count
         
@@ -137,15 +137,15 @@ class TokenOptimizer:
             if not chunk:
                 continue
             
-            # BBCScalar entropy ağırlığı
+            # BBCScalar entropy agirligi
             entropy_val = float(e_scalar)
             weight = entropy_val / max_entropy
 
-            # Sinyal chunk'larına bonus (dC/dt > 0.4 olan faz değişimleri)
+            # Sinyal chunk'larina bonus (dC/dt > 0.4 olan faz degisimleri)
             if i in signal_indices:
                 weight = min(weight * 1.5, 1.0)
 
-            # State-aware: UNSTABLE/DEGENERATE chunk'lardan daha az örnek
+            # State-aware: UNSTABLE/DEGENERATE chunk'lardan daha az example
             if e_scalar.state == DEGENERATE:
                 weight *= 0.3
             elif e_scalar.state == UNSTABLE:
@@ -157,7 +157,7 @@ class TokenOptimizer:
             if sample_count <= 0:
                 continue
             
-            # Eşit aralıklı örnekleme
+            # Esit aralikli ornekleme
             step = max(1, len(chunk) // sample_count)
             for j in range(0, len(chunk), step):
                 if remaining_budget <= 0:
@@ -165,7 +165,7 @@ class TokenOptimizer:
                 sampled.append(chunk[j])
                 remaining_budget -= 1
         
-        # İlk ve son elemanı garanti et (sınır noktaları)
+        # Ilk ve son elemani garanti et (sinir noktalari)
         if data[0] not in sampled:
             sampled.insert(0, data[0])
         if data[-1] not in sampled:
@@ -177,18 +177,18 @@ class TokenOptimizer:
 
     def compact_json(self, data: Any, field_map: Optional[Dict[str, str]] = None) -> Any:
         """
-        JSON verisini sıkıştırır:
-          1. Alan adlarını kısaltır (field_map veya otomatik)
-          2. Null/None değerleri temizler
-          3. Sayıları yuvarlar
-          4. Boş string/list/dict temizler
+        JSON verisini sikistirir:
+          1. Alan adlarini kisaltir (field_map veya otomatik)
+          2. Null/None degerleri temizler
+          3. Sayilari yuvarlar
+          4. Bos string/list/dict temizler
         
         Args:
-            data: Sıkıştırılacak JSON verisi
-            field_map: Özel alan adı kısaltma haritası (örn: {"timestamp": "ts"})
+            data: Sikistirilacak JSON verisi
+            field_map: Ozel alan adi kisaltma haritasi (orn: {"timestamp": "ts"})
             
         Returns:
-            Sıkıştırılmış veri
+            Sikistirilmis veri
         """
         if field_map is None:
             field_map = {}
@@ -196,9 +196,9 @@ class TokenOptimizer:
         return self._compact_recursive(data, field_map)
 
     def _compact_recursive(self, obj: Any, field_map: Dict[str, str]) -> Any:
-        """Recursive compact JSON işlemi."""
+        """Recursive compact JSON islemi."""
         if obj is None:
-            return None  # Üst seviyede temizlenecek
+            return None  # Ust seviyede temizlenecek
         
         if isinstance(obj, dict):
             result = {}
@@ -206,11 +206,11 @@ class TokenOptimizer:
                 # Null/None temizle
                 if value is None:
                     continue
-                # Boş string/list/dict temizle
+                # Bos string/list/dict temizle
                 if value == "" or value == [] or value == {}:
                     continue
                 
-                # Alan adı kısalt
+                # Alan adi kisalt
                 short_key = field_map.get(key, self._shorten_field(key))
                 
                 # Recursive
@@ -236,18 +236,18 @@ class TokenOptimizer:
         return obj
 
     def _shorten_field(self, field_name: str) -> str:
-        """Alan adını kısaltır — snake_case ve camelCase desteği."""
+        """Alan adini kisaltir — snake_case ve camelCase destegi."""
         if len(field_name) <= self.max_field_length:
             return field_name
         
-        # snake_case: her kelimenin ilk harfi
+        # snake_case: each kelimenin ilk harfi
         if '_' in field_name:
             parts = field_name.split('_')
             short = ''.join(p[0] for p in parts if p)
             if len(short) >= 2:
                 return short
         
-        # camelCase: büyük harfler
+        # camelCase: buyuk harfler
         uppers = [c for c in field_name if c.isupper()]
         if len(uppers) >= 2:
             return ''.join(uppers).lower()
@@ -261,16 +261,16 @@ class TokenOptimizer:
                  field_map: Optional[Dict[str, str]] = None,
                  key_field: Optional[str] = None) -> Dict[str, Any]:
         """
-        Tam token optimizasyon pipeline'ı:
-          1. Veri listesi ise → adaptif örnekleme
-          2. JSON sıkıştırma (alan kısaltma + null temizleme + yuvarlama)
+        Tam token optimizasyon pipeline'i:
+          1. Veri listesi ise → adaptif ornekleme
+          2. JSON sikistirma (alan kisaltma + null temizleme + yuvarlama)
           3. Token tasarruf raporu
         
         Args:
             data: Optimize edilecek veri
-            target_ratio: Hedef sıkıştırma oranı
-            field_map: Özel alan adı kısaltma haritası
-            key_field: Sıralama anahtarı (list of dict için)
+            target_ratio: Hedef sikistirma orani
+            field_map: Ozel alan adi kisaltma haritasi
+            key_field: Siralama anahtari (list of dict for)
             
         Returns:
             {
@@ -288,7 +288,7 @@ class TokenOptimizer:
         original_chars = len(original_str)
         entropy_original = self._shannon_entropy(original_str)
         
-        # 1. Adaptif örnekleme (sadece list ise)
+        # 1. Adaptif ornekleme (only list ise)
         if isinstance(data, list) and len(data) > 10:
             data = self.adaptive_sample(data, target_ratio=target_ratio, key_field=key_field)
         
@@ -303,7 +303,7 @@ class TokenOptimizer:
         
         savings_ratio = 1.0 - (optimized_chars / original_chars) if original_chars > 0 else 0.0
 
-        # Savings → BBCScalar (yüksek tasarruf = STABLE, düşük = WEAK)
+        # Savings → BBCScalar (yuksek tasarruf = STABLE, dusuk = WEAK)
         sr_state = STABLE if savings_ratio >= 0.5 else WEAK if savings_ratio >= 0.2 else UNSTABLE
         savings_scalar = BBCScalar(savings_ratio, state=sr_state, metadata={"origin": "math"})
         

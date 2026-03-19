@@ -1,10 +1,10 @@
 """
 BBC Hallucination Guard (v1.0)
-Post-generation doğrulama — AI'ın ürettiği koddaki sembollerin
-BBC sealed context'te var olup olmadığını kontrol eder.
+Post-generation verification — AI'in urettigi koddaki sembollerin
+BBC sealed context'te var olup olmadigini check eder.
 
-BBC Matematiği:
-  - Shannon entropy (chaos density) ile kod karmaşıklığını ölçer
+BBC Matematigi:
+  - Shannon entropy (chaos density) ile kod karmasikligini olcer
   - Aura Field Score: match_ratio → S, chaos → C, freshness → P
   - HMPU Governor ile confidence hesaplar
   - CVP (Constraint Violation Protocol) ile ihlal raporlar
@@ -21,11 +21,11 @@ from .bbc_scalar import BBCScalar, STABLE, WEAK, UNSTABLE, DEGENERATE, OmegaOper
 
 class HallucinationGuard:
     """
-    AI çıktısındaki sembolleri BBC context'e karşı doğrular.
-    Halüsinasyon tespit edilirse CVP violation döndürür.
+    AI ciktisindaki symbols BBC context'e karsi verifies.
+    Halusinasyon tespit edilirse CVP violation returns.
     """
 
-    # Spekülatif dil kalıpları (adaptive_mode.py ile uyumlu)
+    # Spekulatif dil kaliplari (adaptive_mode.py ile uyumlu)
     SPECULATIVE_PATTERNS = [
         r"\bprobably\b", r"\bmight\b", r"\bcould be\b",
         r"\bperhaps\b", r"\bi think\b", r"\bmaybe\b",
@@ -43,7 +43,7 @@ class HallucinationGuard:
         with open(context_path, 'r', encoding='utf-8') as f:
             self.context = json.load(f)
 
-        # Context'ten tüm sembolleri çıkar
+        # Context'ten all symbols cikar
         self.known_symbols = set()
         self.known_imports = set()
         self.file_paths = set()
@@ -58,7 +58,7 @@ class HallucinationGuard:
             self.known_imports.update(struct.get("imports", []))
 
     def _calculate_chaos(self, text: str) -> float:
-        """Shannon Chaos Density — HMPU Governor ile aynı formül."""
+        """Shannon Chaos Density — HMPU Governor ile ayni formul."""
         if not text:
             return 0.0
         cnt = Counter(text)
@@ -68,16 +68,16 @@ class HallucinationGuard:
 
     def _extract_referenced_symbols(self, code: str) -> set:
         """
-        Verilen kod parçasından referans edilen sembolleri çıkarır.
-        Tanımları (def/class) ve kullanımları (çağrıları) ayrı ayrı toplar.
+        Verilen kod parcasindan referans edilen symbols cikarir.
+        Tanimlari (def/class) ve kullanimlari (calls) ayri ayri toplar.
         """
         symbols = set()
 
-        # Fonksiyon/sınıf tanımları
+        # Fonksiyon/sinif tanimlari
         for m in re.finditer(r'^\s*(?:class|def|function|fn|func|struct)\s+([a-zA-Z_][a-zA-Z0-9_]*)', code, re.MULTILINE):
             symbols.add(m.group(1))
 
-        # Fonksiyon çağrıları: name(...)
+        # Fonksiyon calls: name(...)
         for m in re.finditer(r'\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(', code):
             name = m.group(1)
             # Dil keyword'lerini atla
@@ -90,7 +90,7 @@ class HallucinationGuard:
                             'try', 'except', 'with', 'as', 'from', 'import', 'assert'}:
                 symbols.add(name)
 
-        # Sınıf instantiation: ClassName(...)
+        # Sinif instantiation: ClassName(...)
         for m in re.finditer(r'\b([A-Z][a-zA-Z0-9_]*)\s*\(', code):
             symbols.add(m.group(1))
 
@@ -104,7 +104,7 @@ class HallucinationGuard:
         return symbols
 
     def _detect_speculative_language(self, text: str) -> List[str]:
-        """Spekülatif dil kalıplarını tespit eder."""
+        """Spekulatif dil kaliplarini tespit eder."""
         violations = []
         text_lower = text.lower()
         for pattern in self.SPECULATIVE_PATTERNS:
@@ -114,21 +114,21 @@ class HallucinationGuard:
 
     def check(self, generated_code: str, strict: bool = True) -> Dict[str, Any]:
         """
-        AI'ın ürettiği kodu BBC context'e karşı doğrular.
+        AI'in urettigi kodu BBC context'e karsi verifies.
 
-        BBC Matematiği (tam native):
-          S, C, P → BBCScalar (state + origin taşır)
+        BBC Matematigi (tam native):
+          S, C, P → BBCScalar (state + origin tasir)
           S = match_ratio → state: STABLE/WEAK/UNSTABLE/DEGENERATE
           C = Shannon chaos density (normalize) → state: chaos seviyesi
-          P = 1.0 (üretim anında freshness varsayımı)
+          P = 1.0 (uretim aninda freshness varsayimi)
 
-          Aura Score = HMPU aura_field_score(S, C, P) → iteratif alan dönüşümü
+          Aura Score = HMPU aura_field_score(S, C, P) → iteratif alan donusumu
           Confidence = 1 / (1 + log10(κ)) → BBCScalar
-          Verdict = state propagation'dan türetilir
+          Verdict = state propagation'dan turetilir
 
         Args:
-            generated_code: AI'ın ürettiği kod metni
-            strict: True ise eşleşmeyen semboller CVP violation olur
+            generated_code: AI'in urettigi kod metni
+            strict: True ise eslesmeyen semboller CVP violation olur
 
         Returns:
             dict with match_ratio, hallucinated_symbols, aura_score, confidence, violations
@@ -148,12 +148,12 @@ class HallucinationGuard:
                 "verdict": "NO_SYMBOLS"
             }
 
-        # Eşleşen ve eşleşmeyen semboller
+        # Eslesen ve eslesmeyen semboller
         matched = referenced & self.known_symbols
         hallucinated = referenced - self.known_symbols
         match_ratio = len(matched) / len(referenced) if referenced else 1.0
 
-        # Spekülatif dil kontrolü
+        # Spekulatif dil check
         speculative = self._detect_speculative_language(generated_code)
 
         # BBC Matematik: S, C, P → BBCScalar (origin="semantic")
@@ -166,7 +166,7 @@ class HallucinationGuard:
         c_state = STABLE if c_val <= 0.1 else WEAK if c_val <= 0.3 else UNSTABLE if c_val <= 0.6 else DEGENERATE
         C = BBCScalar(c_val, state=c_state, metadata={"origin": "semantic"})
 
-        p_val = 1.0  # Üretim anında freshness varsayımı
+        p_val = 1.0  # Uretim aninda freshness varsayimi
         P = BBCScalar(p_val, state=STABLE, metadata={"origin": "semantic"})
 
         # Aura Field Score: HMPU Governor (tam BBC matematik)
@@ -182,7 +182,7 @@ class HallucinationGuard:
             field_stability = governor.get_field_stability()
             governor_used = True
 
-            # State propagation: S, C, P state'lerinin birleşimi
+            # State propagation: S, C, P state'lerinin birlesimi
             combined_state = S._determine_new_state(C.state)
             combined_state_2 = BBCScalar(0, state=combined_state)._determine_new_state(P.state)
             aura_score_scalar = BBCScalar(aura_raw, state=combined_state_2, metadata={"origin": "math"})
@@ -201,7 +201,7 @@ class HallucinationGuard:
             aura_score_scalar = (w_s * S) + (w_c * (one - C)) + (w_p * P)
             confidence_scalar = aura_score_scalar
 
-        # Heal: UNSTABLE ise OmegaOperator ile iyileştirmeyi dene
+        # Heal: UNSTABLE ise OmegaOperator ile iyilestirmeyi dene
         if aura_score_scalar.state in [UNSTABLE, DEGENERATE]:
             aura_score_scalar = OmegaOperator.trigger(
                 BBCScalar(aura_score_scalar.value, state=aura_score_scalar.state,
@@ -215,7 +215,7 @@ class HallucinationGuard:
             for sym in sorted(hallucinated)[:20]:
                 violations.append(f"HALLUCINATED_SYMBOL: {sym}")
 
-        # Verdict — BBCScalar state'ten türetilir
+        # Verdict — BBCScalar state'ten turetilir
         final_state = aura_score_scalar.state
         if final_state == STABLE and not violations:
             verdict = "SAFE"

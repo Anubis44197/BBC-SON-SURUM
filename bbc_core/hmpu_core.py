@@ -15,7 +15,7 @@ class HMPU_Governor:
     """
     HMPU Governor (v5.6+ Session & Origin Aware)
     The central controller for the Hybrid Mathematical Processing Unit.
-    Tek doğruluk kaynağı: bbc_core/hmpu_core.py
+    Tek dogruluk kaynagi: bbc_core/hmpu_core.py
     """
     def __init__(self, weights_path: str = None, state_manager=None, heal_budget: int = 5, session_heal_budget: int = 5):
         if weights_path is None:
@@ -42,11 +42,11 @@ class HMPU_Governor:
         # Aura Gradient Weights (Persistent)
         self._Aura_Weights = self._load_weights()
         self._iterations = 5
-        # heal_limit: StateManager'ın session_heal_budget'i kullanılır
+        # heal_limit: StateManager'in session_heal_budget'i is used
         self.heal_limit = self.state_manager.session_heal_budget
 
     def _origin_from_scalar(self, scalar, default="unknown"):
-        """BBCScalar'dan origin bilgisini çıkarır."""
+        """BBCScalar'dan origin bilgisini cikarir."""
         if isinstance(scalar, BBCScalar):
             return scalar.metadata.get("origin", default)
         return default
@@ -125,7 +125,7 @@ class HMPU_Governor:
         """
         s_bbc, c_bbc, p_bbc = bbc_data_ingestion([s, c, p], origin="semantic")
 
-        # DEGENERATE girdi kontrolü — Origin bilgisiyle
+        # DEGENERATE girdi check — Origin bilgisiyle
         degenerate_inputs = [x for x in [s_bbc, c_bbc, p_bbc] if x.state == DEGENERATE]
         if degenerate_inputs:
             origin = self._origin_from_scalar(degenerate_inputs[0])
@@ -147,7 +147,7 @@ class HMPU_Governor:
                         val = val + (M[i][j] * v[j])
                     v_new.append(val)
 
-                # İterasyon sırasında DEGENERATE kontrolü
+                # Iterasyon sirasinda DEGENERATE check
                 if any(x.state == DEGENERATE for x in v_new):
                     if self.state_manager:
                         self.state_manager.record_degenerate("math")
@@ -180,7 +180,7 @@ class HMPU_Governor:
         """
         Ω trigger: Heals weights in neg_zero or unstable states.
         Enforces session budget and heal limits.
-        Result kodları: 1 (heal uygulandı), 0 (hiç gerekmedi), -1 (DEGENERATE), -2 (bütçe bitti)
+        Result kodlari: 1 (heal uygulandi), 0 (hic gerekmedi), -1 (DEGENERATE), -2 (butce bitti)
         """
         healed_count = 0
         with self.lock:
@@ -188,7 +188,7 @@ class HMPU_Governor:
                 for j in range(3):
                     w = self._Aura_Weights[i][j]
                     if w.state in [NEG_ZERO, UNSTABLE, DEGENERATE]:
-                        # Session bütçe kontrolü (v5.6+)
+                        # Session butce check (v5.6+)
                         budget_left = self.state_manager.consume_heal_budget() if self.state_manager else 1
                         if budget_left == -2:
                             print("CRITICAL: Session healing budget exhausted.")
@@ -255,7 +255,7 @@ class HMPU_Governor:
         """
         Operator 4: Focus Projection (F_perp)
         Eliminates orthogonal noise vectors to maximize semantic density.
-        v5.6+: BBCScalar native aritmetik kullanır (sqrt yerine karşılaştırma).
+        v5.6+: BBCScalar native aritmetik uses (sqrt yerine karsilastirma).
         """
         focused_targets = []
         q = bbc_data_ingestion(query_vec, origin="semantic")
@@ -281,7 +281,7 @@ class HMPU_Governor:
             if float(denom_sq) <= 0:
                 continue
 
-            # cos²(θ) > threshold² karşılaştırması (sqrt-free)
+            # cos²(θ) > threshold² karsilastirmasi (sqrt-free)
             lhs = dot * dot
             rhs = threshold_sq * denom_sq
             if float(lhs) > float(rhs):

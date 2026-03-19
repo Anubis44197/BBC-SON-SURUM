@@ -1,13 +1,13 @@
 """
 BBC Semantic Impact Analyzer (v1.0)
-Bir dosya/sembol değiştiğinde projedeki tüm etkileri BBC matematiğiyle hesaplar.
+Bir file/symbol degistiginde in the project all etkileri BBC matematigiyle hesaplar.
 
-BBC Matematiği:
-  - Call Graph: import ve sembol bağımlılıklarından dependency haritası
-  - Focus Projection: cos²(θ) ile ilgili sembolleri filtrele
-  - Shannon Chaos Density: değişikliğin kaos etkisi
-  - Aura Impact Score: BBCScalar state-aware etki yarıçapı
-  - Pulse Perturbation: değişikliğin stabiliteyi bozma riski
+BBC Matematigi:
+  - Call Graph: import ve symbol bagimliliklarindan dependency haritasi
+  - Focus Projection: cos²(θ) ile ilgili symbols filtrele
+  - Shannon Chaos Density: degisikligin kaos etkisi
+  - Aura Impact Score: BBCScalar state-aware etki yaricapi
+  - Pulse Perturbation: degisikligin stabiliteyi bozma riski
 """
 
 import json
@@ -22,10 +22,10 @@ from .bbc_scalar import BBCScalar, STABLE, WEAK, UNSTABLE, DEGENERATE, OmegaOper
 
 class ImpactAnalyzer:
     """
-    BBC Semantic Impact Analyzer — bir değişikliğin proje genelindeki
-    etkisini BBC matematiğiyle hesaplar.
+    BBC Semantic Impact Analyzer — bir degisikligin project genelindeki
+    etkisini BBC matematigiyle hesaplar.
 
-    Kullanım:
+    Usage:
         analyzer = ImpactAnalyzer(recipe_path)
         report = analyzer.analyze_impact("bbc_core/verifier.py")
     """
@@ -40,13 +40,13 @@ class ImpactAnalyzer:
         self._build_call_graph()
 
     def _load_context(self):
-        """BBC context'i yükle."""
+        """BBC context'i yukle."""
         if not os.path.exists(self.recipe_path):
             return
         with open(self.recipe_path, "r", encoding="utf-8") as f:
             self.context = json.load(f)
 
-        # code_structure'dan file_symbols map oluştur
+        # code_structure'dan file_symbols map create
         for entry in self.context.get("code_structure", []):
             path = entry.get("path", "")
             structure = entry.get("structure", {})
@@ -57,15 +57,15 @@ class ImpactAnalyzer:
                 "language": structure.get("language", "python")
             }
 
-            # symbol_map: her sembolü hangi dosya tanımlıyor
+            # symbol_map: each sembolu hangi file tanimliyor
             for cls in structure.get("classes", []):
                 self.symbol_map.setdefault(cls, []).append(path)
             for func in structure.get("functions", []):
                 self.symbol_map.setdefault(func, []).append(path)
 
     def _build_call_graph(self):
-        """Import bağımlılıklarından call graph oluştur."""
-        # Proje dosya adlarını topla (uzantısız)
+        """Import bagimliliklarindan call graph create."""
+        # Project file adlarini topla (uzantisiz)
         file_modules = {}
         for path in self.file_symbols:
             basename = os.path.splitext(os.path.basename(path))[0]
@@ -76,15 +76,15 @@ class ImpactAnalyzer:
 
         for path, symbols in self.file_symbols.items():
             self.call_graph[path] = {
-                "imports_from": [],   # bu dosya kimlerden import ediyor
-                "imported_by": [],    # bu dosyayı kimler import ediyor
-                "shared_symbols": []  # ortak kullanılan semboller
+                "imports_from": [],   # bu file kimlerden import ediyor
+                "imported_by": [],    # bu dosyayi kimler import ediyor
+                "shared_symbols": []  # ortak kullanilan semboller
             }
 
-        # Her dosyanın import'larını analiz et
+        # Her dosyanin import'larini analysis et
         for path, symbols in self.file_symbols.items():
             for imp in symbols.get("imports", []):
-                # Import string'inden dosya eşleşmesi bul
+                # Import string'inden file eslesmesi bul
                 imp_parts = imp.split(".")
                 for part in imp_parts:
                     if part in file_modules:
@@ -97,7 +97,7 @@ class ImpactAnalyzer:
                                     "imports_from": [], "imported_by": [], "shared_symbols": []
                                 })["imported_by"].append(path)
 
-        # Shared symbols: aynı sembolü kullanan dosyaları bul
+        # Shared symbols: ayni sembolu kullanan files bul
         for symbol, files in self.symbol_map.items():
             if len(files) > 1:
                 for f in files:
@@ -124,7 +124,7 @@ class ImpactAnalyzer:
     # ─── BBC Matematik: Focus Projection ───────────────────────────
 
     def _symbol_vector(self, file_path: str) -> List[BBCScalar]:
-        """Dosyanın sembol vektörünü oluştur (tüm proje sembolleri üzerinden)."""
+        """Dosyanin symbol vektorunu create (all project symbols uzerinden)."""
         all_symbols = sorted(self.symbol_map.keys())
         if not all_symbols:
             return []
@@ -138,8 +138,8 @@ class ImpactAnalyzer:
 
     def _cosine_similarity(self, vec_a: List[BBCScalar], vec_b: List[BBCScalar]) -> BBCScalar:
         """
-        BBC Focus Projection: cos²(θ) karşılaştırması (sqrt-free).
-        Sonuç BBCScalar olarak döner.
+        BBC Focus Projection: cos²(θ) karsilastirmasi (sqrt-free).
+        Sonuc BBCScalar olarak returns.
         """
         if len(vec_a) != len(vec_b) or not vec_a:
             return BBCScalar(0.0, state=DEGENERATE, metadata={"origin": "math"})
@@ -169,12 +169,12 @@ class ImpactAnalyzer:
     # ─── Etki Analizi ──────────────────────────────────────────────
 
     def _get_direct_dependents(self, file_path: str) -> List[str]:
-        """Doğrudan etkilenen dosyalar (bu dosyayı import edenler)."""
+        """Dogrudan etkilenen dosyalar (bu dosyayi import edenler)."""
         graph = self.call_graph.get(file_path, {})
         return graph.get("imported_by", [])
 
     def _get_indirect_dependents(self, file_path: str, visited: Optional[Set[str]] = None) -> List[str]:
-        """Dolaylı etkilenen dosyalar (BFS ile tüm bağımlılık zinciri)."""
+        """Dolayli etkilenen dosyalar (BFS ile all bagimlilik zinciri)."""
         if visited is None:
             visited = set()
         visited.add(file_path)
@@ -187,55 +187,55 @@ class ImpactAnalyzer:
         return indirect
 
     def _get_symbol_dependents(self, symbol_name: str) -> List[Dict[str, Any]]:
-        """Belirli bir sembolü kullanan tüm dosyalar."""
+        """Belirli bir sembolu kullanan all dosyalar."""
         results = []
         defining_files = self.symbol_map.get(symbol_name, [])
         for path, symbols in self.file_symbols.items():
             if path in defining_files:
                 continue
-            # Bu dosya bu sembolü import veya kullanıyor mu?
+            # Bu file bu sembolu import veya kullaniyor mu?
             all_syms = symbols.get("classes", []) + symbols.get("functions", []) + symbols.get("imports", [])
             if symbol_name in all_syms:
                 results.append({"file": path, "type": "direct_usage"})
         return results
 
-    # ─── Ana Analiz ────────────────────────────────────────────────
+    # ─── Ana Analysis ────────────────────────────────────────────────
 
     def analyze_impact(self, changed_file: str, changed_symbols: Optional[List[str]] = None,
                        op_type: str = "Patch") -> Dict[str, Any]:
         """
-        Bir dosya/sembol değişikliğinin proje genelindeki etkisini analiz eder.
+        Bir file/symbol degisikliginin project genelindeki etkisini analysis eder.
 
-        BBC Matematiği:
-          1. Call graph ile doğrudan/dolaylı etkilenen dosyalar
+        BBC Matematigi:
+          1. Call graph ile dogrudan/dolayli etkilenen dosyalar
           2. Focus Projection (cos²θ) ile semantik benzerlik
-          3. Shannon Chaos: değişikliğin kaos etkisi
+          3. Shannon Chaos: degisikligin kaos etkisi
           4. Pulse Perturbation: stabilite riski
-          5. Aura Impact Score: BBCScalar state-aware sonuç
+          5. Aura Impact Score: BBCScalar state-aware sonuc
 
         Args:
-            changed_file: Değişen dosya yolu
-            changed_symbols: Değişen semboller (opsiyonel)
-            op_type: İşlem tipi (Refactor/Patch/Feature)
+            changed_file: Degisen file yolu
+            changed_symbols: Degisen semboller (opsiyonel)
+            op_type: Islem tipi (Refactor/Patch/Feature)
 
         Returns:
             Impact raporu
         """
         # Normalize path
         changed_file = changed_file.replace("/", "\\").replace("\\", os.sep)
-        # Eğer tam yol verilmişse, context'teki relatif yola dönüştür
+        # Eger tam yol verilmisse, context'teki relatif yola donustur
         for path in self.file_symbols:
             if changed_file.endswith(path) or path.endswith(changed_file):
                 changed_file = path
                 break
 
-        # 1. Doğrudan ve dolaylı bağımlılar
+        # 1. Dogrudan ve dolayli bagimlilar
         direct = self._get_direct_dependents(changed_file)
         indirect = self._get_indirect_dependents(changed_file)
-        # indirect'ten direct'leri çıkar
+        # indirect'ten direct'leri cikar
         indirect_only = [f for f in indirect if f not in direct]
 
-        # 2. Sembol bazlı etki
+        # 2. Sembol bazli etki
         symbol_impacts = []
         if changed_symbols:
             for sym in changed_symbols:
@@ -247,7 +247,7 @@ class ImpactAnalyzer:
                         "affected_count": len(deps)
                     })
 
-        # 3. Focus Projection: değişen dosyayla en çok örtüşen dosyalar
+        # 3. Focus Projection: degisen dosyayla en cok ortusen dosyalar
         changed_vec = self._symbol_vector(changed_file)
         semantic_similar = []
         for path in self.file_symbols:
@@ -263,7 +263,7 @@ class ImpactAnalyzer:
                 })
         semantic_similar.sort(key=lambda x: x["similarity"]["value"], reverse=True)
 
-        # 4. Shannon Chaos: etkilenen dosyaların toplam kaos yoğunluğu
+        # 4. Shannon Chaos: etkilenen dosyalarin toplam kaos yogunlugu
         all_affected = list(set(direct + indirect_only))
         affected_symbols_text = ""
         for af in all_affected:
@@ -275,12 +275,12 @@ class ImpactAnalyzer:
         total_files = len(self.file_symbols)
         impact_ratio = len(all_affected) / total_files if total_files > 0 else 0.0
 
-        # Impact → BBCScalar: düşük etki = STABLE, yüksek etki = DEGENERATE
+        # Impact → BBCScalar: dusuk etki = STABLE, yuksek etki = DEGENERATE
         ir_val = max(0.0, min(1.0, impact_ratio))
         ir_state = STABLE if ir_val <= 0.1 else WEAK if ir_val <= 0.3 else UNSTABLE if ir_val <= 0.5 else DEGENERATE
         impact_scalar = BBCScalar(ir_val, state=ir_state, metadata={"origin": "semantic"})
 
-        # 6. Pulse Perturbation: değişikliğin stabiliteyi bozma riski
+        # 6. Pulse Perturbation: degisikligin stabiliteyi bozma riski
         pulse_risk = BBCScalar(0.0, state=STABLE, metadata={"origin": "math"})
         try:
             from .hmpu_core import HMPU_Governor
@@ -294,7 +294,7 @@ class ImpactAnalyzer:
             pr_state = STABLE if pulse["is_stable"] else UNSTABLE
             pulse_risk = BBCScalar(pr_val, state=pr_state, metadata={"origin": "math"})
         except Exception:
-            # Fallback: basit risk hesabı
+            # Fallback: basit risk hesabi
             pr_val = ir_val * (float(chaos) / 8.0)
             pr_state = STABLE if pr_val < 0.2 else WEAK if pr_val < 0.4 else UNSTABLE
             pulse_risk = BBCScalar(pr_val, state=pr_state, metadata={"origin": "math"})

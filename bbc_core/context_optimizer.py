@@ -1,25 +1,25 @@
 """
-BBC Context Optimizer - Aşama 3.7: Context Optimizer Guardrails
+BBC Context Optimizer - Asama 3.7: Context Optimizer Guardrails
 
-Bu modül sembol graph'ını analiz ederek AI için optimize edilmiş context üretir.
-- SymbolGraph çıktısını input olarak alır
-- Blast radius hesaplar (kim kimi çağırır)
-- BBC kararı üretir: "Bu semboller önemli, diğerleri gürültü"
+Bu modul symbol graph'ini analysis ederek AI for optimize edilmis context uretir.
+- SymbolGraph ciktisini input olarak alir
+- Blast radius hesaplar (kim kimi cagirir)
+- BBC karari uretir: "Bu semboller onemli, digerleri gurultu"
 - LLM/AI kullanmaz - tamamen deterministiktir
 
 IMPORTANT GUARANTEES:
 - Runtime guarantee YOK - Sadece AST-based static analysis
-- Dynamic call'ları (eval, getattr, import_string vb.) çözmez
-- Sadece kodda explicit görülen çağrıları analiz eder
+- Dynamic call'lari (eval, getattr, import_string vb.) cozmez
+- Sadece kodda explicit gorulen calls analysis eder
 
-Çıktı Formatı (BBC Kararı):
+Cikti Formati (BBC Karari):
 {
   "target": "compute_hash",
-  "primary": ["compute_hash"],        # %40 önem - değişen sembol (TEKİL)
-  "direct": ["analyze_project"],      # %30 önem - doğrudan çağıranlar
-  "indirect": ["run_analysis"],       # %20 önem - dolaylı çağıranlar  
-  "ignored": ["external_calls"],      # IGNORED - external ve unknown çağrılar
-  "safety": ["signature değişmesin"]  # güvenlik kuralları ve uyarılar
+  "primary": ["compute_hash"],        # %40 onem - degisen symbol (TEKIL)
+  "direct": ["analyze_project"],      # %30 onem - dogrudan cagiranlar
+  "indirect": ["run_analysis"],       # %20 onem - dolayli cagiranlar  
+  "ignored": ["external_calls"],      # IGNORED - external ve unknown cagrilar
+  "safety": ["signature degismesin"]  # guvenlik kurallari ve uyarilar
 }
 """
 
@@ -31,35 +31,35 @@ from pathlib import Path
 
 
 class ImpactLevel(Enum):
-    """Etki seviyeleri - önem sırasına göre."""
-    PRIMARY = "primary"      # %40 - Hedef sembol kendisi
-    DIRECT = "direct"        # %30 - Doğrudan bağımlılar (1. seviye)
-    INDIRECT = "indirect"    # %20 - Dolaylı bağımlılar (2+ seviye)
-    DISTANT = "distant"      # %10 - Uzak bağımlılar (gerekiyorsa)
-    IGNORE = "ignore"        # %0 - Gürültü, dahil etme
+    """Etki seviyeleri - onem sirasina gore."""
+    PRIMARY = "primary"      # %40 - Hedef symbol kendisi
+    DIRECT = "direct"        # %30 - Dogrudan bagimlilar (1. seviye)
+    INDIRECT = "indirect"    # %20 - Dolayli bagimlilar (2+ seviye)
+    DISTANT = "distant"      # %10 - Uzak bagimlilar (gerekiyorsa)
+    IGNORE = "ignore"        # %0 - Gurultu, dahil etme
 
 
 class ContextOptimizerError(Exception):
-    """Context Optimizer hata sınıfı."""
+    """Context Optimizer error sinifi."""
     pass
 
 
 class ContextReductionError(ContextOptimizerError):
-    """Context reduction çok düşükse fırlatılır."""
+    """Context reduction cok dusukse firlatilir."""
     pass
 
 
 @dataclass
 class SymbolResolutionResult:
-    """SymbolResolver'ın ürettiği çözümleme sonucu."""
-    primary: Optional[str]          # Çözümlenen tam sembol adı (veya None)
-    candidates: List[str]           # Tüm eşleşen adaylar
+    """SymbolResolver'in urettigi cozumleme sonucu."""
+    primary: Optional[str]          # Cozumlenen tam symbol adi (veya None)
+    candidates: List[str]           # Tum eslesen adaylar
     resolution_type: str            # "exact", "unique_short", "graph_scored", "ambiguous", "not_found"
-    warnings: List[str]             # Güvenlik uyarıları
-    scores: Dict[str, float]        # Adayların skorları (graph_scored için)
+    warnings: List[str]             # Guvenlik warnings
+    scores: Dict[str, float]        # Adaylarin skorlari (graph_scored for)
     
     def to_dict(self) -> Dict[str, Any]:
-        """Sözlük formatına dönüştür."""
+        """Sozluk formatina donustur."""
         return {
             "primary": self.primary,
             "candidates": self.candidates,
@@ -71,40 +71,40 @@ class SymbolResolutionResult:
 
 class SymbolResolver:
     """
-    Kısa sembol isimlerini graph'taki tam isimlerle eşleştirir.
+    Kisa symbol isimlerini graph'taki tam isimlerle eslestirir.
     
-    Problem: Kullanıcı "extract" der ama graph'ta "PythonSymbolExtractor.extract" var
-    Çözüm: Deterministik çözümleme algoritması (LLM kullanmaz)
+    Problem: Kullanici "extract" der ama graph'ta "PythonSymbolExtractor.extract" var
+    Cozum: Deterministik cozumleme algoritmasi (LLM kullanmaz)
     
-    Çözüm sırası (DETERMINISTIK):
+    Cozum sirasi (DETERMINISTIK):
     1. Exact full_name match
     2. Unique short-name match  
-    3. Graph-score ile çözümleme
+    3. Graph-score ile cozumleme
     4. Ambiguous durumda: primary=None, resolution_status="ambiguous"
     
-    Fallback YOK - Belirsiz durumda None döner.
+    Fallback YOK - Belirsiz durumda None returns.
     """
     
     def __init__(self, symbol_graph: Dict[str, Any]):
         """
         Args:
-            symbol_graph: SymbolGraph çıktısı
+            symbol_graph: SymbolGraph ciktisi
         """
-        # DETERMINISM: sorted ile deterministik sıralama
+        # DETERMINISM: sorted ile deterministik siralama
         symbols_list = symbol_graph.get("symbols", [])
         self.symbols = {s["symbol"]: s for s in sorted(symbols_list, key=lambda x: x["symbol"])}
         
-        # Hızlı lookup için indeksler
+        # Hizli lookup for indeksler
         self._build_short_name_index()
         self._build_graph_metrics()
     
     def _build_short_name_index(self):
-        """Kısa isimlerden tam isimlere indeks oluştur."""
+        """Kisa isimlerden tam isimlere indeks create."""
         self.short_name_map: Dict[str, List[str]] = {}
         
         # DETERMINISM: sorted keys ile iterasyon
         for full_name in sorted(self.symbols.keys()):
-            # Kısa ismi çıkar (son parça)
+            # Kisa ismi cikar (son parca)
             short_name = full_name.split('.')[-1]
             
             if short_name not in self.short_name_map:
@@ -123,18 +123,18 @@ class SymbolResolver:
         for full_name in sorted(self.symbols.keys()):
             sym_data = self.symbols[full_name]
             
-            # Indegree: Bu sembolü çağıranların sayısı
+            # Indegree: Bu sembolu cagiranlarin sayisi
             called_by = sym_data.get("called_by", [])
             indegree = len(called_by)
             
-            # Outdegree: Bu sembolün çağırdıklarının sayısı
+            # Outdegree: Bu sembolun cagirdiklarinin sayisi
             calls = sym_data.get("calls", [])
             outdegree = len(calls)
             
-            # Toplam çağrı sayısı (graph'taki önemi)
+            # Toplam call sayisi (graph'taki onemi)
             total_calls = indegree + outdegree
             
-            # Dosya bilgisi
+            # File bilgisi
             file_path = sym_data.get("file", "")
             
             self.symbol_metrics[full_name] = {
@@ -147,24 +147,24 @@ class SymbolResolver:
     
     def resolve(self, target: str, context_file: Optional[str] = None) -> SymbolResolutionResult:
         """
-        Hedef sembolü çözümle.
+        Hedef sembolu cozumle.
         
-        Çözüm sırası:
+        Cozum sirasi:
         1. Exact match (deterministik)
         2. Unique short-name match (deterministik)
-        3. Graph-score ile çözümle (deterministik - sorted candidates)
+        3. Graph-score ile cozumle (deterministik - sorted candidates)
         4. Ambiguous durumda primary=None
         
         Args:
-            target: Kullanıcı tarafından verilen sembol adı
-            context_file: İsteğe bağlı - hedef sembolün bulunması muhtemel dosya
+            target: Kullanici tarafindan verilen symbol adi
+            context_file: Istege bagli - hedef sembolun bulunmasi muhtemel file
             
         Returns:
-            SymbolResolutionResult - çözümleme sonucu
+            SymbolResolutionResult - cozumleme sonucu
         """
         warnings = []
         
-        # Adım 1: Exact match
+        # Adim 1: Exact match
         if target in self.symbols:
             return SymbolResolutionResult(
                 primary=target,
@@ -174,12 +174,12 @@ class SymbolResolver:
                 scores={target: 1.0}
             )
         
-        # Adım 2: Unique short-name match
+        # Adim 2: Unique short-name match
         if target in self.short_name_map:
             candidates = self.short_name_map[target]
             
             if len(candidates) == 1:
-                # Tek eşleşme - unique match
+                # Tek eslesme - unique match
                 full_name = candidates[0]
                 return SymbolResolutionResult(
                     primary=full_name,
@@ -189,29 +189,29 @@ class SymbolResolver:
                     scores={full_name: 1.0}
                 )
             else:
-                # Birden fazla eşleşme - graph-score ile çözümle
+                # Birden fazla eslesme - graph-score ile cozumle
                 return self._resolve_by_graph_score(target, candidates, context_file)
         
-        # Hiç eşleşme bulunamadı
+        # Hic eslesme bulunamadi
         return SymbolResolutionResult(
             primary=None,
             candidates=[],
             resolution_type="not_found",
-            warnings=[f"'{target}' sembolü graph'ta bulunamadı"],
+            warnings=[f"'{target}' sembolu graph'ta bulunamadi"],
             scores={}
         )
     
     def _resolve_by_graph_score(self, short_name: str, candidates: List[str], 
                                  context_file: Optional[str]) -> SymbolResolutionResult:
         """
-        Birden fazla aday arasından graph metriklerine göre seçim yap.
+        Birden fazla aday arasindan graph metriklerine gore secim yap.
         
         Skorlama (DETERMINISTIK):
-        - indegree * 2.0: Çok çağrılan semboller daha merkezi/önemli
-        - total_calls * 0.5: Aktif semboller (çağıran + çağrılan)
-        - same_file * 3.0: Aynı dosyadaki sembol bonus (eğer context_file verilmişse)
+        - indegree * 2.0: Cok called semboller daha merkezi/onemli
+        - total_calls * 0.5: Aktif semboller (cagiran + called)
+        - same_file * 3.0: Ayni dosyadaki symbol bonus (eger context_file verilmisse)
         
-        Ambiguous durum: En iyi ve ikinci en iyi skor çok yakınsa (< 1.0 fark)
+        Ambiguous durum: En iyi ve ikinci en iyi skor cok yakinsa (< 1.0 fark)
         """
         scores: Dict[str, float] = {}
         
@@ -219,37 +219,37 @@ class SymbolResolver:
         for full_name in sorted(candidates):
             metrics = self.symbol_metrics[full_name]
             
-            # Base score: indegree önemli (başkaları tarafından çağrılma)
+            # Base score: indegree onemli (baskalari tarafindan cagrilma)
             score = metrics["indegree"] * 2.0
             
             # Aktivite bonusu
             score += metrics["total_calls"] * 0.5
             
-            # Same-file bonus (eğer context biliniyorsa)
+            # Same-file bonus (eger context biliniyorsa)
             if context_file and metrics["file"]:
                 if context_file in metrics["file"] or metrics["file"] in context_file:
                     score += 3.0
             
             scores[full_name] = score
         
-        # DETERMINISM: Skora göre sırala (skor DESC, isim ASC tie-breaker)
+        # DETERMINISM: Skora gore sirala (skor DESC, isim ASC tie-breaker)
         sorted_candidates = sorted(scores.keys(), key=lambda x: (-scores[x], x))
         
-        # En yüksek skorlu aday
+        # En yuksek skorlu aday
         best_candidate = sorted_candidates[0]
         best_score = scores[best_candidate]
         
-        # İkinci en yüksek skorlu aday (ambiguity kontrolü için)
+        # Ikinci en yuksek skorlu aday (ambiguity check for)
         second_best_score = scores[sorted_candidates[1]] if len(sorted_candidates) > 1 else 0
         
-        # Ambiguity check: En iyi ve ikinci en iyi skor çok yakınsa
+        # Ambiguity check: En iyi ve ikinci en iyi skor cok yakinsa
         if second_best_score > 0 and (best_score - second_best_score) < 1.0:
-            # Ambiguous durum - primary boş bırak (GUARDRAIL)
+            # Ambiguous durum - primary bos birak (GUARDRAIL)
             warnings = [
-                f"'{short_name}' için birden fazla eşleşme bulundu: {candidates}",
+                f"'{short_name}' for birden fazla eslesme bulundu: {candidates}",
                 f"En iyi aday: {best_candidate} (score: {best_score:.1f})",
-                f"İkinci aday: {sorted_candidates[1]} (score: {second_best_score:.1f})",
-                "Lütfen tam sembol adını (full_name) kullanın"
+                f"Ikinci aday: {sorted_candidates[1]} (score: {second_best_score:.1f})",
+                "Lutfen tam symbol adini (full_name) kullanin"
             ]
             return SymbolResolutionResult(
                 primary=None,  # GUARDRAIL: Ambiguous durumda None
@@ -269,52 +269,52 @@ class SymbolResolver:
         )
     
     def get_all_short_names(self) -> Dict[str, List[str]]:
-        """Tüm kısa isimlerin eşleştiği tam isimleri döndür."""
+        """Tum kisa isimlerin eslestigi tam isimleri return."""
         return self.short_name_map.copy()
 
 
 @dataclass
 class SymbolImpact:
-    """Bir sembolün etki analizini temsil eder."""
+    """Bir sembolun etki analizini temsil eder."""
     symbol: str
     level: ImpactLevel
-    score: float                    # 0.0 - 1.0 arası etki skoru
-    depth: int                      # Hedeften uzaklık (0=kendisi, 1=direct, 2+=indirect)
-    call_paths: List[List[str]] = field(default_factory=list)  # Çağrı zincirleri
+    score: float                    # 0.0 - 1.0 arasi etki skoru
+    depth: int                      # Hedeften uzaklik (0=kendisi, 1=direct, 2+=indirect)
+    call_paths: List[List[str]] = field(default_factory=list)  # Cagri zincirleri
     
     def to_dict(self) -> Dict[str, Any]:
-        """Sözlük formatına dönüştür."""
+        """Sozluk formatina donustur."""
         return {
             "symbol": self.symbol,
             "level": self.level.value,
             "score": round(self.score, 3),
             "depth": self.depth,
-            "call_paths": self.call_paths[:3]  # Max 3 path göster
+            "call_paths": self.call_paths[:3]  # Max 3 path goster
         }
 
 
 @dataclass  
 class ContextDecision:
-    """BBC Context Optimizer'ın ürettiği karar."""
+    """BBC Context Optimizer'in urettigi karar."""
     target: str
-    primary: List[str]              # %40 önem - TEKİL (max 1 sembol)
-    direct: List[str]               # %30 önem
-    indirect: List[str]             # %20 önem
-    ignored: List[str]              # IGNORED - external ve unknown çağrılar
-    safety: List[str]               # Güvenlik kuralları ve uyarılar
-    impact_scores: Dict[str, float] # Tüm sembollerin skorları
-    stats: Dict[str, Any]           # İstatistikler
+    primary: List[str]              # %40 onem - TEKIL (max 1 symbol)
+    direct: List[str]               # %30 onem
+    indirect: List[str]             # %20 onem
+    ignored: List[str]              # IGNORED - external ve unknown cagrilar
+    safety: List[str]               # Guvenlik kurallari ve uyarilar
+    impact_scores: Dict[str, float] # Tum sembollerin skorlari
+    stats: Dict[str, Any]           # Istatistikler
     
     def to_dict(self) -> Dict[str, Any]:
-        """Sözlük formatına dönüştür - DETERMINISTIK sıralama."""
-        # DETERMINISM: Tüm listeler sorted, dictler sorted keys
+        """Sozluk formatina donustur - DETERMINISTIK siralama."""
+        # DETERMINISM: Tum listeler sorted, dictler sorted keys
         return {
             "target": self.target,
             "primary": sorted(self.primary),
             "direct": sorted(self.direct),
             "indirect": sorted(self.indirect),
             "ignored": sorted(self.ignored),
-            "safety": self.safety,  # Safety sıralı değil (insertion order önemli)
+            "safety": self.safety,  # Safety sirali degil (insertion order onemli)
             "impact_scores": {k: round(v, 3) for k, v in sorted(self.impact_scores.items())},
             "stats": self.stats
         }
@@ -322,35 +322,35 @@ class ContextDecision:
 
 class BlastRadiusAnalyzer:
     """
-    Blast radius analizcisi - hedef sembol değişirse etki alanını hesaplar.
+    Blast radius analizcisi - hedef symbol degisirse etki alanini hesaplar.
     
     Algoritma:
-    1. Hedef sembolden başla (depth=0)
-    2. called_by ilişkilerini takip et (depth=1,2,3...)
+    1. Hedef sembolden basla (depth=0)
+    2. called_by iliskilerini takip et (depth=1,2,3...)
     3. Her seviyedeki sembollere skor ata
-    4. Çevrimsel bağımlılıkları tespit et
+    4. Cevrimsel bagimliliklari tespit et
     
     GUARDRAILS:
-    - EXTERNAL çağrılar: traversal'a girmez, ignore listesine alınır
-    - UNKNOWN çağrılar: traversal'a girmez, safety uyarısı üretilir
+    - EXTERNAL cagrilar: traversal'a girmez, ignore listesine alinir
+    - UNKNOWN cagrilar: traversal'a girmez, safety uyarisi uretilir
     """
     
     def __init__(self, symbol_graph: Dict[str, Any]):
         """
         Args:
-            symbol_graph: SymbolGraph.to_dict() çıktısı
+            symbol_graph: SymbolGraph.to_dict() ciktisi
         """
-        # DETERMINISM: sorted ile deterministik yükleme
+        # DETERMINISM: sorted ile deterministik yukleme
         symbols_list = symbol_graph.get("symbols", [])
         self.symbols = {s["symbol"]: s for s in sorted(symbols_list, key=lambda x: x["symbol"])}
         self.graph_stats = symbol_graph.get("graph_stats", {})
         
-        # Hızlı lookup için called_by index
+        # Hizli lookup for called_by index
         self.called_by_index: Dict[str, List[str]] = {}
         self._build_called_by_index()
     
     def _build_called_by_index(self):
-        """Called_by ilişkilerini indexle - sadece INTERNAL çağrılar."""
+        """Called_by iliskilerini indexle - only INTERNAL cagrilar."""
         for sym_name in sorted(self.symbols.keys()):
             sym_data = self.symbols[sym_name]
             self.called_by_index[sym_name] = []
@@ -360,26 +360,26 @@ class BlastRadiusAnalyzer:
                 caller = call.get("symbol") if isinstance(call, dict) else call
                 call_type = call.get("type", "internal") if isinstance(call, dict) else "internal"
                 
-                # GUARDRAIL: Sadece INTERNAL çağrıları ekle
+                # GUARDRAIL: Sadece INTERNAL calls ekle
                 if caller and caller != sym_name and call_type == "internal":
                     self.called_by_index[sym_name].append(caller)
             
-            # DETERMINISM: Listeyi sırala
+            # DETERMINISM: Listeyi sirala
             self.called_by_index[sym_name] = sorted(self.called_by_index[sym_name])
     
     def analyze(self, target: str, max_depth: int = 5) -> Tuple[List[SymbolImpact], List[str], List[str]]:
         """
-        Bir sembolün blast radius'ını analiz et.
+        Bir sembolun blast radius'ini analysis et.
         
         Args:
-            target: Hedef sembol adı
-            max_depth: Maksimum arama derinliği (Sonsuz döngüyü önlemek için)
+            target: Hedef symbol adi
+            max_depth: Maksimum arama derinligi (Sonsuz donguyu onlemek for)
             
         Returns:
             Tuple: (SymbolImpact listesi, ignored_external_calls, safety_warnings)
-            - impacts: Etki analizi sonuçları (sıralanmış)
-            - ignored_external_calls: External çağrılar listesi
-            - safety_warnings: Unknown çağrılar ve diğer uyarılar
+            - impacts: Etki analysis sonuclari (siralanmis)
+            - ignored_external_calls: External cagrilar listesi
+            - safety_warnings: Unknown cagrilar ve diger uyarilar
         """
         if target not in self.symbols:
             return [], [], [f"Target '{target}' not found in graph"]
@@ -389,7 +389,7 @@ class BlastRadiusAnalyzer:
         ignored_external_calls: List[str] = []
         safety_warnings: List[str] = []
         
-        # GUARDRAIL: Hedef sembolün kendi external call'larını topla
+        # GUARDRAIL: Hedef sembolun kendi external call'larini topla
         target_sym = self.symbols[target]
         target_calls = target_sym.get("calls", [])
         for call in target_calls:
@@ -401,7 +401,7 @@ class BlastRadiusAnalyzer:
             elif call_type == "unknown" and call_symbol:
                 safety_warnings.append(f"Unknown call '{call_symbol}' detected in target")
         
-        # DETERMINISM: BFS kuyruğu sorted liste olarak başlat
+        # DETERMINISM: BFS kuyrugu sorted liste olarak start
         queue: List[Tuple[str, int, List[str]]] = [(target, 0, [target])]
         
         while queue:
@@ -429,7 +429,7 @@ class BlastRadiusAnalyzer:
             if len(impacts[current].call_paths) < 3:
                 impacts[current].call_paths.append(path.copy())
             
-            # Sonraki seviyeyi kuyruğa ekle - sadece INTERNAL çağıranlar
+            # Sonraki seviyeyi kuyruga ekle - only INTERNAL cagiranlar
             if depth < max_depth:
                 current_sym = self.symbols.get(current, {})
                 callers_data = current_sym.get("called_by", [])
@@ -438,34 +438,34 @@ class BlastRadiusAnalyzer:
                     caller = call.get("symbol") if isinstance(call, dict) else call
                     call_type = call.get("type", "internal") if isinstance(call, dict) else "internal"
                     
-                    # GUARDRAIL: EXTERNAL çağrılar traversal'a girmez
+                    # GUARDRAIL: EXTERNAL cagrilar traversal'a girmez
                     if call_type == "external":
                         if caller and caller not in ignored_external_calls:
                             ignored_external_calls.append(caller)
                         continue
                     
-                    # GUARDRAIL: UNKNOWN çağrılar traversal'a girmez, safety'e ekle
+                    # GUARDRAIL: UNKNOWN cagrilar traversal'a girmez, safety'e ekle
                     if call_type == "unknown":
                         if caller and caller not in safety_warnings:
                             safety_warnings.append(f"Unknown call '{caller}' detected in graph traversal")
                         continue
                     
-                    # Sadece internal ve çevrimsel olmayan çağrılar
+                    # Sadece internal ve cevrimsel olmayan cagrilar
                     if caller and caller not in path:
                         new_path = path + [caller]
                         queue.append((caller, depth + 1, new_path))
                 
-                # DETERMINISM: Kuyruğu sırala (symbol name ASC)
+                # DETERMINISM: Kuyrugu sirala (symbol name ASC)
                 queue = sorted(queue, key=lambda x: x[0])
         
-        # DETERMINISM: Skora göre sırala (skor DESC, sembol ASC tie-breaker)
+        # DETERMINISM: Skora gore sirala (skor DESC, symbol ASC tie-breaker)
         sorted_impacts = sorted(impacts.values(), key=lambda x: (-x.score, x.depth, x.symbol))
         
         return sorted_impacts, sorted(ignored_external_calls), safety_warnings
     
     def _calculate_impact_score(self, depth: int, symbol: str) -> float:
         """
-        Derinliğe göre etki skoru hesapla.
+        Derinlige gore etki skoru hesapla.
         
         Skorlama (DETERMINISTIK):
         - Depth 0 (target): 1.0 (%40)
@@ -482,18 +482,18 @@ class BlastRadiusAnalyzer:
         
         base = base_scores.get(min(depth, 3), 0.1)
         
-        # Sembolün graph'taki önemine göre ayarlama
-        # Çok çağrılan semboller daha önemli
+        # Sembolun graph'taki onemine gore ayarlama
+        # Cok called semboller daha onemli
         caller_count = len(self.called_by_index.get(symbol, []))
         if caller_count > 5:
-            base *= 1.1  # Çok kullanılan sembol - sınırı aşma
+            base *= 1.1  # Cok kullanilan symbol - siniri asma
         elif caller_count == 0 and depth > 0:
             base *= 0.9  # Leaf node - daha az kritik
         
         return min(base, 1.0)  # Max 1.0
     
     def _depth_to_level(self, depth: int) -> ImpactLevel:
-        """Derinliği etki seviyesine dönüştür."""
+        """Derinligi etki seviyesine donustur."""
         if depth == 0:
             return ImpactLevel.PRIMARY
         elif depth == 1:
@@ -506,30 +506,30 @@ class BlastRadiusAnalyzer:
 
 class ContextOptimizer:
     """
-    BBC Context Optimizer - AI için optimize edilmiş context üretir.
+    BBC Context Optimizer - AI for optimize edilmis context uretir.
     
-    Bu sınıf:
-    1. Blast radius analizi yapar
-    2. Sembolleri önem sırasına göre kategorize eder
-    3. "Gürültü" sembolleri filtreler
-    4. Güvenlik kuralları üretir
-    5. Deterministik BBC kararı oluşturur
+    Bu sinif:
+    1. Blast radius analysis yapar
+    2. Sembolleri onem sirasina gore kategorize eder
+    3. "Gurultu" symbols filtreler
+    4. Guvenlik kurallari uretir
+    5. Deterministik BBC karari creates
     
-    GUARDRAILS (Aşama 3.7):
-    - External Call Guard: EXTERNAL çağrılar PRIMARY/DIRECT/INDIRECT olamaz
-    - Unknown Call Guard: UNKNOWN çağrılar dependency olarak sayılmaz
-    - Deterministic SymbolResolver: Sıralı çözümleme, ambiguous durumda None
-    - PRIMARY Seçim Kuralı: Sadece Internal + Resolved + Score>0, TEKİL
+    GUARDRAILS (Asama 3.7):
+    - External Call Guard: EXTERNAL cagrilar PRIMARY/DIRECT/INDIRECT olamaz
+    - Unknown Call Guard: UNKNOWN cagrilar dependency olarak sayilmaz
+    - Deterministic SymbolResolver: Sirali cozumleme, ambiguous durumda None
+    - PRIMARY Secim Kurali: Sadece Internal + Resolved + Score>0, TEKIL
     - Context Reduction Kilidi: ratio < 0.6 ise exception
     - Determinizm Kilidi: sorted node list, stable edge ordering
-    - Çıktı Kontratı: {"primary", "direct", "indirect", "ignored", "safety"}
+    - Cikti Kontrati: {"primary", "direct", "indirect", "ignored", "safety"}
     """
     
-    # Varsayılan parametreler
+    # Varsayilan parametreler
     DEFAULT_PRIMARY_THRESHOLD = 0.85   # %40
     DEFAULT_DIRECT_THRESHOLD = 0.60    # %30  
     DEFAULT_INDIRECT_THRESHOLD = 0.35  # %20
-    DEFAULT_MAX_CONTEXT_SYMBOLS = 50   # Maksimum sembol sayısı
+    DEFAULT_MAX_CONTEXT_SYMBOLS = 50   # Maksimum symbol sayisi
     DEFAULT_MIN_REDUCTION_RATIO = 0.6  # GUARDRAIL: Minimum context reduction ratio
     
     def __init__(self, symbol_graph: Dict[str, Any],
@@ -540,11 +540,11 @@ class ContextOptimizer:
                  min_reduction_ratio: float = DEFAULT_MIN_REDUCTION_RATIO):
         """
         Args:
-            symbol_graph: SymbolGraph çıktısı
-            primary_threshold: Primary sınırı (varsayılan: 0.85)
-            direct_threshold: Direct sınırı (varsayılan: 0.60)
-            indirect_threshold: Indirect sınırı (varsayılan: 0.35)
-            max_symbols: Maksimum context sembolü
+            symbol_graph: SymbolGraph ciktisi
+            primary_threshold: Primary siniri (varsayilan: 0.85)
+            direct_threshold: Direct siniri (varsayilan: 0.60)
+            indirect_threshold: Indirect siniri (varsayilan: 0.35)
+            max_symbols: Maksimum context sembolu
             min_reduction_ratio: Minimum context reduction ratio (GUARDRAIL)
         """
         self.symbol_graph = symbol_graph
@@ -559,44 +559,44 @@ class ContextOptimizer:
     
     def optimize(self, target: str, context_file: Optional[str] = None) -> ContextDecision:
         """
-        Bir hedef sembol için optimize edilmiş context üret.
+        Bir hedef symbol for optimize edilmis context uret.
         
         GUARDRAILS:
         - Ambiguous resolution: primary=None
-        - External çağrılar: ignored listesine
-        - Unknown çağrılar: safety uyarısına
+        - External cagrilar: ignored listesine
+        - Unknown cagrilar: safety uyarisina
         - Reduction < 0.6: exception
         - PRIMARY tekil olmak zorunda
         
         Args:
-            target: Hedef sembol adı (kısa veya tam ad)
-            context_file: İsteğe bağlı - hedef sembolün bulunması muhtemel dosya
+            target: Hedef symbol adi (kisa veya tam ad)
+            context_file: Istege bagli - hedef sembolun bulunmasi muhtemel file
             
         Returns:
-            ContextDecision - BBC kararı
+            ContextDecision - BBC karari
             
         Raises:
-            ContextReductionError: Eğer context reduction ratio < min_reduction_ratio
+            ContextReductionError: Eger context reduction ratio < min_reduction_ratio
         """
-        # 1. Sembol çözümleme (SymbolResolver)
+        # 1. Sembol cozumleme (SymbolResolver)
         resolution = self.resolver.resolve(target, context_file)
         
-        # Çözümleme başarısızsa veya ambiguous ise
+        # Cozumleme basarisizsa veya ambiguous ise
         if resolution.resolution_type == "not_found":
             return self._unresolved_decision(target, resolution)
         
         if resolution.resolution_type == "ambiguous":
             return self._ambiguous_decision(target, resolution)
         
-        # Çözümlenen tam sembol adını kullan
+        # Cozumlenen tam symbol adini kullan
         resolved_target = resolution.primary
         
-        # GUARDRAIL: PRIMARY seçim kuralı kontrolü
+        # GUARDRAIL: PRIMARY secim kurali check
         # Sadece Internal + Resolved + Score>0 olabilir
         if not resolved_target or resolved_target not in self.analyzer.symbols:
             return self._unresolved_decision(target, resolution)
         
-        # 2. Blast radius analizi
+        # 2. Blast radius analysis
         impacts, ignored_external, safety_warnings = self.analyzer.analyze(resolved_target)
         
         if not impacts:
@@ -625,35 +625,35 @@ class ContextOptimizer:
         
         # GUARDRAIL: PRIMARY tekil olmak zorunda
         if len(primary) > 1:
-            # En yüksek skorlu olanı primary yap, diğerlerini direct'e taşı
+            # En yuksek skorlu olani primary yap, digerlerini direct'e tasi
             sorted_primary = sorted(primary, key=lambda x: -impact_scores[x])
             primary = [sorted_primary[0]]
             direct = sorted_primary[1:] + direct
         
-        # External çağrıları ignored listesine ekle
+        # External calls ignored listesine ekle
         ignored.extend(ignored_external)
         
-        # 4. Context limiti kontrolü
+        # 4. Context limiti check
         total_selected = len(primary) + len(direct) + len(indirect)
         if total_selected > self.max_symbols:
-            # Öncelik sırasına göre kes
+            # Oncelik sirasina gore kes
             indirect = self._limit_category(indirect, 
                 max(0, self.max_symbols - len(primary) - len(direct)))
             if len(primary) + len(direct) > self.max_symbols:
                 direct = self._limit_category(direct,
                     max(0, self.max_symbols - len(primary)))
         
-        # 5. Güvenlik kuralları üret
+        # 5. Guvenlik kurallari uret
         safety_rules = self._generate_safety_rules(resolved_target, impacts)
         
-        # Resolution bilgisi için ek uyarılar
+        # Resolution bilgisi for ek uyarilar
         if resolution.resolution_type in ("unique_short", "graph_scored"):
-            safety_rules.insert(0, f"'{target}' -> '{resolved_target}' olarak çözümlendi")
+            safety_rules.insert(0, f"'{target}' -> '{resolved_target}' olarak cozumlendi")
         
-        # Unknown çağrı uyarılarını ekle
+        # Unknown call uyarilarini ekle
         safety_rules.extend(safety_warnings)
         
-        # 6. Context reduction hesapla ve kontrol et (GUARDRAIL)
+        # 6. Context reduction hesapla ve check et (GUARDRAIL)
         total_analyzed = len(impacts)
         selected_count = len(primary) + len(direct) + len(indirect)
         reduction_ratio = self._calculate_reduction_ratio(total_analyzed, selected_count)
@@ -666,7 +666,7 @@ class ContextOptimizer:
                 f"Analyzed: {total_analyzed}, Selected: {selected_count}"
             )
         
-        # 7. İstatistikler
+        # 7. Istatistikler
         stats = {
             "total_symbols": len(self.analyzer.symbols),
             "analyzed_symbols": len(impacts),
@@ -694,51 +694,51 @@ class ContextOptimizer:
         )
     
     def _limit_category(self, symbols: List[str], limit: int) -> List[str]:
-        """Bir kategorideki sembolleri limite göre sınırla - DETERMINISTIK."""
+        """Bir kategorideki symbols limite gore sinirla - DETERMINISTIK."""
         if len(symbols) <= limit:
             return sorted(symbols)
-        # DETERMINISM: Sıralı kesme
+        # DETERMINISM: Sirali kesme
         return sorted(symbols)[:limit]
     
     def _generate_safety_rules(self, target: str, 
                                impacts: List[SymbolImpact]) -> List[str]:
         """
-        Güvenlik kuralları üret.
+        Guvenlik kurallari uret.
         
-        Bu kurallar AI'ın dikkat etmesi gereken şeyleri belirtir.
+        Bu kurallar AI'in dikkat etmesi gereken seyleri belirtir.
         """
         rules = []
         
-        # Hedef sembol bilgisi
+        # Hedef symbol bilgisi
         target_sym = self.analyzer.symbols.get(target, {})
         sym_type = target_sym.get("type", "unknown")
         
-        # Temel güvenlik kuralı
-        rules.append(f"'{target}' sembolünün imzası korunmalı")
+        # Temel guvenlik kurali
+        rules.append(f"'{target}' sembolunun imzasi korunmali")
         
-        # Tip özel kurallar
+        # Tip ozel kurallar
         if sym_type == "function":
-            rules.append("Fonksiyon dönüş tipi değişirse çağıranlar etkilenir")
+            rules.append("Fonksiyon donus tipi degisirse cagiranlar etkilenir")
         elif sym_type == "method":
-            rules.append("self/cls parametre imzası korunmalı")
+            rules.append("self/cls parametre imzasi korunmali")
         elif sym_type == "class":
-            rules.append("Sınıf constructor'ı değişirse instantiation noktaları etkilenir")
+            rules.append("Sinif constructor'i degisirse instantiation noktalari etkilenir")
         
-        # Yüksek etkili sembol kontrolü
+        # Yuksek etkili symbol check
         high_impact = [i for i in impacts if i.score > 0.5 and i.symbol != target]
         if high_impact:
-            rules.append(f"{len(high_impact)} yüksek etkili sembol var - dikkatli refactor")
+            rules.append(f"{len(high_impact)} yuksek etkili symbol var - dikkatli refactor")
         
-        # Çevrimsel bağımlılık kontrolü
+        # Cevrimsel bagimlilik check
         cycles = self._detect_cycles(target, impacts)
         if cycles:
-            rules.append(f"Çevrimsel bağımlılık tespit edildi: kontrollü değişim yap")
+            rules.append(f"Cevrimsel bagimlilik tespit edildi: kontrollu degisim yap")
         
         return rules
     
     def _detect_cycles(self, target: str, 
                        impacts: List[SymbolImpact]) -> List[List[str]]:
-        """Çevrimsel bağımlılıkları tespit et."""
+        """Cevrimsel bagimliliklari tespit et."""
         cycles = []
         for imp in impacts:
             for path in imp.call_paths:
@@ -754,20 +754,20 @@ class ContextOptimizer:
         return reduction
     
     def _empty_decision(self, target: str) -> ContextDecision:
-        """Hedef bulunamazsa boş karar döndür."""
+        """Hedef bulunamazsa bos karar return."""
         return ContextDecision(
             target=target,
             primary=[],
             direct=[],
             indirect=[],
             ignored=[],
-            safety=[f"Hedef sembol '{target}' graph'ta bulunamadı"],
+            safety=[f"Hedef symbol '{target}' graph'ta bulunamadi"],
             impact_scores={},
             stats={"error": "Target not found"}
         )
     
     def _unresolved_decision(self, target: str, resolution: SymbolResolutionResult) -> ContextDecision:
-        """Sembol çözümlenemezse karar döndür."""
+        """Sembol cozumlenemezse karar return."""
         return ContextDecision(
             target=target,
             primary=[],
@@ -784,11 +784,11 @@ class ContextOptimizer:
         )
     
     def _ambiguous_decision(self, target: str, resolution: SymbolResolutionResult) -> ContextDecision:
-        """Ambiguous durumda karar döndür - primary boş kalır."""
-        # Adayları ignore listesine koy (kullanıcı bilgilensin)
+        """Ambiguous durumda karar return - primary bos kalir."""
+        # Adaylari ignore listesine koy (kullanici bilgilensin)
         return ContextDecision(
             target=target,
-            primary=[],  # BOŞ - güvenlik için
+            primary=[],  # BOS - guvenlik for
             direct=[],
             indirect=[],
             ignored=sorted(resolution.candidates),  # Adaylar bilgi olarak
@@ -804,9 +804,9 @@ class ContextOptimizer:
     
     def compare_targets(self, targets: List[str]) -> Dict[str, ContextDecision]:
         """
-        Birden fazla hedef için kararları karşılaştır.
+        Birden fazla hedef for kararlari karsilastir.
         
-        Bu, çakışan değişikliklerin analizinde kullanılır.
+        Bu, cakisan degisikliklerin analizinde is used.
         """
         decisions = {}
         # DETERMINISM: sorted targets
@@ -817,11 +817,11 @@ class ContextOptimizer:
     def export_decision(self, decision: ContextDecision, 
                         output_path: str, format: str = "json"):
         """
-        Kararı dosyaya kaydet.
+        Karari dosyaya kaydet.
         
         Args:
             decision: ContextDecision nesnesi
-            output_path: Çıktı dosya yolu
+            output_path: Cikti file yolu
             format: "json" veya "txt"
         """
         path = Path(output_path)
@@ -834,7 +834,7 @@ class ContextOptimizer:
                 f.write(self._format_decision_text(decision))
     
     def _format_decision_text(self, decision: ContextDecision) -> str:
-        """Kararı insan-okunabilir metin formatına dönüştür."""
+        """Karari insan-okunabilir metin formatina donustur."""
         lines = [
             "=" * 60,
             "BBC CONTEXT OPTIMIZER - KARAR RAPORU",
@@ -842,19 +842,19 @@ class ContextOptimizer:
             "",
             f"Hedef Sembol: {decision.target}",
             "",
-            "[PRIMARY - %40 Önem]",
+            "[PRIMARY - %40 Onem]",
         ]
         
         for sym in sorted(decision.primary):
             score = decision.impact_scores.get(sym, 0)
             lines.append(f"  • {sym} (score: {score:.2f})")
         
-        lines.extend(["", "[DIRECT - %30 Önem]"])
+        lines.extend(["", "[DIRECT - %30 Onem]"])
         for sym in sorted(decision.direct):
             score = decision.impact_scores.get(sym, 0)
             lines.append(f"  • {sym} (score: {score:.2f})")
         
-        lines.extend(["", "[INDIRECT - %20 Önem]"])
+        lines.extend(["", "[INDIRECT - %20 Onem]"])
         for sym in sorted(decision.indirect):
             score = decision.impact_scores.get(sym, 0)
             lines.append(f"  • {sym} (score: {score:.2f})")
@@ -863,11 +863,11 @@ class ContextOptimizer:
         for sym in sorted(decision.ignored):
             lines.append(f"  • {sym}")
         
-        lines.extend(["", "[SAFETY - Güvenlik Kuralları]"])
+        lines.extend(["", "[SAFETY - Guvenlik Kurallari]"])
         for rule in decision.safety:
             lines.append(f"  ⚠ {rule}")
         
-        lines.extend(["", "[İSTATİSTİKLER]"])
+        lines.extend(["", "[ISTATISTIKLER]"])
         for key, value in decision.stats.items():
             lines.append(f"  {key}: {value}")
         
@@ -877,27 +877,27 @@ class ContextOptimizer:
 
 
 def main():
-    """Komut satırı arayüzü."""
+    """Komut satiri arayuzu."""
     import argparse
     
     parser = argparse.ArgumentParser(
-        description='BBC Context Optimizer - Symbol bazlı context optimizasyonu'
+        description='BBC Context Optimizer - Symbol bazli context optimizasyonu'
     )
-    parser.add_argument('graph_json', help='SymbolGraph JSON çıktısı')
-    parser.add_argument('target', help='Hedef sembol adı')
-    parser.add_argument('--out', '-o', help='Çıktı dosyası', default=None)
+    parser.add_argument('graph_json', help='SymbolGraph JSON ciktisi')
+    parser.add_argument('target', help='Hedef symbol adi')
+    parser.add_argument('--out', '-o', help='Cikti dosyasi', default=None)
     parser.add_argument('--format', '-f', choices=['json', 'txt'], 
-                       default='json', help='Çıktı formatı')
+                       default='json', help='Cikti formati')
     parser.add_argument('--max-symbols', '-m', type=int, default=50,
-                       help='Maksimum context sembolü')
+                       help='Maksimum context sembolu')
     
     args = parser.parse_args()
     
-    # Graph'ı oku
+    # Graph'i oku
     with open(args.graph_json, 'r', encoding='utf-8') as f:
         graph_data = json.load(f)
     
-    # Optimizer oluştur
+    # Optimizer create
     optimizer = ContextOptimizer(
         symbol_graph=graph_data,
         max_symbols=args.max_symbols
@@ -906,7 +906,7 @@ def main():
     # Optimize et
     decision = optimizer.optimize(args.target)
     
-    # Çıktı
+    # Cikti
     if args.out:
         optimizer.export_decision(decision, args.out, args.format)
         print(f"Karar kaydedildi: {args.out}")

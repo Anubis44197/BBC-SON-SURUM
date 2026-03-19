@@ -5,10 +5,10 @@ class HMPUQuantizer:
     """
     BBC HMPU Polyglot Quantizer (v7.0 Ultimate)
     
-    Bu motor, metin verisini (kod) analiz ederek yapısal bileşenlerini (Sınıflar, Fonksiyonlar)
-    deterministik olarak çıkarır. 
+    Bu motor, metin verisini (kod) analysis ederek yapisal bilesenlerini (Siniflar, Fonksiyonlar)
+    deterministik olarak cikarir. 
     
-    DESTEKLENEN DİLLER:
+    DESTEKLENEN DILLER:
     - Python, Rust, JS/TS, Go
     - C/C++, Java, C#, Swift, Kotlin
     - PHP, Ruby, SQL
@@ -86,7 +86,7 @@ class HMPUQuantizer:
         self.PATTERNS["csharp"] = self.PATTERNS["java_csharp"]
 
     def detect_language(self, content):
-        """İçerik analizi ile dil tahmini."""
+        """Icerik analysis ile dil tahmini."""
         if "#include" in content: return "c_cpp"
         if "public class" in content: return "java"
         if "func " in content and "var " in content: return "go"
@@ -97,7 +97,7 @@ class HMPUQuantizer:
     def process_content(self, content, file_ext=None):
         start_time = time.time()
         
-        # Dil Belirleme (Uzantıya Göre)
+        # Dil Belirleme (Uzantiya Gore)
         lang = "python"
         if file_ext:
             ext = file_ext.lower()
@@ -124,7 +124,7 @@ class HMPUQuantizer:
         }
         
         try:
-            # Regex Taraması (Güvenli)
+            # Regex Taramasi (Guvenli)
             if "class" in patterns:
                 for match in re.finditer(patterns["class"], content, re.MULTILINE):
                     structure["classes"].append(match.group(1))

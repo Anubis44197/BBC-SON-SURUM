@@ -1,13 +1,13 @@
 """
 BBC Auto Patcher (v1.0)
-CVP violation veya state bozulması tespit edildiğinde otomatik düzeltme
-patch'i üretir ve güvenle uygular.
+CVP violation veya state bozulmasi tespit edildiginde otomatik duzeltme
+patch'i uretir ve guvenle uygular.
 
-BBC Matematiği:
+BBC Matematigi:
   - BBCScalar state-based healing: DEGENERATE → OmegaOperator → WEAK
-  - Shannon Chaos Density: patch öncesi/sonrası kaos karşılaştırması
-  - Aura Field Score: patch kalite doğrulaması
-  - Constraint Violation Protocol: ihlal → patch → doğrulama döngüsü
+  - Shannon Chaos Density: patch oncesi/sonrasi kaos karsilastirmasi
+  - Aura Field Score: patch kalite dogrulamasi
+  - Constraint Violation Protocol: ihlal → patch → verification dongusu
 """
 
 import json
@@ -24,7 +24,7 @@ from .bbc_scalar import BBCScalar, STABLE, WEAK, UNSTABLE, DEGENERATE, OmegaOper
 
 
 class PatchAction:
-    """Tek bir patch işlemi."""
+    """Tek bir patch islemi."""
     def __init__(self, file_path: str, action_type: str, description: str,
                  old_content: Optional[str] = None, new_content: Optional[str] = None,
                  line_start: Optional[int] = None, line_end: Optional[int] = None):
@@ -49,12 +49,12 @@ class PatchAction:
 
 class AutoPatcher:
     """
-    BBC Auto Patcher — state bozulması ve CVP ihlallerini otomatik düzeltir.
+    BBC Auto Patcher — automatically fixes state corruption and CVP violations.
 
-    Kullanım:
+    Usage:
         patcher = AutoPatcher(recipe_path, project_root)
-        report = patcher.analyze_and_patch(dry_run=True)  # Önizleme
-        report = patcher.analyze_and_patch(dry_run=False)  # Uygula
+        report = patcher.analyze_and_patch(dry_run=True)  # Preview
+        report = patcher.analyze_and_patch(dry_run=False)  # Apply
     """
 
     def __init__(self, recipe_path: str, project_root: str):
@@ -65,7 +65,7 @@ class AutoPatcher:
         self._load_context()
 
     def _load_context(self):
-        """BBC context'i yükle."""
+        """BBC context'i yukle."""
         if not os.path.exists(self.recipe_path):
             return
         with open(self.recipe_path, "r", encoding="utf-8") as f:
@@ -88,7 +88,7 @@ class AutoPatcher:
     # ─── Sorun Tespit ──────────────────────────────────────────────
 
     def detect_unused_imports(self, file_path: str, content: str) -> List[PatchAction]:
-        """Kullanılmayan import'ları tespit et."""
+        """Kullanilmayan import'lari tespit et."""
         patches = []
         lines = content.split("\n")
         import_lines = []
@@ -96,11 +96,11 @@ class AutoPatcher:
         for i, line in enumerate(lines):
             stripped = line.strip()
             if re.match(r'^(?:import|from)\s+', stripped):
-                # import edilen modülün adını çıkar
+                # import edilen modulun adini cikar
                 m = re.match(r'^import\s+(\w+)', stripped)
                 if m:
                     module = m.group(1)
-                    # Dosyanın geri kalanında kullanılıyor mu?
+                    # Dosyanin geri kalaninda kullaniliyor mu?
                     rest = "\n".join(lines[:i] + lines[i+1:])
                     if module not in rest and module not in ["os", "sys", "json", "re", "math"]:
                         patches.append(PatchAction(
@@ -115,12 +115,12 @@ class AutoPatcher:
         return patches
 
     def detect_degenerate_patterns(self, file_path: str, content: str) -> List[PatchAction]:
-        """Kod kalitesini bozan dejenere kalıpları tespit et."""
+        """Kod kalitesini bozan dejenere kaliplari tespit et."""
         patches = []
         lines = content.split("\n")
 
         for i, line in enumerate(lines):
-            # Boş except (tüm hataları yutan)
+            # Bos except (all hatalari yutan)
             if re.match(r'^\s*except\s*:', line):
                 indent = len(line) - len(line.lstrip())
                 patches.append(PatchAction(
@@ -133,7 +133,7 @@ class AutoPatcher:
                     line_end=i + 1
                 ))
 
-            # pass-only except bloğu
+            # pass-only except blogu
             if re.match(r'^\s*except.*:\s*$', line):
                 if i + 1 < len(lines) and lines[i + 1].strip() == "pass":
                     indent = len(lines[i + 1]) - len(lines[i + 1].lstrip())
@@ -151,8 +151,8 @@ class AutoPatcher:
 
     def detect_symbol_drift(self) -> List[PatchAction]:
         """
-        Context'teki semboller ile dosyadaki semboller arasındaki drift'i tespit et.
-        Drift = context'te var ama dosyada artık yok olan semboller → stale context.
+        Context'teki semboller ile dosyadaki semboller arasindaki drift'i tespit et.
+        Drift = context'te var ama dosyada artik yok olan semboller → stale context.
         """
         patches = []
 
@@ -191,10 +191,10 @@ class AutoPatcher:
 
         return patches
 
-    # ─── Patch Üretimi ─────────────────────────────────────────────
+    # ─── Patch Uretimi ─────────────────────────────────────────────
 
     def generate_patches(self) -> List[PatchAction]:
-        """Tüm dosyaları tara ve patch'leri üret."""
+        """Tum files tara ve patch'leri uret."""
         self.patches = []
 
         for entry in self.context.get("code_structure", []):
@@ -204,7 +204,7 @@ class AutoPatcher:
             if not os.path.exists(full_path):
                 continue
 
-            # Sadece Python dosyaları (şimdilik)
+            # Sadece Python files (simdilik)
             if not path.endswith(".py"):
                 continue
 
@@ -226,7 +226,7 @@ class AutoPatcher:
     # ─── Patch Uygulama ────────────────────────────────────────────
 
     def _backup_file(self, file_path: str) -> str:
-        """Dosyanın yedeğini al."""
+        """Dosyanin yedegini al."""
         full_path = os.path.join(self.project_root, file_path)
         backup_dir = os.path.join(self.project_root, ".bbc", "backups")
         os.makedirs(backup_dir, exist_ok=True)
@@ -240,11 +240,11 @@ class AutoPatcher:
         """
         Tek bir patch'i uygula.
 
-        BBC Matematiği:
-          - Patch öncesi chaos → BBCScalar
-          - Patch sonrası chaos → BBCScalar
-          - dC = |chaos_after - chaos_before| → eğer artıyorsa ROLLBACK
-          - State propagation: patch sonucu STABLE mı?
+        BBC Matematigi:
+          - Patch oncesi chaos → BBCScalar
+          - Patch sonrasi chaos → BBCScalar
+          - dC = |chaos_after - chaos_before| → eger artiyorsa ROLLBACK
+          - State propagation: patch sonucu STABLE mi?
         """
         full_path = os.path.join(self.project_root, patch.file_path)
 
@@ -286,11 +286,11 @@ class AutoPatcher:
         # Chaos after (BBCScalar)
         chaos_after = self._calculate_chaos(new_content)
 
-        # BBC Matematik: dC kontrolü — kaos artarsa ROLLBACK
+        # BBC Matematik: dC check — kaos artarsa ROLLBACK
         dc = BBCScalar(abs(float(chaos_after) - float(chaos_before)), metadata={"origin": "math"})
         chaos_increased = float(chaos_after) > float(chaos_before) + 0.5
 
-        # State propagation: patch güvenli mi?
+        # State propagation: patch guvenli mi?
         patch_state = STABLE
         if chaos_increased:
             patch_state = UNSTABLE
@@ -342,11 +342,11 @@ class AutoPatcher:
 
     def analyze_and_patch(self, dry_run: bool = True) -> Dict[str, Any]:
         """
-        Tam patch pipeline'ı:
-          1. Tüm dosyaları tara, sorunları tespit et
-          2. Patch üret
-          3. Her patch'i BBC matematiğiyle doğrula
-          4. Güvenli olanları uygula (dry_run=False ise)
+        Tam patch pipeline'i:
+          1. Tum files tara, sorunlari tespit et
+          2. Patch uret
+          3. Her patch'i BBC matematigiyle verify
+          4. Guvenli olanlari uygula (dry_run=False ise)
 
         Returns:
             Tam rapor: patches, applied, skipped, aura quality
@@ -369,7 +369,7 @@ class AutoPatcher:
             elif not result.get("safe_to_apply", True):
                 skipped_count += 1
 
-        # Genel kalite skoru — tüm patch'lerin quality ortalaması
+        # Genel kalite skoru — all patch'lerin quality ortalamasi
         qualities = [r["patch_quality"]["value"] for r in results if "patch_quality" in r]
         if qualities:
             avg_quality = sum(qualities) / len(qualities)

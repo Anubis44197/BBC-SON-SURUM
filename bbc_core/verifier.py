@@ -12,7 +12,7 @@ from .bbc_scalar import BBCScalar, STABLE, WEAK, UNSTABLE, DEGENERATE, OmegaOper
 class BBCVerifier:
     """
     BBC Standart Verification Engine (v3.0 - Ultimate Polyglot)
-    Evrensel 'Mismatch Scan' ve 'Syntax Check' yeteneği.
+    Evrensel 'Mismatch Scan' ve 'Syntax Check' yetenegi.
     Desteklenen Diller: Python, Rust, JS/TS, Go, C/C++, Java/C#, PHP, Ruby, Swift, Kotlin, SQL.
     """
     
@@ -20,7 +20,7 @@ class BBCVerifier:
         self.recipe_path = recipe_path
         self.knowledge_map = {"global_symbols": set()}
         self.project_root = ""
-        self._load_recipe() # Project root burada yükleniyor
+        self._load_recipe() # Project root burada yukleniyor
         
         # Attribution Engine (Safe Init)
         self.tracer = None
@@ -28,9 +28,9 @@ class BBCVerifier:
             self.tracer = AttributionTracer(self.project_root)
 
     def _extract_symbols(self, text, lang_hint=None):
-        """Metinden sembolleri (class/function) regex ile çıkarır."""
-        # Not: Quantizer zaten bu işi yapıyor ama Standalone mod için burası yedek (backup).
-        # Burayı Quantizer'ın patternlerine benzetiyoruz.
+        """Metinden symbols (class/function) regex ile cikarir."""
+        # Not: Quantizer zaten bu isi yapiyor ama Standalone mod for burasi yedek (backup).
+        # Burayi Quantizer'in patternlerine benzetiyoruz.
         symbols = set()
         
         # Generic Regex (Fallback)
@@ -40,7 +40,7 @@ class BBCVerifier:
         return symbols
 
     def _load_recipe(self):
-        """Recipe dosyasını yükler ve evrensel formata dönüştürür."""
+        """Recipe file yukler ve evrensel formata donusturur."""
         if not os.path.exists(self.recipe_path):
             raise FileNotFoundError(f"Recipe not found: {self.recipe_path}")
             
@@ -52,7 +52,7 @@ class BBCVerifier:
         if not self.project_root:
             self.project_root = os.getcwd()
             
-        # Recipe'den sembolleri çıkar
+        # Recipe'den symbols cikar
         code_struct_list = data.get("code_structure", [])
         
         all_symbols = set()
@@ -84,7 +84,7 @@ class BBCVerifier:
     def verify_syntax_only(self):
         """
         Polyglot Syntax Checker.
-        Her dil için temel yapısal bütünlüğü kontrol eder.
+        Her dil for temel yapisal butunlugu check eder.
         """
         if not os.path.exists(self.project_root):
             print(f"[!] Warning: Project root not found on disk: {self.project_root}")
@@ -154,7 +154,7 @@ class BBCVerifier:
         # --- ATTRIBUTION ENGINE (v7.2) ---
         if errors and self.tracer:
             print(f"\n[*] Attribution Engine: Tracing impact for {len(errors)} errors...")
-            # Sadece bir kez tüm projeyi tara (Lazy Loading)
+            # Sadece bir kez all projeyi tara (Lazy Loading)
             self.tracer.scan_project()
             
             for err in errors:
@@ -163,7 +163,7 @@ class BBCVerifier:
                 if impact_list:
                     err["impact_analysis"] = {
                         "blast_radius": len(impact_list),
-                        "affected_files": impact_list[:5] # İlk 5 tanesini göster
+                        "affected_files": impact_list[:5] # Ilk 5 tanesini goster
                     }
                     if len(impact_list) > 5:
                          err["impact_analysis"]["more"] = f"...and {len(impact_list)-5} more."
@@ -177,8 +177,8 @@ class BBCVerifier:
 
     def verify_freshness(self):
         """
-        Context Freshness Check — hash karşılaştırması ile hangi dosyaların
-        mühürleme sonrası değiştiğini tespit eder.
+        Context Freshness Check — hash karsilastirmasi ile hangi dosyalarin
+        sealing sonrasi degistigini tespit eder.
         Returns: dict with stale_files, stale_count, stale_ratio, recommendation
         """
         code_struct = self.recipe_data.get("code_structure", [])
@@ -237,9 +237,9 @@ class BBCVerifier:
 
     def verify_symbol_mismatch(self):
         """
-        Sembol Mismatch Kontrolü — context'teki semboller ile diskteki gerçek
-        kaynak dosyaları arasındaki tutarsızlıkları tespit eder.
-        Quantizer ile diskteki dosyayı yeniden tarar, context'teki sembollerle karşılaştırır.
+        Sembol Mismatch Kontrolu — context'teki semboller ile diskteki gercek
+        kaynak files arasindaki tutarsizliklari tespit eder.
+        Quantizer ile diskteki dosyayi yeniden tarar, context'teki sembollerle karsilastirir.
 
         Returns: dict with added_symbols, removed_symbols, mismatch_files, mismatch_ratio
         """
@@ -273,7 +273,7 @@ class BBCVerifier:
             if not ctx_symbols:
                 continue
 
-            # Diskteki gerçek semboller (quantizer ile tara)
+            # Diskteki gercek semboller (quantizer ile tara)
             try:
                 with open(abs_path, 'r', encoding='utf-8') as f:
                     content = f.read()
@@ -311,7 +311,7 @@ class BBCVerifier:
         }
 
     def _calculate_chaos(self, text: str) -> float:
-        """Shannon Chaos Density — HMPU Governor ile aynı formül."""
+        """Shannon Chaos Density — HMPU Governor ile ayni formul."""
         if not text or not isinstance(text, str):
             return 0.0
         cnt = Counter(text)
@@ -323,10 +323,10 @@ class BBCVerifier:
         """
         BBC Full Verification — Syntax + Freshness + Symbol Mismatch + Aura Field Score.
         
-        Tüm hesaplar BBC matematiğiyle yapılır:
+        Tum hesaplar BBC matematigiyle yapilir:
           - S, C, P → BBCScalar (origin="semantic", state-aware)
-          - Shannon chaos density ile mismatch kaos ölçümü
-          - HMPU Governor aura_field_score(S, C, P) → iteratif alan dönüşümü
+          - Shannon chaos density ile mismatch kaos olcumu
+          - HMPU Governor aura_field_score(S, C, P) → iteratif alan donusumu
           - Condition number (κ) → confidence = 1 / (1 + log10(κ))
           - State propagation ile verdict (STABLE/WEAK/UNSTABLE/DEGENERATE)
         
@@ -345,14 +345,14 @@ class BBCVerifier:
         total_files = freshness.get("total_files", 1) or 1
         syntax_error_ratio = len(syntax_errors) / total_files if total_files > 0 else 0.0
 
-        # S: Structure health — syntax hatasız dosya oranı
+        # S: Structure health — syntax hatasiz file orani
         s_val = max(0.0, min(1.0, 1.0 - syntax_error_ratio))
         s_state = STABLE if s_val >= 0.8 else WEAK if s_val >= 0.5 else UNSTABLE if s_val >= 0.2 else DEGENERATE
         S = BBCScalar(s_val, state=s_state, metadata={"origin": "semantic"})
 
-        # C: Chaos density — Shannon entropy ile mismatch kaosunu doğrudan ölç
+        # C: Chaos density — Shannon entropy ile mismatch kaosunu dogrudan olc
         mismatch_ratio = mismatch.get("mismatch_ratio", 0.0)
-        # Mismatch dosyalarının içeriğinden gerçek Shannon chaos hesapla
+        # Mismatch dosyalarinin iceriginden gercek Shannon chaos hesapla
         chaos_samples = []
         for mf in mismatch.get("mismatch_files", [])[:5]:
             added = mf.get("added_symbols", [])
@@ -408,7 +408,7 @@ class BBCVerifier:
             aura_score_scalar = (w_s * S) + (w_c * (one - C)) + (w_p * P)
             confidence_scalar = aura_score_scalar
 
-        # 6. Heal: Eğer aura UNSTABLE ise OmegaOperator ile iyileştirmeyi dene
+        # 6. Heal: Eger aura UNSTABLE ise OmegaOperator ile iyilestirmeyi dene
         if aura_score_scalar.state in [UNSTABLE, DEGENERATE]:
             aura_score_scalar = OmegaOperator.trigger(
                 BBCScalar(aura_score_scalar.value, state=aura_score_scalar.state,
@@ -416,7 +416,7 @@ class BBCVerifier:
                           metadata=aura_score_scalar.metadata)
             )
 
-        # 7. Verdict — BBCScalar state'ten türetilir (klasik float karşılaştırma değil)
+        # 7. Verdict — BBCScalar state'ten turetilir (klasik float karsilastirma degil)
         final_state = aura_score_scalar.state
         if final_state == STABLE and len(syntax_errors) == 0 and freshness["context_fresh"]:
             verdict = "SEALED_STABLE"
@@ -451,19 +451,19 @@ class BBCVerifier:
 
     def verify_changed_only(self, changed_files: list = None):
         """
-        Changed-Only Verification — sadece değişen dosyaları doğrular.
-        ChangeTracker'dan gelen dosya listesini kullanır veya freshness
-        kontrolü ile stale dosyaları otomatik tespit eder.
+        Changed-Only Verification — only degisen files verifies.
+        ChangeTracker'dan gelen file listesini uses veya freshness
+        check ile stale files otomatik tespit eder.
         
-        Tam verify_full ile aynı BBC matematik pipeline'ını kullanır,
-        ancak yalnızca etkilenen dosyalar üzerinde çalışır.
+        Tam verify_full ile ayni BBC matematik pipeline'ini uses,
+        ancak yalnizca etkilenen dosyalar uzerinde runs.
         
         Args:
-            changed_files: Doğrulanacak dosya yollarının listesi (relative).
+            changed_files: Dogrulanacak file yollarinin listesi (relative).
                            None ise freshness'tan otomatik tespit eder.
-        Returns: dict — verify_full ile aynı yapıda, ek olarak changed_only metadata
+        Returns: dict — verify_full ile ayni yapida, ek olarak changed_only metadata
         """
-        # Değişen dosya listesini belirle
+        # Degisen file listesini belirle
         if changed_files is None:
             freshness = self.verify_freshness()
             changed_files = freshness.get("stale_files", [])
@@ -491,7 +491,7 @@ class BBCVerifier:
 
         changed_set = set(changed_files)
 
-        # --- Syntax check: sadece değişen dosyalar ---
+        # --- Syntax check: only degisen dosyalar ---
         syntax_errors = []
         binary_exts = {'.png', '.jpg', '.jpeg', '.gif', '.ico', '.webp', '.ttf',
                        '.woff', '.woff2', '.eot', '.pdf', '.zip', '.exe', '.dll',
@@ -531,7 +531,7 @@ class BBCVerifier:
             except Exception as e:
                 syntax_errors.append({"file": rel_path, "msg": str(e), "type": "READ_ERROR"})
 
-        # --- Symbol mismatch: sadece değişen dosyalar ---
+        # --- Symbol mismatch: only degisen dosyalar ---
         code_struct = self.recipe_data.get("code_structure", [])
         quantizer = HMPUQuantizer()
         mismatch_files = []
@@ -588,7 +588,7 @@ class BBCVerifier:
             "mismatch_ratio": round(mismatch_ratio, 3)
         }
 
-        # --- BBC Matematik: S, C, P → BBCScalar (verify_full ile aynı) ---
+        # --- BBC Matematik: S, C, P → BBCScalar (verify_full ile ayni) ---
         total_checked = len(changed_files) or 1
         syntax_error_ratio = len(syntax_errors) / total_checked
 

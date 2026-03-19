@@ -73,9 +73,9 @@ class BBCConfig:
     
     @staticmethod
     def setup_logging(project_root: str = "."):
-        """Merkezi BBC loglama altyapısını başlat."""
+        """Merkezi BBC loglama altyapisini start."""
         from .bbc_logger import get_logger
-        get_logger("BBC")  # İlk çağrıda _init_logging() çalışır
+        get_logger("BBC")  # Ilk cagrida _init_logging() runs
 
     @staticmethod
     def check_state_drift(drift_value):

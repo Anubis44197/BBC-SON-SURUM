@@ -4,11 +4,11 @@ from collections import defaultdict
 
 class AttributionTracer:
     """
-    BBC Attribution Engine (Suçlu Bulma Motoru) v1.0
-    Statik analiz ile proje genelindeki 'Call Graph' (Çağrı Ağı) haritasını çıkarır.
+    BBC Attribution Engine v1.0
+    Builds a project-wide call graph using static analysis.
     
-    Yöntem: Regex (Hafif ve Hızlı)
-    Amaç: Bir dosyadaki hatanın, hangi diğer dosyaları etkilediğini bulmak.
+    Method: Regex-based (lightweight and fast)
+    Goal: Determine which files are impacted by an error in a target file.
     """
     def __init__(self, project_root):
         self.project_root = project_root
@@ -35,21 +35,21 @@ class AttributionTracer:
                     yield path, rel_path
         
     def scan_project(self, target_extensions=None):
-        """Projedeki tüm tanımları ve kullanımları tarar."""
+        """Projedeki all tanimlari ve kullanimlari tarar."""
         if not target_extensions:
             target_extensions = ('.py', '.js', '.ts', '.c', '.cpp', '.h', '.java', '.go', '.rs')
             
         print(f"[*] Attribution Tracer: Scanning dependency network in {self.project_root}...")
         
-        # 1. PASS: Tanımları Bul (Definition Scan)
+        # 1. PASS: Tanimlari Bul (Definition Scan)
         for path, rel_path in self._iter_source_files(target_extensions):
             self._extract_definitions(path, rel_path)
                     
         print(f"[*] Knowledge Base: Found {len(self.symbol_map)} global symbols.")
 
-        # 2. PASS: Kullanımları Bul (Reference Scan)
-        # (Optimizasyon: Sadece ilişkili olabilecek dosyaları tara)
-        # Şimdilik basitlik adına aynı dosya setini tarıyoruz.
+        # 2. PASS: Kullanimlari Bul (Reference Scan)
+        # (Optimizasyon: Sadece iliskili olabilecek files tara)
+        # Simdilik basitlik adina ayni file setini tariyoruz.
         count = 0
         for path, rel_path in self._iter_source_files(target_extensions):
             self._find_references(path, rel_path)
@@ -58,7 +58,7 @@ class AttributionTracer:
         print(f"[*] Trace Complete: Mapped {len(self.reference_map)} cross-file references across {count} files.")
 
     def _extract_definitions(self, file_path, rel_path):
-        """Dosyadaki fonksiyon/sınıf tanımlarını bulur."""
+        """Dosyadaki fonksiyon/sinif tanimlarini bulur."""
         try:
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
@@ -78,8 +78,8 @@ class AttributionTracer:
                 matches = re.finditer(pat, content)
                 for m in matches:
                     symbol = m.group(1)
-                    if len(symbol) > 3: # Gürültü önleme (if, for gibi kısa kelimeleri atla)
-                        # Çakışma varsa listeye ekle (Overloading desteği)
+                    if len(symbol) > 3: # Gurultu onleme (if, for gibi kisa kelimeleri atla)
+                        # Cakisma varsa listeye ekle (Overloading destegi)
                         if symbol not in self.symbol_map:
                             self.symbol_map[symbol] = []
                         if rel_path not in self.symbol_map[symbol]:
@@ -88,19 +88,19 @@ class AttributionTracer:
             pass
 
     def _find_references(self, file_path, rel_path):
-        """Dosyadaki sembol kullanımlarını bulur."""
+        """Dosyadaki symbol kullanimlarini bulur."""
         try:
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
             
-            # Tüm bilinen sembolleri bu dosyada ara
-            # (Bu kısım büyük projelerde yavaş olabilir, v7.3'te optimize edilecek)
-            # Hız için sadece import edilenleri veya basit text search'ü kullanacağız.
+            # Tum bilinen symbols bu dosyada ara
+            # (Bu kisim buyuk projelerde yavas olabilir, v7.3'te optimize edilecek)
+            # Hiz for only import edilenleri veya basit text search'u kullanacagiz.
             
-            # Basit Text Search (Hızlı ama kaba)
+            # Basit Text Search (Hizli ama kaba)
             for symbol in self.symbol_map:
                 if symbol in content:
-                    # Kendi dosyasındaki kullanımı referans sayma (Self-reference exclusion)
+                    # Kendi dosyasindaki kullanimi referans sayma (Self-reference exclusion)
                     if rel_path not in self.symbol_map[symbol]:
                         self.reference_map[symbol].append(rel_path)
         except Exception:
@@ -108,16 +108,16 @@ class AttributionTracer:
 
     def trace_impact(self, faulty_file):
         """
-        Hatalı dosyanın kimleri etkileyeceğini raporlar.
-        Input: faulty_file (Hatalı dosya yolu)
+        Hatali dosyanin kimleri etkileyecegini raporlar.
+        Input: faulty_file (Hatali file yolu)
         Output: Etkilenen dosyalar listesi (Blast Radius)
         """
         impacted_files = set()
         
-        # 1. Hatalı dosyadaki sembolleri bul
+        # 1. Hatali dosyadaki symbols bul
         defined_symbols = [sym for sym, files in self.symbol_map.items() if faulty_file in files]
         
-        # 2. Bu sembolleri kullananları bul
+        # 2. Bu symbols kullananlari bul
         for sym in defined_symbols:
             users = self.reference_map.get(sym, [])
             impacted_files.update(users)

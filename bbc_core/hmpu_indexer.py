@@ -12,8 +12,8 @@ from .bbc_scalar import BBCScalar, STABLE, WEAK, SLEEPING, DEGENERATE, BBCEncode
 
 def compute_simhash(text: str) -> int:
     """
-    Pure Math SimHash (128-bit) — SHA-256 tabanlı.
-    Metni 128 boyutlu bir parmak izine dönüştürür.
+    Pure Math SimHash (128-bit) — SHA-256 tabanli.
+    Metni 128 boyutlu bir parmak izine donusturur.
     Dependencies: None (Standard Python only)
     """
     features = {}
@@ -42,8 +42,8 @@ def compute_simhash(text: str) -> int:
 
 def hamming_distance(hash1: int, hash2: int) -> int:
     """
-    İki SimHash arasındaki Hamming mesafesini hesaplar.
-    Düşük değer = Yüksek benzerlik
+    Iki SimHash arasindaki Hamming mesafesini hesaplar.
+    Dusuk deger = Yuksek benzerlik
     """
     xor = hash1 ^ hash2
     distance = 0
@@ -55,7 +55,7 @@ def hamming_distance(hash1: int, hash2: int) -> int:
 
 def similarity_score(hash1: int, hash2: int) -> float:
     """
-    İki metin arasındaki benzerlik yüzdesini döndürür (0-100)
+    Iki metin arasindaki benzerlik yuzdesini returns (0-100)
     """
     dist = hamming_distance(hash1, hash2)
     return max(0, 100 - (dist / 128.0 * 100))
@@ -71,10 +71,10 @@ class HMPUIndexer:
     Dependencies: None (Standard Python only)
     Logic: 128-bit SimHash (SHA-256) + Hamming Distance + Hybrid Search + BBCScalar Weighted
     
-    Birleştirilmiş özellikler:
-    - BBCScalar-weighted indexleme (Aura vektörü entegrasyonu)
+    Birlestirilmis ozellikler:
+    - BBCScalar-weighted indexleme (Aura vektoru entegrasyonu)
     - Hybrid Search (SimHash %60 + Keyword %40)
-    - Cache desteği
+    - Cache destegi
     - load/save index
     """
     def __init__(self, index_dir="02_Indices"):
@@ -96,7 +96,7 @@ class HMPUIndexer:
         BBC-Weighted SimHash.
         Returns a BBCScalar representing the confidence/quality score.
         The actual SimHash integer is stored in metadata["simhash"].
-        State, aura vector'ün durumuna bağlı.
+        State, aura vector'un durumuna bagli.
         """
         score = 1.0
         state = STABLE
@@ -280,7 +280,7 @@ class HMPUIndexer:
         """Save index database to disk as single JSON file."""
         base_path = self.index_dir / f"{prefix}_bbc_brain.json"
 
-        # Serialize: hash alanını string'e çevir (büyük int JSON uyumu)
+        # Serialize: hash alanini string'e cevir (buyuk int JSON uyumu)
         serializable_db = []
         for entry in self.vector_db:
             entry_copy = dict(entry)

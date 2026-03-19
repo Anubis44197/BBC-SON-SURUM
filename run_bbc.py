@@ -19,7 +19,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 # Add script directory to sys.path (bbc_core should be here)
 if script_dir not in sys.path: sys.path.insert(0, script_dir)
 
-# --- 2. MOTOR YÜKLEME (bbc_core) ---
+# --- 2. MOTOR YUKLEME (bbc_core) ---
 try:
     from bbc_core.cli import main as run_engine_cli
 except ImportError:
@@ -36,7 +36,7 @@ def _env_flag(name: str, default: bool = False) -> bool:
 
 
 def run_post_analysis_checks(project_path=".", emit_console: bool = False):
-    """Analiz sonrası tüm BBC doğrulama ve stabilite kontrollerini çalıştırır."""
+    """Analysis sonrasi all BBC verification ve stabilite kontrollerini runs."""
     # 1. Verifier — Syntax & Structural Integrity
     try:
         from bbc_core.verifier import BBCVerifier
@@ -95,7 +95,7 @@ def run_post_analysis_checks(project_path=".", emit_console: bool = False):
 
 # --- 4. ARGUMENT HELPER ---
 def _resolve_project_path():
-    """sys.argv'den hedef proje yolunu çıkar, yoksa '.' kullan."""
+    """sys.argv'den hedef project yolunu cikar, yoksa '.' kullan."""
     for arg in sys.argv[2:]:
         if not arg.startswith("-") and os.path.isdir(arg):
             return arg

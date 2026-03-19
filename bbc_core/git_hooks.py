@@ -1,10 +1,10 @@
 """
 BBC Git Hooks Generator (v1.0)
-Git hook'ları oluşturarak BBC'nin ekip genelinde otomatik başlatılmasını sağlar.
+Git hook'lari olusturarak BBC'nin ekip genelinde otomatik baslatilmasini saglar.
 
 Desteklenen hook'lar:
-  - post-checkout: Branch değiştiğinde BBC re-analyze tetikler
-  - post-merge: Merge sonrası BBC re-analyze tetikler
+  - post-checkout: Branch degistiginde BBC re-analyze tetikler
+  - post-merge: Merge sonrasi BBC re-analyze tetikler
 """
 
 import os
@@ -13,11 +13,11 @@ import sys
 from pathlib import Path
 
 
-# Hook template — Python ile BBC çalıştırır
+# Hook template — Python ile BBC runs
 HOOK_TEMPLATE = '''#!/bin/sh
 # BBC Auto-Reseal Hook (v1.0)
-# Bu hook, git işlemi sonrası BBC context'ini güncel tutar.
-# Kaldırmak için: bbc hooks --remove
+# Bu hook, git islemi sonrasi BBC context'ini current tutar.
+# Kaldirmak for: bbc hooks --remove
 
 BBC_DIR="{bbc_dir}"
 PROJECT_DIR="{project_dir}"
@@ -31,11 +31,11 @@ fi
 
 def install_hooks(project_path: str, bbc_dir: str = None) -> dict:
     """
-    Proje .git/hooks/ klasörüne BBC hook'larını kurar.
+    Project .git/hooks/ klasorune BBC hook'larini kurar.
     
     Args:
-        project_path: Projenin kök dizini
-        bbc_dir: BBC'nin kurulu olduğu dizin (default: script dizini)
+        project_path: Projenin kok dizini
+        bbc_dir: BBC'nin kurulu oldugu dizin (default: script dizini)
         
     Returns:
         dict with installed hooks and any errors
@@ -62,7 +62,7 @@ def install_hooks(project_path: str, bbc_dir: str = None) -> dict:
     for hook_name in ["post-checkout", "post-merge"]:
         hook_path = os.path.join(git_hooks_dir, hook_name)
         
-        # Mevcut hook varsa BBC marker kontrolü
+        # Mevcut hook varsa BBC marker check
         if os.path.exists(hook_path):
             try:
                 with open(hook_path, 'r', encoding='utf-8') as f:
@@ -71,7 +71,7 @@ def install_hooks(project_path: str, bbc_dir: str = None) -> dict:
                     installed.append(f"{hook_name} (already installed)")
                     continue
                 else:
-                    # Mevcut hook'a BBC kısmını ekle
+                    # Mevcut hook'a BBC kismini ekle
                     with open(hook_path, 'a', encoding='utf-8') as f:
                         f.write("\n" + hook_content)
                     installed.append(f"{hook_name} (appended)")
@@ -80,11 +80,11 @@ def install_hooks(project_path: str, bbc_dir: str = None) -> dict:
                 errors.append(f"{hook_name}: {e}")
                 continue
         
-        # Yeni hook oluştur
+        # Yeni hook create
         try:
             with open(hook_path, 'w', encoding='utf-8', newline='\n') as f:
                 f.write(hook_content)
-            # Unix'te çalıştırılabilir yap
+            # Unix'te calistirilabilir yap
             if os.name != 'nt':
                 st = os.stat(hook_path)
                 os.chmod(hook_path, st.st_mode | stat.S_IEXEC)
@@ -102,8 +102,8 @@ def install_hooks(project_path: str, bbc_dir: str = None) -> dict:
 
 def remove_hooks(project_path: str) -> dict:
     """
-    Proje .git/hooks/ klasöründen BBC hook'larını kaldırır.
-    Sadece BBC tarafından oluşturulan kısımları temizler.
+    Project .git/hooks/ klasorunden BBC hook'larini kaldirir.
+    Sadece BBC tarafindan olusturulan kisimlari temizler.
     """
     project_path = str(Path(project_path).resolve())
     git_hooks_dir = os.path.join(project_path, ".git", "hooks")
@@ -125,7 +125,7 @@ def remove_hooks(project_path: str) -> dict:
             if "BBC Auto-Reseal" not in content:
                 continue
             
-            # Sadece BBC kısmını içeriyorsa dosyayı sil
+            # Sadece BBC kismini iceriyorsa dosyayi sil
             lines = content.strip().split('\n')
             non_bbc_lines = []
             skip = False

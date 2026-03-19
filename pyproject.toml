@@ -75,7 +75,7 @@ exclude = [
 ]
 
 [tool.ruff.lint]
-# Sadece kritik hataları yakala — gereksiz uyarı üretme
+# Sadece kritik hatalari yakala — gereksiz warning uretme
 select = [
     "E9",   # Runtime errors (SyntaxError, etc.)
     "F63",  # Invalid comparisons

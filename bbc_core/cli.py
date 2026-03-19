@@ -875,7 +875,7 @@ def main():
             print(f"{'='*60}\n")
 
     elif args.command == "impact":
-        # Context dosyasını bul
+        # Context file bul
         ctx_path = args.context
         if not ctx_path:
             for candidate in [".bbc/bbc_context.json", "bbc_context.json"]:
@@ -1290,7 +1290,7 @@ def main():
         # Context path: explicit veya auto-detect
         ctx_path = args.context
         if not ctx_path:
-            # Auto-detect: dosyanın bulunduğu dizinden yukarı .bbc/bbc_context.json ara
+            # Auto-detect: dosyanin bulundugu dizinden yukari .bbc/bbc_context.json ara
             search_dir = os.path.dirname(os.path.abspath(args.file))
             for _ in range(10):
                 candidate = os.path.join(search_dir, ".bbc", "bbc_context.json")
@@ -1305,7 +1305,7 @@ def main():
                 print("[ERROR] bbc_context.json not found. Use --context to specify path.")
                 sys.exit(1)
 
-        # Dosyayı oku
+        # Dosyayi oku
         if not os.path.exists(args.file):
             print(f"[ERROR] File not found: {args.file}")
             sys.exit(1)

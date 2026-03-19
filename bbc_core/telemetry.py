@@ -1,14 +1,14 @@
 """
 BBC Telemetry Logger — v8.3
-Yapılandırılmış JSON event loglama sistemi.
+Structured JSON event logging system.
 
-Tüm BBC operasyonları (heal, degenerate, session, analiz, inject)
-burada izlenebilir event'ler olarak kaydedilir.
+All BBC operations (heal, degenerate, session, analyze, inject)
+are logged as traceable events.
 
-Log dosyası: .bbc/logs/telemetry.jsonl
-Format: Her satır bağımsız bir JSON nesnesi (JSON Lines)
+Log file: .bbc/logs/telemetry.jsonl
+Format: Each line is an independent JSON object (JSON Lines)
 
-Kullanım:
+Usage:
     from .telemetry import get_telemetry
     tele = get_telemetry()
     tele.log_event("HEAL_APPROVED", {"source": "hmpu_core", "remaining": 99})
@@ -21,27 +21,27 @@ from .bbc_logger import get_log_dir, get_logger
 
 logger = get_logger("BBC_Telemetry")
 
-# Desteklenen event türleri (dokümantasyon amaçlı, zorunlu değil)
+# Supported event types (for documentation, not mandatory)
 EVENT_TYPES = {
     # Session lifecycle
     "SESSION_START",
     "SESSION_END",
     "SESSION_RESET",
-    # Heal mekanizması
+    # Heal mechanism
     "HEAL_APPROVED",
     "HEAL_DENIED",
     "HEAL_CONSUMED",
-    # Kritik durumlar
+    # Critical states
     "DEGENERATE",
-    # Token metrikleri
+    # Token metrics
     "TOKEN_UPDATE",
     "FILES_PROCESSED",
-    # Analiz & Inject
+    # Analysis & Inject
     "ANALYZE_START",
     "ANALYZE_COMPLETE",
     "INJECT_START",
     "INJECT_COMPLETE",
-    # Hata & Uyarı
+    # Error & Warning
     "ERROR",
     "WARNING",
 }
@@ -49,9 +49,9 @@ EVENT_TYPES = {
 
 class TelemetryLogger:
     """
-    BBC Telemetry — Yapılandırılmış event loglama.
+    BBC Telemetry — Yapilandirilmis event loglama.
 
-    Her event şu formatta .bbc/logs/telemetry.jsonl dosyasına yazılır:
+    Her event su formatta .bbc/logs/telemetry.jsonl dosyasina yazilir:
     {"ts": "2026-02-20T17:43:00", "event": "HEAL_APPROVED", "data": {...}, "session": "20260220_174300"}
     """
 
@@ -69,11 +69,11 @@ class TelemetryLogger:
 
     def log_event(self, event_type: str, data: dict = None):
         """
-        Yapılandırılmış bir event kaydet.
+        Yapilandirilmis bir event kaydet.
 
         Args:
-            event_type: Event türü (SESSION_START, HEAL_APPROVED, vb.)
-            data: Event'e özel ek veriler (opsiyonel)
+            event_type: Event turu (SESSION_START, HEAL_APPROVED, vb.)
+            data: Event'e ozel ek veriler (opsiyonel)
         """
         event = {
             "ts": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
@@ -92,15 +92,15 @@ class TelemetryLogger:
             logger.warning(f"Telemetry write failed: {e}")
 
     def get_event_count(self) -> int:
-        """Bu instance'ın toplam yazdığı event sayısı."""
+        """Bu instance'in toplam yazdigi event sayisi."""
         return self._event_count
 
     def get_recent_events(self, limit: int = 20) -> list:
         """
-        Son N event'i oku ve döndür.
+        Son N event'i oku ve return.
 
         Args:
-            limit: Döndürülecek maksimum event sayısı
+            limit: Dondurulecek maksimum event sayisi
 
         Returns:
             Event dict listesi (en yenisi sonda)
@@ -223,7 +223,7 @@ _global_telemetry = None
 
 
 def get_telemetry() -> TelemetryLogger:
-    """Global TelemetryLogger instance'ını döndür."""
+    """Global TelemetryLogger instance'ini return."""
     global _global_telemetry
     if _global_telemetry is None:
         _global_telemetry = TelemetryLogger()

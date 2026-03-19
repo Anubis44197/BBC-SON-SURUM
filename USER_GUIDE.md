@@ -135,7 +135,7 @@ These are created regardless of IDE detection, all inside the `.bbc/` directory:
 - `.bbc/BBC_INSTRUCTIONS.md` — Universal AI instruction manifest
 - `.gitignore` — Updated with BBC patterns
 
-## 🔒 Sealing (Mühürleme)
+## 🔒 Sealing
 
 BBC seals the context with `constraint_status: "verified"`. This means:
 - AI assistants can only use symbols from `bbc_context.json`

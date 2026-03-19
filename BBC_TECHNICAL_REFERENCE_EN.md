@@ -65,7 +65,7 @@ When the system detects instability ($\kappa > 5.0$), it performs an "Accord Tun
 2. It "bends" the diagonal weights of the Aura Matrix (`A[i][i]`) by a small `delta`.
 3. This realigns the geometric planes of Logic (S), Chaos (C), and Pulse (P), minimizing mathematical noise.
 
-### 3.3. Re-Sealing (The Mühürleme Logic)
+### 3.3. Re-Sealing (Sealing Logic)
 To prevent AI hallucinations based on old code:
 1. **Detection:** `ide_hooks.py` watches file system events.
 2. **Verification:** `cli.py` compares the current file hash with the stored "Sealed Hash".

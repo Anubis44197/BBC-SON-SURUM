@@ -87,7 +87,7 @@ class BBCCLI:
                 self.run_command(["inject", project_resolved, "--auto-analyze", "--silent"])
             print(f"[BBC] System Active. Zero-Hallucination Guard Engaged.")
             
-            # Otomatik daemon başlat (Arka plan servisi)
+            # Otomatik daemon start (Arka plan servisi)
             if not background:
                 print(f"[BBC] Starting Real-time Daemon in background...")
                 daemon_script = self.script_dir / "bbc_daemon.py"

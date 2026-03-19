@@ -116,8 +116,8 @@ async def analyze_file(request: AnalyzeRequest):
 @app.get("/api/project_context")
 async def get_project_context(silent: bool = True):
     """
-    Tüm projenin BBC context'ini (recipe) üretir.
-    NativeAdapter kullanır, dolayısıyla hmpu, index ve symbol analizi içerir.
+    Tum projenin BBC context'ini (recipe) uretir.
+    NativeAdapter uses, dolayisiyla hmpu, index ve symbol analysis icerir.
     """
     if not adapter: 
         raise HTTPException(status_code=503, detail="Adapter not initialized")
@@ -139,8 +139,8 @@ async def get_project_context(silent: bool = True):
 @app.get("/api/symbol_analysis")
 async def get_symbol_analysis():
     """
-    Projenin sembol analizi ve kritik sembol bilgisini döner.
-    Daha önce yapılmış olan son analizin sonuçlarını context'ten çeker.
+    Projenin symbol analysis ve kritik symbol bilgisini returns.
+    Daha once yapilmis olan son analizin sonuclarini context'ten ceker.
     """
     if not adapter:
         raise HTTPException(status_code=503, detail="Adapter not initialized")
