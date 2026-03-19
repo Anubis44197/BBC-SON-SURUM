@@ -135,7 +135,7 @@ class TelemetryLogger:
                     success: bool = True, extra: dict = None):
         """
         Log a BBC command execution with performance metrics.
-        This powers the 'bbc telemetry' summary dashboard.
+        Metrics are stored internally for diagnostics and trend analysis.
         """
         data = {
             "command": command,
