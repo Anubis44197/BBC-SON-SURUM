@@ -82,12 +82,13 @@ The `bbc.bat` start command is now a full pipeline:
 
 ## 4. 📉 Context Reduction Reality
 How does BBC reduce context size for AI workflows?
+
 - **Boilerplate Removal:** It strips implementation details, keeping only signatures.
 - **Dependency Pruning:** It only includes relevant imports in the context.
 - **Compression:** High-density JSON structure reduces whitespace overhead.
 
 Result: large projects are reduced into compact, structure-focused context artifacts.
-These reduction metrics remain internal (`.bbc/bbc_context.json`) and are no longer presented as terminal token-savings banners or telemetry dashboard commands.
+These reduction metrics remain internal (`.bbc/bbc_context.json`) and are no longer presented as terminal token-savings banners or as a telemetry dashboard command.
 
 ---
 

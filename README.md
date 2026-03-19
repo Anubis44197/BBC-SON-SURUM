@@ -191,7 +191,7 @@ BBC's daemon (`bbc_daemon.py`) actively monitors your project for changes every 
 
 The daemon uses `adaptive_mode.check_context_freshness()` for hash-based staleness detection and recommends `RESCAN` or `PARTIAL_RESCAN` based on the ratio of changed files.
 
-### � Agent Integration Layer (v8.5)
+### Agent Integration Layer (v8.5)
 BBC now exposes its operational mode directly to AI agents through the sealed context and injected instruction files.
 
 - **Versioning / Compatibility** — `bbc_instructions_version` and `context_schema_version` are written into `.bbc/bbc_context.json` and `BBC_INSTRUCTIONS.md`

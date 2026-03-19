@@ -48,7 +48,7 @@ python bbc.py start .
 1. **Verify** - Checks existing BBC context integrity
 2. **Analyze** - Scans your entire codebase (classes, functions, imports, dependencies)
 3. **Inject** - Creates IDE-specific config files for all detected AI assistants
-4. **Seal** - Marks context as VERIFIED (mühürleme)
+4. **Seal** - Marks context as VERIFIED (sealing)
 
 ## 🛠️ Commands Reference
 
