@@ -1024,6 +1024,7 @@ If any step fails: STOP and report to user
             ],
         ),
     )
+    print("[BBC] Project skills refreshed -> .bbc/skills/")
 
     # Her zaman .bbc/ icine yaz (ana merkez)
     _write_config("BBC Instructions", ".bbc/BBC_INSTRUCTIONS.md", instructions)

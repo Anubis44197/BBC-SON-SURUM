@@ -485,6 +485,9 @@ BBC keeps selected heavy artifacts in a central project-indexed location under B
 
 Project-local legacy copies are automatically cleaned during analyze/inject flows.
 
+Project-specific skills are intentionally visible to users inside `.bbc/skills/`.
+They are automatically regenerated for that project whenever BBC runs install/start/inject.
+
 All `.bbc/` files are automatically added to `.gitignore` — they never pollute your repository.
 
 ---

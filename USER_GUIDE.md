@@ -140,6 +140,8 @@ These are created regardless of IDE detection, all inside the `.bbc/` directory:
 - `.bbc/skills/BBC_SKILL_REFACTOR.md` — Refactor safety profile
 - `.gitignore` — Updated with BBC patterns
 
+These project-specific skill files are user-visible under `.bbc/skills/` and are refreshed automatically on BBC install/start/inject for that project.
+
 ### Centralized Heavy Artifacts
 To keep project worktrees cleaner, BBC stores selected heavy artifacts in central storage under BBC install root:
 
