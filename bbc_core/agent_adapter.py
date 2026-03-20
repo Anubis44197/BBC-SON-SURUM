@@ -900,6 +900,131 @@ If any step fails: STOP and report to user
 
     instructions = get_instructions()
 
+    def _build_skill_md(skill_name: str, objective: str, workflow_steps: List[str]) -> str:
+        top_symbols = []
+        for entry in code_structure:
+            if not isinstance(entry, dict):
+                continue
+            struct = entry.get("structure", {}) if isinstance(entry.get("structure", {}), dict) else {}
+            classes = struct.get("classes", []) if isinstance(struct.get("classes", []), list) else []
+            funcs = struct.get("functions", []) if isinstance(struct.get("functions", []), list) else []
+            for c in classes[:2]:
+                if isinstance(c, str) and c.strip():
+                    top_symbols.append(c.strip())
+            for fn in funcs[:3]:
+                if isinstance(fn, str) and fn.strip():
+                    top_symbols.append(fn.strip())
+            if len(top_symbols) >= 15:
+                break
+
+        symbol_preview = ", ".join(top_symbols[:12]) if top_symbols else "Use symbols from .bbc/bbc_context.json code_structure only"
+        workflow_block = "\n".join(f"{idx}. {step}" for idx, step in enumerate(workflow_steps, 1))
+
+        return f"""# {skill_name}
+
+## Purpose
+{objective}
+
+## Scope
+- Project: {project_root.name}
+- Status: {status}
+- Files analyzed: {file_count}
+- Enforcement: {enforcement}
+- Fail policy: {fail_policy}
+
+## Required Inputs
+- .bbc/bbc_context.json
+- .bbc/bbc_rules.md
+- .bbc/BBC_INSTRUCTIONS.md
+
+## Mandatory Workflow
+{workflow_block}
+
+## Constraints
+- Do not invent symbols not present in .bbc/bbc_context.json.
+- If context is stale and fail policy is fail_closed, stop and request analyze.
+- Keep edits minimal and deterministic.
+
+## Symbol Preview
+{symbol_preview}
+
+## Validation
+- Run: python run_bbc.py audit .
+- Run: python run_bbc.py verify .
+"""
+
+    # --- Project-specific auto-generated skills (English, per project) ---
+    _write_config(
+        "BBC Skill (General)",
+        ".bbc/skills/BBC_SKILL.md",
+        _build_skill_md(
+            "BBC Project Skill",
+            "Guide LLMs to operate with BBC context-first rules for this project.",
+            [
+                "Load .bbc/bbc_context.json and .bbc/bbc_rules.md first.",
+                "Identify target symbols only from verified code_structure.",
+                "Apply minimal safe edits aligned with project conventions.",
+                "Run verify/audit after changes and report outcomes.",
+            ],
+        ),
+    )
+    _write_config(
+        "BBC Skill (Bugfix)",
+        ".bbc/skills/BBC_SKILL_BUGFIX.md",
+        _build_skill_md(
+            "BBC Bugfix Skill",
+            "Resolve defects with smallest possible behavior-preserving changes.",
+            [
+                "Map failing behavior to impacted symbols in BBC context.",
+                "Patch the narrowest code path that fixes the defect.",
+                "Avoid unrelated refactors while fixing the issue.",
+                "Run verification and summarize the exact fix scope.",
+            ],
+        ),
+    )
+    _write_config(
+        "BBC Skill (Feature)",
+        ".bbc/skills/BBC_SKILL_FEATURE.md",
+        _build_skill_md(
+            "BBC Feature Skill",
+            "Implement new behavior while preserving existing architecture contracts.",
+            [
+                "Locate extension points using verified classes/functions.",
+                "Add feature code with explicit compatibility to current flows.",
+                "Update related integration points only when required.",
+                "Verify no regressions in existing behavior.",
+            ],
+        ),
+    )
+    _write_config(
+        "BBC Skill (Review)",
+        ".bbc/skills/BBC_SKILL_REVIEW.md",
+        _build_skill_md(
+            "BBC Review Skill",
+            "Review code for correctness risks, regressions, and missing validations.",
+            [
+                "Inspect touched symbols and their direct dependencies.",
+                "Prioritize findings by severity and user impact.",
+                "Confirm tests/verification coverage for changed behavior.",
+                "Provide concrete file-level remediation actions.",
+            ],
+        ),
+    )
+    _write_config(
+        "BBC Skill (Refactor)",
+        ".bbc/skills/BBC_SKILL_REFACTOR.md",
+        _build_skill_md(
+            "BBC Refactor Skill",
+            "Improve structure and maintainability without altering behavior.",
+            [
+                "Define refactor boundaries from BBC code_structure.",
+                "Preserve public APIs and contracts unless explicitly requested.",
+                "Apply small iterative changes with quick verification.",
+                "Validate equivalence with post-change checks.",
+            ],
+        ),
+    )
+
     # Her zaman .bbc/ icine yaz (ana merkez)
     _write_config("BBC Instructions", ".bbc/BBC_INSTRUCTIONS.md", instructions)
 
@@ -1138,6 +1263,8 @@ def shield_git_isolation(project_root: Path, created_files: dict):
         # We use relative paths for gitignore
         try:
             rel_path = os.path.relpath(path_str, project_root).replace('\\', '/')
+            if rel_path.startswith('.bbc/'):
+                continue
             # If it's a deep path (e.g. .github/copilot-instructions.md), we add it specifically
             to_ignore.add(rel_path)
             # Also ignore the parent dir if it was created just for BBC
