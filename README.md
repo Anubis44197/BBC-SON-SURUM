@@ -338,7 +338,7 @@ bbc pack --aggressive
 Inject per-task optimized contexts tailored to each AI tool:
 
 - **Task mapping** — Each AI format gets a task profile (bugfix/feature/review)
-- **Optimized contexts** — `.bbc/agent_context_<task>.json` per format
+- **Optimized contexts** — Generated per task with central storage for heavy artifacts
 - **Smart references** — Config files point to optimized context paths
 - **Toggle** — `--no-optimize` disables optimization per run
 
@@ -460,13 +460,46 @@ BBC/
 ├── BBC_INSTRUCTIONS.md       # AI instruction manifest
 ├── bbc_context.md            # Human-readable context summary
 ├── bbc_rules.md              # Project coding rules
+├── skills/                   # Auto-generated project skill set (English)
+│   ├── BBC_SKILL.md
+│   ├── BBC_SKILL_BUGFIX.md
+│   ├── BBC_SKILL_FEATURE.md
+│   ├── BBC_SKILL_REVIEW.md
+│   └── BBC_SKILL_REFACTOR.md
 ├── indices/                  # Vector indices for similarity search
 ├── cache/                    # Project snapshot cache
 ├── logs/                     # Daemon and session logs
 └── manifest/                 # Injected file registry
 ```
 
+### Central Heavy Artifacts
+BBC keeps selected heavy artifacts in a central project-indexed location under BBC install root to reduce project clutter while preserving full functionality.
+
+```
+<BBC_HOME>/.bbc/projects/<project_key>/
+├── cache/project_snapshot.json
+└── agent_context/
+  ├── agent_context_bugfix.json
+  └── agent_context_feature.json
+```
+
+Project-local legacy copies are automatically cleaned during analyze/inject flows.
+
 All `.bbc/` files are automatically added to `.gitignore` — they never pollute your repository.
+
+---
+
+## Documentation Set
+
+- `README.md` — Product overview and architecture map
+- `QUICK_START.md` — Installation and first-run checklist
+- `USER_GUIDE.md` — Commands, workflows, and troubleshooting
+- `BBC_TECHNICAL_REFERENCE_EN.md` — Engine internals and design notes
+- `CHANGELOG.md` — Versioned release history
+- `CONTRIBUTING.md` — Contribution workflow and quality gates
+- `SECURITY.md` — Vulnerability reporting policy
+- `CODE_OF_CONDUCT.md` — Collaboration standards
+- `SUPPORT.md` — Support channels and issue triage guidance
 
 ---
 

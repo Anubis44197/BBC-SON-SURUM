@@ -1,6 +1,6 @@
-# BBC (Bitter Brain Context) v8.3 — Technical Reference Manual
+# BBC (Bitter Brain Context) — Technical Reference Manual
 
-**Version:** v8.3 (STABLE)  
+**Version:** v8.3+ (STABLE LINE)  
 **Architecture:** HMPU Matrix-Driven Context Engine  
 **Core Philosophy:** "Zero-Hallucination via Mathematical Certainty"
 
@@ -92,4 +92,47 @@ These reduction metrics remain internal (`.bbc/bbc_context.json`) and are no lon
 
 ---
 
-*This document serves as the definitive technical reference for BBC v8.3.*
+## 5. 🧩 Project-Specific Skill Generation (Current)
+
+BBC now auto-generates project-scoped English skill documents during inject flows:
+
+- `.bbc/skills/BBC_SKILL.md`
+- `.bbc/skills/BBC_SKILL_BUGFIX.md`
+- `.bbc/skills/BBC_SKILL_FEATURE.md`
+- `.bbc/skills/BBC_SKILL_REVIEW.md`
+- `.bbc/skills/BBC_SKILL_REFACTOR.md`
+
+Each skill is derived from verified project context (`bbc_context.json` + `bbc_rules.md`) and includes:
+
+- Scope and enforcement metadata
+- Required inputs and workflow
+- Guardrails and validation steps
+- Symbol preview from verified code structure
+
+This creates deterministic, task-focused guidance for LLM tools without requiring manual prompt templates per project.
+
+---
+
+## 6. 🗂️ Central Heavy-Artifact Storage (Current)
+
+To reduce project-root clutter while preserving deterministic behavior, selected heavy files are stored centrally under BBC install root:
+
+```text
+<BBC_HOME>/.bbc/projects/<project_key>/
+├── cache/project_snapshot.json
+└── agent_context/
+  ├── agent_context_bugfix.json
+  └── agent_context_feature.json
+```
+
+Project-local legacy copies are cleaned automatically in analyze/inject flows.
+
+Design rationale:
+
+- Keep per-project worktree focused on active artifacts
+- Preserve deterministic context generation and auditability
+- Avoid repeated large JSON churn inside application repositories
+
+---
+
+*This document serves as the technical reference for the current BBC stable line.*

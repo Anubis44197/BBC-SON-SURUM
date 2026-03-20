@@ -133,7 +133,21 @@ These are created regardless of IDE detection, all inside the `.bbc/` directory:
 - `.bbc/bbc_context.md` — Human-readable context summary
 - `.bbc/bbc_rules.md` — Project coding rules injected into AI
 - `.bbc/BBC_INSTRUCTIONS.md` — Universal AI instruction manifest
+- `.bbc/skills/BBC_SKILL.md` — General project skill (English)
+- `.bbc/skills/BBC_SKILL_BUGFIX.md` — Bugfix-oriented skill profile
+- `.bbc/skills/BBC_SKILL_FEATURE.md` — Feature implementation profile
+- `.bbc/skills/BBC_SKILL_REVIEW.md` — Review and risk-audit profile
+- `.bbc/skills/BBC_SKILL_REFACTOR.md` — Refactor safety profile
 - `.gitignore` — Updated with BBC patterns
+
+### Centralized Heavy Artifacts
+To keep project worktrees cleaner, BBC stores selected heavy artifacts in central storage under BBC install root:
+
+- `<BBC_HOME>/.bbc/projects/<project_key>/cache/project_snapshot.json`
+- `<BBC_HOME>/.bbc/projects/<project_key>/agent_context/agent_context_bugfix.json`
+- `<BBC_HOME>/.bbc/projects/<project_key>/agent_context/agent_context_feature.json`
+
+During analyze/inject, legacy project-local copies of these files are automatically removed.
 
 ## 🔒 Sealing
 
