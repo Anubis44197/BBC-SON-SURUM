@@ -53,3 +53,7 @@ BBC_README.md
 ai-context.json
 bbc_context.json
 bbc_rules.md
+
+# --- BBC Isolation Shield (No-Trace) ---
+.codiumai/
+.codiumai/config.json

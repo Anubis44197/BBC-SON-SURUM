@@ -213,13 +213,39 @@ class BBCDaemon:
         if not run_bbc.exists():
             self._log(f"run_bbc.py not found at {run_bbc}")
             return False
+
+        analyze_timeout_raw = os.environ.get("BBC_DAEMON_ANALYZE_TIMEOUT", "900").strip()
+        inject_timeout_raw = os.environ.get("BBC_DAEMON_INJECT_TIMEOUT", "180").strip()
+        try:
+            analyze_timeout = max(60, int(analyze_timeout_raw))
+        except Exception:
+            analyze_timeout = 900
+        try:
+            inject_timeout = max(30, int(inject_timeout_raw))
+        except Exception:
+            inject_timeout = 180
+
         try:
             sp.run([sys.executable, str(run_bbc), "analyze", project_path, "--silent"],
-                   capture_output=True, text=True, timeout=120)
-            sp.run([sys.executable, str(run_bbc), "inject", project_path, "--auto-analyze", "--silent"],
-                   capture_output=True, text=True, timeout=60)
+                   capture_output=True, text=True, timeout=analyze_timeout, check=True)
+            # analyze adimi zaten calistigi icin inject icinde ikinci analyze tetigini kapat.
+            sp.run([sys.executable, str(run_bbc), "inject", project_path, "--silent"],
+                   capture_output=True, text=True, timeout=inject_timeout, check=True)
             self._log("Re-analysis and re-injection completed")
             return True
+        except sp.TimeoutExpired as e:
+            self._log(
+                f"Re-analysis timeout: cmd={' '.join(e.cmd) if isinstance(e.cmd, list) else e.cmd} "
+                f"timeout={e.timeout}s"
+            )
+            return False
+        except sp.CalledProcessError as e:
+            stderr_tail = (e.stderr or "")[-800:]
+            self._log(
+                f"Re-analysis command failed (exit={e.returncode}): "
+                f"cmd={' '.join(e.cmd) if isinstance(e.cmd, list) else e.cmd} stderr_tail={stderr_tail}"
+            )
+            return False
         except Exception as e:
             self._log(f"Re-analysis error: {e}")
             return False
@@ -232,7 +258,19 @@ class BBCDaemon:
         bbc_active = False
         
         # File watcher state
-        FRESHNESS_INTERVAL = 30  # saniye — hash check araligi
+        fresh_interval_raw = os.environ.get("BBC_DAEMON_FRESHNESS_INTERVAL", "30").strip()
+        try:
+            FRESHNESS_INTERVAL = max(5, int(fresh_interval_raw))
+        except Exception:
+            FRESHNESS_INTERVAL = 30
+
+        fail_backoff_raw = os.environ.get("BBC_DAEMON_RETRY_BACKOFF", "300").strip()
+        try:
+            fail_backoff_seconds = max(30, int(fail_backoff_raw))
+        except Exception:
+            fail_backoff_seconds = 300
+
+        next_retry_after = 0.0
         last_freshness_check = 0.0
         known_files = set()  # bilinen file seti
         
@@ -329,6 +367,13 @@ class BBCDaemon:
                         
                         # 3) Yeniden analysis gerekiyorsa run + Aura feedback
                         if needs_reanalysis:
+                            if now < next_retry_after:
+                                wait_left = int(next_retry_after - now)
+                                self._log(
+                                    f"[WATCH] Re-analysis backoff active ({wait_left}s left), skipped trigger: {reason}"
+                                )
+                                continue
+
                             self._log(f"[WATCH] Triggering re-analysis: {reason}")
                             success = self._run_reanalysis(project_str)
                             
@@ -349,12 +394,16 @@ class BBCDaemon:
                             
                             if success:
                                 known_files = current_files
+                                next_retry_after = 0.0
                                 self._update_config(project_path, "RESEALED")
                                 self._record_watch_health(status="OK")
                                 self._log("[WATCH] Context resealed successfully")
                             else:
+                                next_retry_after = time.time() + fail_backoff_seconds
                                 self._record_watch_health(status="RESEAL_FAILED")
-                                self._log("[WATCH] Re-analysis failed")
+                                self._log(
+                                    f"[WATCH] Re-analysis failed, next retry after {fail_backoff_seconds}s"
+                                )
                         else:
                             known_files = current_files
                             self._record_watch_health(status="OK")
