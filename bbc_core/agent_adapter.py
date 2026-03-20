@@ -738,13 +738,27 @@ If any step fails: STOP and report to user
 
         try:
             from bbc_core.context_compiler import TaskContextCompiler
+            from bbc_core.config import BBCConfig
 
             compiler = TaskContextCompiler(str(context_file))
             compiled = compiler.compile(task=task)
 
-            out_path = project_root / ".bbc" / f"agent_context_{task}.json"
+            # Keep selected heavy optimized contexts in central BBC install storage.
+            if task in {"bugfix", "feature"}:
+                out_path = Path(BBCConfig.get_central_agent_context_path(str(project_root), task))
+                legacy_path = project_root / ".bbc" / f"agent_context_{task}.json"
+            else:
+                out_path = project_root / ".bbc" / f"agent_context_{task}.json"
+                legacy_path = None
             out_path.parent.mkdir(parents=True, exist_ok=True)
             out_path.write_text(json.dumps(compiled, indent=2, ensure_ascii=False, default=str), encoding="utf-8")
+
+            if legacy_path is not None and legacy_path.resolve() != out_path.resolve():
+                try:
+                    if legacy_path.exists():
+                        legacy_path.unlink()
+                except Exception:
+                    pass
 
             optimized_context_paths[task] = str(out_path)
             return str(out_path)

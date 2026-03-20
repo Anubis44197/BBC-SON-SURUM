@@ -3,6 +3,7 @@ SESSION_HEAL_BUDGET_DEFAULT = 5
 import os
 import json
 import tempfile
+import hashlib
 from typing import Any, Dict, Iterable, Optional
 
 class BBCConfig:
@@ -86,6 +87,51 @@ class BBCConfig:
         """Get the path to bbc_context.json inside .bbc/ isolation directory."""
         bbc_dir = BBCConfig.get_bbc_dir(project_root)
         return os.path.join(bbc_dir, "bbc_context.json")
+
+    @staticmethod
+    def get_install_root() -> str:
+        """Return BBC installation root directory."""
+        return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    @staticmethod
+    def get_install_bbc_dir() -> str:
+        """Return central .bbc directory under BBC installation root."""
+        bbc_dir = os.path.join(BBCConfig.get_install_root(), BBCConfig.BBC_DIR)
+        os.makedirs(bbc_dir, exist_ok=True)
+        return bbc_dir
+
+    @staticmethod
+    def get_project_storage_key(project_root: str) -> str:
+        """Build a stable project key for centralized artifact storage."""
+        project_abs = os.path.abspath(project_root)
+        project_name = os.path.basename(project_abs) or "project"
+        safe_name = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in project_name)
+        digest = hashlib.sha1(project_abs.encode("utf-8", errors="ignore")).hexdigest()[:12]
+        return f"{safe_name}_{digest}"
+
+    @staticmethod
+    def get_central_project_dir(project_root: str) -> str:
+        """Return per-project central storage directory under BBC installation .bbc."""
+        root_dir = os.path.join(BBCConfig.get_install_bbc_dir(), "projects")
+        project_dir = os.path.join(root_dir, BBCConfig.get_project_storage_key(project_root))
+        os.makedirs(project_dir, exist_ok=True)
+        return project_dir
+
+    @staticmethod
+    def get_central_project_snapshot_path(project_root: str) -> str:
+        """Return centralized path for project_snapshot.json."""
+        project_dir = BBCConfig.get_central_project_dir(project_root)
+        cache_dir = os.path.join(project_dir, "cache")
+        os.makedirs(cache_dir, exist_ok=True)
+        return os.path.join(cache_dir, "project_snapshot.json")
+
+    @staticmethod
+    def get_central_agent_context_path(project_root: str, task: str) -> str:
+        """Return centralized path for agent_context_<task>.json."""
+        project_dir = BBCConfig.get_central_project_dir(project_root)
+        agent_dir = os.path.join(project_dir, "agent_context")
+        os.makedirs(agent_dir, exist_ok=True)
+        return os.path.join(agent_dir, f"agent_context_{task}.json")
 
     @staticmethod
     def get_scan_extensions() -> tuple:

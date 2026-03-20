@@ -249,10 +249,7 @@ def _is_context_stale(project_root: str, context_path: str) -> bool:
 
 def _get_project_snapshot_path(project_root: str) -> str:
     from bbc_core.config import BBCConfig
-    bbc_dir = BBCConfig.get_bbc_dir(project_root)
-    cache_dir = os.path.join(bbc_dir, "cache")
-    os.makedirs(cache_dir, exist_ok=True)
-    return os.path.join(cache_dir, "project_snapshot.json")
+    return BBCConfig.get_central_project_snapshot_path(project_root)
 
 
 def _collect_project_fingerprint(project_root: str) -> Dict[str, Dict[str, Any]]:
@@ -289,6 +286,16 @@ def _write_project_snapshot(project_root: str, context_path: str) -> str:
         "files": _collect_project_fingerprint(project_root),
     }
     BBCConfig.atomic_write_json(snapshot_path, payload, encoder_cls=BBCEncoder)
+
+    # Ensure legacy project-local snapshot does not linger after central migration.
+    legacy_snapshot = os.path.join(project_root, ".bbc", "cache", "project_snapshot.json")
+    if os.path.abspath(legacy_snapshot) != os.path.abspath(snapshot_path):
+        try:
+            if os.path.exists(legacy_snapshot):
+                os.remove(legacy_snapshot)
+        except Exception:
+            pass
+
     return snapshot_path
 
 
@@ -312,7 +319,7 @@ def audit_bbc_traces(project_path: str) -> Dict[str, Any]:
         ".bbc/bbc_context.md": os.path.join(project_root, ".bbc", "bbc_context.md"),
         ".bbc/BBC_INSTRUCTIONS.md": os.path.join(project_root, ".bbc", "BBC_INSTRUCTIONS.md"),
         ".bbc/manifest/injected_files.json": os.path.join(project_root, ".bbc", "manifest", "injected_files.json"),
-        ".bbc/cache/project_snapshot.json": os.path.join(project_root, ".bbc", "cache", "project_snapshot.json"),
+        "[Central] project_snapshot.json": BBCConfig.get_central_project_snapshot_path(project_root),
     }
 
     # Legacy / informational paths (v8.3 no longer generates these at root)
