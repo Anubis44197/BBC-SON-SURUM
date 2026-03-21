@@ -572,6 +572,8 @@ def main():
     analyze_parser.add_argument("--silent", action="store_true", help="Minimal output")
     analyze_parser.add_argument("--incremental", action="store_true",
                                help="Only re-analyze files changed since last run")
+    analyze_parser.add_argument("--detect-secrets", action="store_true",
+                               help="Enable secret signal detection during analysis")
 
     # migrate command
     migrate_parser = subparsers.add_parser("migrate")
@@ -731,6 +733,8 @@ def main():
 
     if args.command == "analyze":
         cli = BBCCLI()
+        if getattr(args, "detect_secrets", False):
+            cli.adapter._detect_secrets = True
         if getattr(args, "incremental", False):
             asyncio.run(cli.run_analysis_incremental(args.path, args.out, silent=getattr(args, "silent", False)))
         else:

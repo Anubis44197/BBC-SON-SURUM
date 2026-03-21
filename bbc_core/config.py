@@ -34,6 +34,12 @@ class BBCConfig:
     DEFAULT_FAIL_POLICY = "fail_closed"       # fail_closed | fail_open
     DEFAULT_ENFORCEMENT = "strict"            # strict | balanced | relaxed
 
+    # Secret Signal Detection (varsayılan KAPALI)
+    BBC_ENABLE_SECRET_DETECT = os.getenv("BBC_ENABLE_SECRET_DETECT", "0").strip().lower() in ("1", "true", "yes", "on")
+    SECRET_MIN_CONFIDENCE = float(os.getenv("BBC_SECRET_MIN_CONFIDENCE", "0.5"))
+    SECRET_ENTROPY_THRESHOLD = float(os.getenv("BBC_SECRET_ENTROPY_THRESHOLD", "3.0"))
+    SECRET_AURA_MAX_INFLUENCE = float(os.getenv("BBC_SECRET_AURA_MAX_INFLUENCE", "0.10"))  # ±10% üst sınır
+
     # Shared scan defaults
     SOURCE_EXTENSIONS = (
         '.py', '.md', '.json', '.js', '.jsx', '.ts', '.tsx', '.html', '.css',

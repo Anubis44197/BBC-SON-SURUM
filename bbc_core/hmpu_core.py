@@ -169,12 +169,33 @@ class HMPU_Governor:
         # Proprietary Weighted Synthesis
         score_scalar = (v[0] * 0.6) + (v[1] * 0.2) + (v[2] * 0.2)
 
+        # ── Secret Signal Aura Adjustment (opsiyonel, sınırlı etki) ──
+        # secret_risk_hint thread-local veya instance üzerinden gelir
+        secret_adj = getattr(self, '_secret_risk_adjustment', 0.0)
+        if secret_adj != 0.0:
+            adj_scalar = BBCScalar(secret_adj, state=WEAK, metadata={"origin": "semantic"})
+            score_scalar = score_scalar + adj_scalar
+            # Aura alt sınır koruması
+            if float(score_scalar) < 0.0:
+                score_scalar = BBCScalar(0.0, state=score_scalar.state, metadata=score_scalar.metadata)
+
         if score_scalar.state == DEGENERATE:
             if self.state_manager:
                 self.state_manager.record_degenerate("math")
             raise RuntimeError("DEGENERATE state in final score calculation")
 
         return float(score_scalar)
+
+    def set_secret_risk(self, risk_score: float, max_influence: float = 0.10):
+        """
+        Secret detection sonucu risk skorunu Aura hesabına bağlar.
+        Etki ±max_influence ile sınırlıdır (regresyon koruması).
+        """
+        if risk_score <= 0.0:
+            self._secret_risk_adjustment = 0.0
+            return
+        adj = -(risk_score * max_influence)
+        self._secret_risk_adjustment = max(-max_influence, adj)
 
     def self_heal_protocol(self):
         """

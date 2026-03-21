@@ -314,6 +314,47 @@ class BBCNativeAdapter:
                 "reason": "disabled_by_default_set_BBC_ENABLE_SYMBOL_PIPELINE=1_to_enable"
             }
 
+        # ── SECRET SIGNAL DETECTION (opsiyonel — flag ile aktif) ───────────
+        detect_secrets = getattr(self, '_detect_secrets', False) or BBCConfig.BBC_ENABLE_SECRET_DETECT
+        if detect_secrets:
+            try:
+                from .secret_detector import scan_project, compute_secret_risk_score, compute_aura_secret_adjustment
+                if not silent:
+                    print("[*] Secret Signal Detection: Scanning...")
+                scan_result = scan_project(
+                    root_to_scan,
+                    min_confidence=BBCConfig.SECRET_MIN_CONFIDENCE,
+                    entropy_threshold=BBCConfig.SECRET_ENTROPY_THRESHOLD,
+                    file_list=files_found,
+                    silent=silent,
+                )
+                risk_score = compute_secret_risk_score(scan_result)
+                aura_adj = compute_aura_secret_adjustment(risk_score, BBCConfig.SECRET_AURA_MAX_INFLUENCE)
+                context_json["secrets_scan"] = {
+                    **scan_result.to_summary_dict(),
+                    "risk_score": round(risk_score, 4),
+                    "aura_adjustment": round(aura_adj, 4),
+                }
+                # Inject risk into active governor instance used by the engine.
+                try:
+                    if getattr(self.engine, "governor", None):
+                        self.engine.governor.set_secret_risk(
+                            risk_score,
+                            BBCConfig.SECRET_AURA_MAX_INFLUENCE,
+                        )
+                except Exception:
+                    pass
+                if not silent:
+                    total = scan_result.total_findings
+                    risk_pct = round(risk_score * 100, 1)
+                    print(f"[*] Secret Signal Detection: {total} signal(s), risk={risk_pct}%, aura_adj={aura_adj:+.4f}")
+            except Exception as e:
+                if not silent:
+                    print(f"[WARN] Secret Detection skipped: {e}")
+                context_json["secrets_scan"] = {"enabled": False, "reason": str(e)}
+        else:
+            context_json["secrets_scan"] = {"enabled": False}
+
         return context_json
 
     async def analyze_project_incremental(self, target_root, output_file=None, silent: bool = False):
@@ -485,6 +526,47 @@ class BBCNativeAdapter:
         est_skeleton_bytes = len(all_files) * 50
         context_bytes = est_recipe_bytes + est_skeleton_bytes + 500
         context_json["metrics"]["context_bytes"] = context_bytes
+
+        # ── SECRET SIGNAL DETECTION — Incremental (sadece değişen dosyalar) ──
+        detect_secrets = getattr(self, '_detect_secrets', False) or BBCConfig.BBC_ENABLE_SECRET_DETECT
+        if detect_secrets and affected:
+            try:
+                from .secret_detector import scan_project, compute_secret_risk_score, compute_aura_secret_adjustment
+                if not silent:
+                    print("[*] Secret Signal Detection (incremental): Scanning changed files...")
+                scan_result = scan_project(
+                    root_to_scan,
+                    min_confidence=BBCConfig.SECRET_MIN_CONFIDENCE,
+                    entropy_threshold=BBCConfig.SECRET_ENTROPY_THRESHOLD,
+                    file_list=list(affected),
+                    silent=silent,
+                )
+                risk_score = compute_secret_risk_score(scan_result)
+                aura_adj = compute_aura_secret_adjustment(risk_score, BBCConfig.SECRET_AURA_MAX_INFLUENCE)
+                context_json["secrets_scan"] = {
+                    **scan_result.to_summary_dict(),
+                    "risk_score": round(risk_score, 4),
+                    "aura_adjustment": round(aura_adj, 4),
+                    "mode": "incremental",
+                    "files_checked": len(affected),
+                }
+                try:
+                    if getattr(self.engine, "governor", None):
+                        self.engine.governor.set_secret_risk(
+                            risk_score,
+                            BBCConfig.SECRET_AURA_MAX_INFLUENCE,
+                        )
+                except Exception:
+                    pass
+                if not silent:
+                    total = scan_result.total_findings
+                    print(f"[*] Secret Signal Detection (incremental): {total} signal(s) in {len(affected)} changed file(s)")
+            except Exception as e:
+                if not silent:
+                    print(f"[WARN] Secret Detection (incremental) skipped: {e}")
+                context_json["secrets_scan"] = {"enabled": False, "reason": str(e)}
+        elif not detect_secrets:
+            context_json["secrets_scan"] = {"enabled": False}
 
         return context_json
 

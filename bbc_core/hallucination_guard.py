@@ -241,5 +241,40 @@ class HallucinationGuard:
                 "confidence": {"value": round(float(confidence_scalar), 3), "state": confidence_scalar.state},
                 "governor_used": governor_used
             },
+            "secret_leak_check": self._check_secret_leaks(generated_code),
             "verdict": verdict
         }
+
+    # ── Secret Leak Detection (opsiyonel — BBC Secret Signal entegrasyonu) ──
+
+    def _check_secret_leaks(self, code: str) -> Dict[str, Any]:
+        """
+        AI çıktısında olası secret sızıntılarını kontrol eder.
+        Detector modülü yoksa veya kapalıysa sessizce atlanır.
+        """
+        try:
+            from .config import BBCConfig
+            if not BBCConfig.BBC_ENABLE_SECRET_DETECT:
+                return {"enabled": False}
+            from .secret_detector import scan_content, compute_secret_risk_score, SecretScanResult
+            findings = scan_content(
+                code, file_path="<ai_output>",
+                min_confidence=BBCConfig.SECRET_MIN_CONFIDENCE,
+                entropy_threshold=BBCConfig.SECRET_ENTROPY_THRESHOLD,
+            )
+            if not findings:
+                return {"enabled": True, "leaks_found": 0}
+            result = SecretScanResult()
+            result.findings = findings
+            result.files_scanned = 1
+            result.files_with_findings = 1
+            risk = compute_secret_risk_score(result)
+            return {
+                "enabled": True,
+                "leaks_found": len(findings),
+                "risk_score": round(risk, 4),
+                "categories": result.category_distribution(),
+                "severity_distribution": result.severity_distribution(),
+            }
+        except Exception:
+            return {"enabled": False, "reason": "module_unavailable"}

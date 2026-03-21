@@ -303,6 +303,8 @@ def main():
     analyze_parser.add_argument("path", nargs="?", default=".", help="Project path")
     analyze_parser.add_argument("--incremental", action="store_true",
                                help="Only re-analyze files changed since last run")
+    analyze_parser.add_argument("--detect-secrets", action="store_true",
+                               help="Enable secret signal detection during analysis")
 
     # Verify
     verify_parser = subparsers.add_parser("verify", help="Check Structural Integrity")
@@ -341,6 +343,17 @@ def main():
     # Menu (Interactive)
     menu_parser = subparsers.add_parser("menu", help="Interactive BBC Menu")
     menu_parser.add_argument("path", nargs="?", default=".", help="Project path")
+
+    # Detect Secrets (Standalone)
+    detect_secrets_parser = subparsers.add_parser("detect-secrets", help="Scan project for secret signals (BBC Secret Signal Detection)")
+    detect_secrets_parser.add_argument("path", nargs="?", default=".", help="Project path")
+    detect_secrets_parser.add_argument("--min-confidence", type=float, default=0.5, help="Minimum confidence threshold (0.0-1.0)")
+    detect_secrets_parser.add_argument("--categories", nargs="*", default=None, help="Filter by categories: cloud auth db crypto pii")
+    detect_secrets_parser.add_argument("--json", dest="json_output", action="store_true", help="Output raw JSON to stdout")
+
+    # Audit Secrets (Summary report)
+    audit_secrets_parser = subparsers.add_parser("audit-secrets", help="Secret signal audit summary (BBC Mathematics integrated)")
+    audit_secrets_parser.add_argument("path", nargs="?", default=".", help="Project path")
 
     # Install (One-command setup)
     install_parser = subparsers.add_parser("install", help="One-command install: deps + analyze + inject + start")
@@ -414,6 +427,8 @@ def main():
         cmd = ["analyze", args.path]
         if getattr(args, "incremental", False):
             cmd.append("--incremental")
+        if getattr(args, "detect_secrets", False):
+            cmd.append("--detect-secrets")
         cli.run_command(cmd)
     elif args.command == "verify":
         project_resolved = str(Path(args.path).resolve())
@@ -692,6 +707,94 @@ def main():
             else:
                 for e in result.get("errors", []):
                     print(f"[BBC] Error: {e}")
+    elif args.command == "detect-secrets":
+        from bbc_core.secret_detector import scan_project, compute_secret_risk_score
+        from bbc_core.config import BBCConfig
+        project_resolved = str(Path(args.path).resolve())
+        min_conf = getattr(args, "min_confidence", 0.5)
+        cats = None
+        if getattr(args, "categories", None):
+            cats = {c.strip() for c in args.categories if c and c.strip()}
+        result = scan_project(
+            project_resolved,
+            categories=cats,
+            min_confidence=min_conf,
+            entropy_threshold=BBCConfig.SECRET_ENTROPY_THRESHOLD,
+        )
+        risk = compute_secret_risk_score(result)
+        if getattr(args, "json_output", False):
+            import json as _json
+            print(_json.dumps(result.to_dict(), indent=2, ensure_ascii=False))
+        else:
+            print(f"\n{'='*60}")
+            print(f" BBC SECRET SIGNAL DETECTION")
+            print(f"{'='*60}")
+            print(f"  Project:    {project_resolved}")
+            print(f"  Findings:   {len(result.findings)}")
+            print(f"  Risk Score: {risk:.4f}")
+            sev = result.severity_distribution()
+            if sev:
+                print(f"\n  Severity Distribution:")
+                for s, c in sorted(sev.items()):
+                    print(f"    {s}: {c}")
+            cat = result.category_distribution()
+            if cat:
+                print(f"\n  Category Distribution:")
+                for ct, c in sorted(cat.items()):
+                    print(f"    {ct}: {c}")
+            hr = result.high_risk_files()
+            if hr:
+                print(f"\n  High-Risk Files:")
+                for fp in hr[:10]:
+                    print(f"    ! {fp}")
+            if result.findings:
+                print(f"\n{'─'*60}")
+                print(f" FINDINGS (top 20)")
+                print(f"{'─'*60}")
+                for i, f in enumerate(result.findings[:20], 1):
+                    print(f"  {i}. [{f.severity}] {f.label}")
+                    print(f"     File: {f.file_path}:{f.line_number}")
+                    print(f"     Masked: {f.masked_value}")
+            print(f"{'='*60}")
+    elif args.command == "audit-secrets":
+        from bbc_core.secret_detector import scan_project, compute_secret_risk_score, compute_aura_secret_adjustment
+        from bbc_core.config import BBCConfig
+        project_resolved = str(Path(args.path).resolve())
+        result = scan_project(project_resolved, entropy_threshold=BBCConfig.SECRET_ENTROPY_THRESHOLD)
+        risk = compute_secret_risk_score(result)
+        aura_adj = compute_aura_secret_adjustment(risk)
+        print(f"\n{'='*60}")
+        print(f" BBC SECRET AUDIT REPORT")
+        print(f"{'='*60}")
+        print(f"  Project:           {project_resolved}")
+        print(f"  Total Findings:    {len(result.findings)}")
+        print(f"  Risk Score:        {risk:.4f}")
+        print(f"  Aura Adjustment:   {aura_adj:.4f}")
+        sev = result.severity_distribution()
+        cat = result.category_distribution()
+        hr = result.high_risk_files()
+        if sev:
+            print(f"\n  Severity Breakdown:")
+            for s, c in sorted(sev.items()):
+                bar = "#" * min(c, 40)
+                print(f"    {s:10s} {c:3d}  {bar}")
+        if cat:
+            print(f"\n  Category Breakdown:")
+            for ct, c in sorted(cat.items()):
+                bar = "#" * min(c, 40)
+                print(f"    {ct:10s} {c:3d}  {bar}")
+        if hr:
+            print(f"\n  High-Risk Files ({len(hr)}):")
+            for fp in hr:
+                count = sum(1 for f in result.findings if f.file_path == fp and f.severity in ("critical", "high"))
+                print(f"    [{count} issue(s)] {fp}")
+        if risk > 0.5:
+            print(f"\n  VERDICT: SECRET RISK HIGH — immediate remediation recommended.")
+        elif risk > 0.1:
+            print(f"\n  VERDICT: SECRET RISK MODERATE — review flagged files.")
+        else:
+            print(f"\n  VERDICT: SECRET RISK LOW — no immediate action required.")
+        print(f"{'='*60}")
     else:
         parser.print_help()
 
