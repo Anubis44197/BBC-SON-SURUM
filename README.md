@@ -258,6 +258,27 @@ bbc check output.py --relaxed              # Only flag speculative language
 bbc check output.py --json                 # Machine-readable output
 ```
 
+### 🔐 Secret Signal Detection (v8.5)
+BBC can detect potential secret leaks in both project sources and AI-generated output.
+
+- Pattern-based detection with false-positive hints
+- Confidence and entropy threshold controls
+- Context integration via `secrets_scan`
+- Aura risk contribution through active BBC governor
+
+```bash
+bbc analyze . --detect-secrets
+bbc detect-secrets . --categories cloud auth --json
+bbc audit-secrets .
+```
+
+Environment controls:
+
+- `BBC_ENABLE_SECRET_DETECT=1` enables secret scan by default
+- `BBC_SECRET_MIN_CONFIDENCE=0.5` minimum pattern confidence
+- `BBC_SECRET_ENTROPY_THRESHOLD=3.0` entropy floor for non-critical matches
+- `BBC_SECRET_AURA_MAX_INFLUENCE=0.10` caps aura impact from secret risk
+
 ### 📦 Token Optimizer (v8.4)
 General-purpose token compression built into BBC core (`bbc_core/token_optimizer.py`):
 
@@ -370,6 +391,9 @@ All user-facing commands go through `bbc.py` — the single entry point:
 | `bbc start [path]` | Full pipeline: analyze + verify + inject + daemon |
 | `bbc analyze [path]` | Deep project scan, generate sealed context |
 | `bbc analyze [path] --incremental` | Incremental analysis of changed files only |
+| `bbc analyze [path] --detect-secrets` | Enable secret signal detection during analysis |
+| `bbc detect-secrets [path]` | Run standalone secret scan (`--categories`, `--min-confidence`, `--json`) |
+| `bbc audit-secrets [path]` | Secret risk summary with aura adjustment |
 | `bbc verify [path]` | Check structural integrity (freshness gate + fail policy) |
 | `bbc verify [path] --changed-only` | Verify only modified files |
 | `bbc check <file>` | Hallucination guard — check AI-generated code against context |

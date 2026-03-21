@@ -125,6 +125,9 @@ python bbc.py start [path]       # Full pipeline: Verify + Analyze + Inject
 python bbc.py start -b [path]    # Run in background (daemon mode)
 python bbc.py start -f [path]    # Force refresh
 python bbc.py analyze [path]     # Deep project scan only
+python bbc.py analyze [path] --detect-secrets  # Analyze + secret signal detection
+python bbc.py detect-secrets [path]            # Standalone secret scan
+python bbc.py audit-secrets [path]             # Secret risk summary + aura adjustment
 python bbc.py verify [path]      # Check structural integrity
 python bbc.py menu [path]        # Interactive BBC menu
 python bbc.py serve --port 3333  # Start REST API server
@@ -132,6 +135,15 @@ python bbc.py audit [path]       # Audit BBC traces
 python bbc.py purge [path]       # Complete BBC removal
 python bbc.py stop [path]        # Stop BBC daemon
 python bbc.py status [path]      # Show system status
+```
+
+Secret detection env controls:
+
+```bash
+set BBC_ENABLE_SECRET_DETECT=1
+set BBC_SECRET_MIN_CONFIDENCE=0.5
+set BBC_SECRET_ENTROPY_THRESHOLD=3.0
+set BBC_SECRET_AURA_MAX_INFLUENCE=0.10
 ```
 
 ## 📚 Need More Help?

@@ -59,6 +59,9 @@ python bbc.py start .
 | `python bbc.py start -b [path]` | Run in background (daemon mode) |
 | `python bbc.py start -f [path]` | Force refresh (re-analyze everything) |
 | `python bbc.py analyze [path]` | Deep project scan only |
+| `python bbc.py analyze [path] --detect-secrets` | Analyze with secret signal detection enabled |
+| `python bbc.py detect-secrets [path]` | Standalone secret scan (`--categories`, `--min-confidence`, `--json`) |
+| `python bbc.py audit-secrets [path]` | Secret risk summary report with aura adjustment |
 | `python bbc.py verify [path]` | Check structural integrity |
 | `python bbc.py menu [path]` | Interactive BBC menu |
 | `python bbc.py serve --port 3333` | Start REST API server |
@@ -96,6 +99,27 @@ python bbc.py migrate-clean . --apply --force
 | `python run_bbc.py cleanup [path] --force` | Remove injected files |
 | `python run_bbc.py purge [path] --force` | Complete removal |
 | `python run_bbc.py adaptive [query]` | Adaptive mode query |
+
+## 🔐 Secret Signal Detection
+
+BBC can detect secret leakage signals during analysis and in standalone audit mode.
+
+Typical usage:
+
+```bash
+python bbc.py analyze . --detect-secrets
+python bbc.py detect-secrets . --categories cloud auth --json
+python bbc.py audit-secrets .
+```
+
+Configuration (environment variables):
+
+- `BBC_ENABLE_SECRET_DETECT=1` enables secret scanning by default
+- `BBC_SECRET_MIN_CONFIDENCE=0.5` sets minimum accepted pattern confidence
+- `BBC_SECRET_ENTROPY_THRESHOLD=3.0` sets entropy threshold for non-critical signals
+- `BBC_SECRET_AURA_MAX_INFLUENCE=0.10` caps aura impact from secret risk
+
+When enabled, analysis output includes `secrets_scan` in `.bbc/bbc_context.json`.
 
 ## 🎮 IDE Integration
 
