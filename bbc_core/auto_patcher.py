@@ -1,13 +1,13 @@
 """
 BBC Auto Patcher (v1.0)
-CVP violation veya state bozulmasi tespit edildiginde otomatik duzeltme
-patch'i uretir ve guvenle uygular.
+Generates and safely applies automatic fixes when CVP violations
+or state corruption are detected.
 
-BBC Matematigi:
+BBC Mathematics:
   - BBCScalar state-based healing: DEGENERATE → OmegaOperator → WEAK
-  - Shannon Chaos Density: patch oncesi/sonrasi kaos karsilastirmasi
-  - Aura Field Score: patch kalite dogrulamasi
-  - Constraint Violation Protocol: ihlal → patch → verification dongusu
+    - Shannon Chaos Density: compares chaos before/after patch
+    - Aura Field Score: validates patch quality
+    - Constraint Violation Protocol: violation -> patch -> verification loop
 """
 
 import json
@@ -24,7 +24,7 @@ from .bbc_scalar import BBCScalar, STABLE, WEAK, UNSTABLE, DEGENERATE, OmegaOper
 
 
 class PatchAction:
-    """Tek bir patch islemi."""
+    """Single patch operation."""
     def __init__(self, file_path: str, action_type: str, description: str,
                  old_content: Optional[str] = None, new_content: Optional[str] = None,
                  line_start: Optional[int] = None, line_end: Optional[int] = None):
@@ -65,13 +65,13 @@ class AutoPatcher:
         self._load_context()
 
     def _load_context(self):
-        """BBC context'i yukle."""
+        """Load BBC context."""
         if not os.path.exists(self.recipe_path):
             return
         with open(self.recipe_path, "r", encoding="utf-8") as f:
             self.context = json.load(f)
 
-    # ─── BBC Matematik: Shannon Chaos ──────────────────────────────
+    # ─── BBC Mathematics: Shannon Chaos ────────────────────────────
 
     def _calculate_chaos(self, text: str) -> BBCScalar:
         """Shannon Chaos Density — BBCScalar native."""
@@ -85,10 +85,10 @@ class AutoPatcher:
         state = STABLE if entropy <= 3.0 else WEAK if entropy <= 5.0 else UNSTABLE if entropy <= 7.0 else DEGENERATE
         return BBCScalar(entropy, state=state, metadata={"origin": "math"})
 
-    # ─── Sorun Tespit ──────────────────────────────────────────────
+    # ─── Issue Detection ───────────────────────────────────────────
 
     def detect_unused_imports(self, file_path: str, content: str) -> List[PatchAction]:
-        """Kullanilmayan import'lari tespit et."""
+        """Detect unused imports."""
         patches = []
         lines = content.split("\n")
         import_lines = []
@@ -96,11 +96,11 @@ class AutoPatcher:
         for i, line in enumerate(lines):
             stripped = line.strip()
             if re.match(r'^(?:import|from)\s+', stripped):
-                # import edilen modulun adini cikar
+                # Extract imported module name.
                 m = re.match(r'^import\s+(\w+)', stripped)
                 if m:
                     module = m.group(1)
-                    # Dosyanin geri kalaninda kullaniliyor mu?
+                    # Is it used in the rest of the file?
                     rest = "\n".join(lines[:i] + lines[i+1:])
                     if module not in rest and module not in ["os", "sys", "json", "re", "math"]:
                         patches.append(PatchAction(
@@ -115,12 +115,12 @@ class AutoPatcher:
         return patches
 
     def detect_degenerate_patterns(self, file_path: str, content: str) -> List[PatchAction]:
-        """Kod kalitesini bozan dejenere kaliplari tespit et."""
+        """Detect degenerate patterns that reduce code quality."""
         patches = []
         lines = content.split("\n")
 
         for i, line in enumerate(lines):
-            # Bos except (all hatalari yutan)
+            # Bare except (swallows all errors).
             if re.match(r'^\s*except\s*:', line):
                 indent = len(line) - len(line.lstrip())
                 patches.append(PatchAction(
@@ -133,7 +133,7 @@ class AutoPatcher:
                     line_end=i + 1
                 ))
 
-            # pass-only except blogu
+            # pass-only except block
             if re.match(r'^\s*except.*:\s*$', line):
                 if i + 1 < len(lines) and lines[i + 1].strip() == "pass":
                     indent = len(lines[i + 1]) - len(lines[i + 1].lstrip())
@@ -151,8 +151,8 @@ class AutoPatcher:
 
     def detect_symbol_drift(self) -> List[PatchAction]:
         """
-        Context'teki semboller ile dosyadaki semboller arasindaki drift'i tespit et.
-        Drift = context'te var ama dosyada artik yok olan semboller → stale context.
+        Detect symbol drift between context and current file symbols.
+        Drift means symbols exist in context but no longer exist in file -> stale context.
         """
         patches = []
 
@@ -170,15 +170,15 @@ class AutoPatcher:
             except Exception:
                 continue
 
-            # Context'teki fonksiyonlar
+            # Functions/classes from context
             ctx_funcs = set(structure.get("functions", []))
             ctx_classes = set(structure.get("classes", []))
 
-            # Dosyadaki mevcut fonksiyonlar (basit regex)
+            # Current functions/classes from file (simple regex)
             current_funcs = set(re.findall(r'^\s*def\s+(\w+)', current_content, re.MULTILINE))
             current_classes = set(re.findall(r'^\s*class\s+(\w+)', current_content, re.MULTILINE))
 
-            # Drift: context'te var ama dosyada yok
+            # Drift: present in context but missing in file
             missing_funcs = ctx_funcs - current_funcs
             missing_classes = ctx_classes - current_classes
 
@@ -191,10 +191,10 @@ class AutoPatcher:
 
         return patches
 
-    # ─── Patch Uretimi ─────────────────────────────────────────────
+    # ─── Patch Generation ──────────────────────────────────────────
 
     def generate_patches(self) -> List[PatchAction]:
-        """Tum files tara ve patch'leri uret."""
+        """Scan all files and generate patches."""
         self.patches = []
 
         for entry in self.context.get("code_structure", []):
@@ -204,7 +204,7 @@ class AutoPatcher:
             if not os.path.exists(full_path):
                 continue
 
-            # Sadece Python files (simdilik)
+            # Python files only (for now)
             if not path.endswith(".py"):
                 continue
 
@@ -214,7 +214,7 @@ class AutoPatcher:
             except Exception:
                 continue
 
-            # Sorun tespitleri
+            # Issue detections
             self.patches.extend(self.detect_unused_imports(path, content))
             self.patches.extend(self.detect_degenerate_patterns(path, content))
 
@@ -223,10 +223,10 @@ class AutoPatcher:
 
         return self.patches
 
-    # ─── Patch Uygulama ────────────────────────────────────────────
+    # ─── Patch Application ─────────────────────────────────────────
 
     def _backup_file(self, file_path: str) -> str:
-        """Dosyanin yedegini al."""
+        """Create a backup of the file."""
         full_path = os.path.join(self.project_root, file_path)
         backup_dir = os.path.join(self.project_root, ".bbc", "backups")
         os.makedirs(backup_dir, exist_ok=True)
@@ -238,13 +238,13 @@ class AutoPatcher:
 
     def apply_patch(self, patch: PatchAction, dry_run: bool = True) -> Dict[str, Any]:
         """
-        Tek bir patch'i uygula.
+                Apply a single patch.
 
-        BBC Matematigi:
-          - Patch oncesi chaos → BBCScalar
-          - Patch sonrasi chaos → BBCScalar
-          - dC = |chaos_after - chaos_before| → eger artiyorsa ROLLBACK
-          - State propagation: patch sonucu STABLE mi?
+                BBC Mathematics:
+                    - Chaos before patch -> BBCScalar
+                    - Chaos after patch -> BBCScalar
+                    - dC = |chaos_after - chaos_before| -> if it increases, ROLLBACK
+                    - State propagation: is patch result STABLE?
         """
         full_path = os.path.join(self.project_root, patch.file_path)
 
@@ -272,7 +272,7 @@ class AutoPatcher:
         # Chaos before (BBCScalar)
         chaos_before = self._calculate_chaos(content)
 
-        # Patch uygula (in-memory)
+        # Apply patch (in-memory)
         if patch.action_type == "replace" and patch.old_content is not None:
             if patch.old_content in content:
                 new_content = content.replace(patch.old_content, patch.new_content or "", 1)
@@ -286,11 +286,11 @@ class AutoPatcher:
         # Chaos after (BBCScalar)
         chaos_after = self._calculate_chaos(new_content)
 
-        # BBC Matematik: dC check — kaos artarsa ROLLBACK
+        # BBC Mathematics: dC check; rollback if chaos increases
         dc = BBCScalar(abs(float(chaos_after) - float(chaos_before)), metadata={"origin": "math"})
         chaos_increased = float(chaos_after) > float(chaos_before) + 0.5
 
-        # State propagation: patch guvenli mi?
+        # State propagation: is the patch safe?
         patch_state = STABLE
         if chaos_increased:
             patch_state = UNSTABLE
@@ -303,7 +303,7 @@ class AutoPatcher:
             metadata={"origin": "math"}
         )
 
-        # Heal denemesi
+        # Healing attempt
         if patch_quality.state in [UNSTABLE, DEGENERATE]:
             patch_quality = OmegaOperator.trigger(
                 BBCScalar(patch_quality.value, state=patch_quality.state,
@@ -338,18 +338,18 @@ class AutoPatcher:
 
         return result
 
-    # ─── Ana Pipeline ──────────────────────────────────────────────
+    # ─── Main Pipeline ─────────────────────────────────────────────
 
     def analyze_and_patch(self, dry_run: bool = True) -> Dict[str, Any]:
         """
-        Tam patch pipeline'i:
-          1. Tum files tara, sorunlari tespit et
-          2. Patch uret
-          3. Her patch'i BBC matematigiyle verify
-          4. Guvenli olanlari uygula (dry_run=False ise)
+                Full patch pipeline:
+                    1. Scan all files and detect issues
+                    2. Generate patches
+                    3. Verify each patch with BBC mathematics
+                    4. Apply safe patches (when dry_run=False)
 
         Returns:
-            Tam rapor: patches, applied, skipped, aura quality
+                        Full report: patches, applied, skipped, aura quality
         """
         patches = self.generate_patches()
 
@@ -369,7 +369,7 @@ class AutoPatcher:
             elif not result.get("safe_to_apply", True):
                 skipped_count += 1
 
-        # Genel kalite skoru — all patch'lerin quality ortalamasi
+        # Overall quality score: average quality across all patches
         qualities = [r["patch_quality"]["value"] for r in results if "patch_quality" in r]
         if qualities:
             avg_quality = sum(qualities) / len(qualities)
