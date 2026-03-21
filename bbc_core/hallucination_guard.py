@@ -1,13 +1,13 @@
 """
 BBC Hallucination Guard (v1.0)
-Post-generation verification — AI'in urettigi koddaki sembollerin
-BBC sealed context'te var olup olmadigini check eder.
+Post-generation verification for symbols in AI-generated code
+against the BBC sealed context.
 
-BBC Matematigi:
-  - Shannon entropy (chaos density) ile kod karmasikligini olcer
+BBC Mathematics:
+    - Uses Shannon entropy (chaos density) to measure code complexity
   - Aura Field Score: match_ratio → S, chaos → C, freshness → P
-  - HMPU Governor ile confidence hesaplar
-  - CVP (Constraint Violation Protocol) ile ihlal raporlar
+    - Uses HMPU Governor to compute confidence
+    - Reports violations via CVP (Constraint Violation Protocol)
 """
 
 import json
@@ -21,11 +21,11 @@ from .bbc_scalar import BBCScalar, STABLE, WEAK, UNSTABLE, DEGENERATE, OmegaOper
 
 class HallucinationGuard:
     """
-    AI ciktisindaki symbols BBC context'e karsi verifies.
-    Halusinasyon tespit edilirse CVP violation returns.
+    Verifies symbols from AI output against BBC context.
+    Returns CVP violations when hallucinations are detected.
     """
 
-    # Spekulatif dil kaliplari (adaptive_mode.py ile uyumlu)
+    # Speculative language patterns (aligned with adaptive_mode.py)
     SPECULATIVE_PATTERNS = [
         r"\bprobably\b", r"\bmight\b", r"\bcould be\b",
         r"\bperhaps\b", r"\bi think\b", r"\bmaybe\b",
@@ -35,7 +35,7 @@ class HallucinationGuard:
     def __init__(self, context_path: str):
         """
         Args:
-            context_path: .bbc/bbc_context.json yolu
+            context_path: Path to .bbc/bbc_context.json
         """
         if not os.path.exists(context_path):
             raise FileNotFoundError(f"Context not found: {context_path}")
@@ -43,7 +43,7 @@ class HallucinationGuard:
         with open(context_path, 'r', encoding='utf-8') as f:
             self.context = json.load(f)
 
-        # Context'ten all symbols cikar
+        # Extract known symbols from context
         self.known_symbols = set()
         self.known_imports = set()
         self.file_paths = set()
@@ -58,7 +58,7 @@ class HallucinationGuard:
             self.known_imports.update(struct.get("imports", []))
 
     def _calculate_chaos(self, text: str) -> float:
-        """Shannon Chaos Density — HMPU Governor ile ayni formul."""
+        """Shannon Chaos Density with the same formula as HMPU Governor."""
         if not text:
             return 0.0
         cnt = Counter(text)
@@ -68,19 +68,19 @@ class HallucinationGuard:
 
     def _extract_referenced_symbols(self, code: str) -> set:
         """
-        Verilen kod parcasindan referans edilen symbols cikarir.
-        Tanimlari (def/class) ve kullanimlari (calls) ayri ayri toplar.
+        Extract referenced symbols from given code snippet.
+        Collects definitions (def/class) and usages (calls) separately.
         """
         symbols = set()
 
-        # Fonksiyon/sinif tanimlari
+        # Function/class definitions
         for m in re.finditer(r'^\s*(?:class|def|function|fn|func|struct)\s+([a-zA-Z_][a-zA-Z0-9_]*)', code, re.MULTILINE):
             symbols.add(m.group(1))
 
-        # Fonksiyon calls: name(...)
+        # Function calls: name(...)
         for m in re.finditer(r'\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\(', code):
             name = m.group(1)
-            # Dil keyword'lerini atla
+            # Skip language keywords
             if name not in {'if', 'for', 'while', 'return', 'print', 'range', 'len',
                             'str', 'int', 'float', 'list', 'dict', 'set', 'tuple',
                             'isinstance', 'hasattr', 'getattr', 'setattr', 'super',
@@ -90,7 +90,7 @@ class HallucinationGuard:
                             'try', 'except', 'with', 'as', 'from', 'import', 'assert'}:
                 symbols.add(name)
 
-        # Sinif instantiation: ClassName(...)
+        # Class instantiation: ClassName(...)
         for m in re.finditer(r'\b([A-Z][a-zA-Z0-9_]*)\s*\(', code):
             symbols.add(m.group(1))
 
@@ -104,7 +104,7 @@ class HallucinationGuard:
         return symbols
 
     def _detect_speculative_language(self, text: str) -> List[str]:
-        """Spekulatif dil kaliplarini tespit eder."""
+        """Detect speculative language patterns."""
         violations = []
         text_lower = text.lower()
         for pattern in self.SPECULATIVE_PATTERNS:
@@ -114,21 +114,21 @@ class HallucinationGuard:
 
     def check(self, generated_code: str, strict: bool = True) -> Dict[str, Any]:
         """
-        AI'in urettigi kodu BBC context'e karsi verifies.
+                Verify AI-generated code against BBC context.
 
-        BBC Matematigi (tam native):
-          S, C, P → BBCScalar (state + origin tasir)
+                BBC Mathematics (fully native):
+                    S, C, P -> BBCScalar (carries state + origin)
           S = match_ratio → state: STABLE/WEAK/UNSTABLE/DEGENERATE
-          C = Shannon chaos density (normalize) → state: chaos seviyesi
-          P = 1.0 (uretim aninda freshness varsayimi)
+                    C = Shannon chaos density (normalized) -> chaos state
+                    P = 1.0 (freshness assumption at generation time)
 
-          Aura Score = HMPU aura_field_score(S, C, P) → iteratif alan donusumu
-          Confidence = 1 / (1 + log10(κ)) → BBCScalar
-          Verdict = state propagation'dan turetilir
+                    Aura Score = HMPU aura_field_score(S, C, P) -> iterative field transform
+                    Confidence = 1 / (1 + log10(k)) -> BBCScalar
+                    Verdict is derived from state propagation
 
         Args:
-            generated_code: AI'in urettigi kod metni
-            strict: True ise eslesmeyen semboller CVP violation olur
+            generated_code: AI-generated code text
+            strict: If True, unmatched symbols become CVP violations
 
         Returns:
             dict with match_ratio, hallucinated_symbols, aura_score, confidence, violations
@@ -148,15 +148,15 @@ class HallucinationGuard:
                 "verdict": "NO_SYMBOLS"
             }
 
-        # Eslesen ve eslesmeyen semboller
+        # Matched and unmatched symbols
         matched = referenced & self.known_symbols
         hallucinated = referenced - self.known_symbols
         match_ratio = len(matched) / len(referenced) if referenced else 1.0
 
-        # Spekulatif dil check
+        # Speculative language check
         speculative = self._detect_speculative_language(generated_code)
 
-        # BBC Matematik: S, C, P → BBCScalar (origin="semantic")
+        # BBC Mathematics: S, C, P -> BBCScalar (origin="semantic")
         s_val = max(0.0, min(1.0, match_ratio))
         s_state = STABLE if s_val >= 0.9 else WEAK if s_val >= 0.7 else UNSTABLE if s_val >= 0.4 else DEGENERATE
         S = BBCScalar(s_val, state=s_state, metadata={"origin": "semantic"})
@@ -166,10 +166,10 @@ class HallucinationGuard:
         c_state = STABLE if c_val <= 0.1 else WEAK if c_val <= 0.3 else UNSTABLE if c_val <= 0.6 else DEGENERATE
         C = BBCScalar(c_val, state=c_state, metadata={"origin": "semantic"})
 
-        p_val = 1.0  # Uretim aninda freshness varsayimi
+        p_val = 1.0  # Freshness assumption at generation time
         P = BBCScalar(p_val, state=STABLE, metadata={"origin": "semantic"})
 
-        # Aura Field Score: HMPU Governor (tam BBC matematik)
+        # Aura Field Score: HMPU Governor (full BBC math)
         aura_score_scalar = BBCScalar(0.0, state=DEGENERATE, metadata={"origin": "semantic"})
         confidence_scalar = BBCScalar(0.0, state=DEGENERATE, metadata={"origin": "math"})
         field_stability = float('inf')
@@ -182,7 +182,7 @@ class HallucinationGuard:
             field_stability = governor.get_field_stability()
             governor_used = True
 
-            # State propagation: S, C, P state'lerinin birlesimi
+            # State propagation: combination of S, C, and P states
             combined_state = S._determine_new_state(C.state)
             combined_state_2 = BBCScalar(0, state=combined_state)._determine_new_state(P.state)
             aura_score_scalar = BBCScalar(aura_raw, state=combined_state_2, metadata={"origin": "math"})
@@ -201,7 +201,7 @@ class HallucinationGuard:
             aura_score_scalar = (w_s * S) + (w_c * (one - C)) + (w_p * P)
             confidence_scalar = aura_score_scalar
 
-        # Heal: UNSTABLE ise OmegaOperator ile iyilestirmeyi dene
+        # Heal: if UNSTABLE, try OmegaOperator recovery
         if aura_score_scalar.state in [UNSTABLE, DEGENERATE]:
             aura_score_scalar = OmegaOperator.trigger(
                 BBCScalar(aura_score_scalar.value, state=aura_score_scalar.state,
@@ -209,13 +209,13 @@ class HallucinationGuard:
                           metadata=aura_score_scalar.metadata)
             )
 
-        # CVP Violations
+        # CVP violations
         violations = list(speculative)
         if strict and hallucinated:
             for sym in sorted(hallucinated)[:20]:
                 violations.append(f"HALLUCINATED_SYMBOL: {sym}")
 
-        # Verdict — BBCScalar state'ten turetilir
+        # Verdict derived from BBCScalar state
         final_state = aura_score_scalar.state
         if final_state == STABLE and not violations:
             verdict = "SAFE"
@@ -245,12 +245,12 @@ class HallucinationGuard:
             "verdict": verdict
         }
 
-    # ── Secret Leak Detection (opsiyonel — BBC Secret Signal entegrasyonu) ──
+    # ── Secret Leak Detection (optional; BBC Secret Signal integration) ──
 
     def _check_secret_leaks(self, code: str) -> Dict[str, Any]:
         """
-        AI çıktısında olası secret sızıntılarını kontrol eder.
-        Detector modülü yoksa veya kapalıysa sessizce atlanır.
+        Check possible secret leaks in AI output.
+        Silently skips when detector module is unavailable or disabled.
         """
         try:
             from .config import BBCConfig
