@@ -23,7 +23,7 @@ class BBCInstaller:
         self.embed_core = os.environ.get("BBC_INSTALL_EMBED_CORE", "0") == "1"
         
     def install_bbc(self, target_path: str = ".") -> bool:
-        """BBC'yi hedef projeye kur"""
+        """Install BBC into target project."""
         target_path = Path(target_path).resolve()
         
         print("[INFO] [BBC Installer] Starting installation...")
@@ -36,19 +36,19 @@ class BBCInstaller:
             if not self._validate_project(target_path):
                 return False
             
-            # 2. BBC files kopyala
+            # 2. Copy BBC files
             if not self._copy_bbc_files(target_path):
                 return False
             
-            # 3. Bagimliliklari kur
+            # 3. Install dependencies
             if not self._install_dependencies(target_path):
                 return False
             
-            # 4. Project adaptasyonu (Analyze + Inject)
+            # 4. Project adaptation (Analyze + Inject)
             if not self._adapt_project(target_path):
                 return False
             
-            # 5. Kurulum tamamla
+            # 5. Finalize installation
             self._finalize_installation(target_path)
             
             print("[OK] [BBC Installer] Installation completed successfully!")
@@ -68,15 +68,15 @@ class BBCInstaller:
             return False
     
     def _validate_project(self, project_path: Path) -> bool:
-        """Project validity check et"""
+        """Validate project."""
         print("[INFO] [Step 1/5] Validating project...")
         
-        # Project dizini check
+        # Check project directory
         if not project_path.exists():
             print(f"[ERR] Project path does not exist: {project_path}")
             return False
         
-        # Project tipi tespiti
+        # Detect project type
         project_types = {
             "Python": [".py", "requirements.txt", "setup.py", "pyproject.toml"],
             "JavaScript": [".js", "package.json", "node_modules"],
@@ -85,7 +85,7 @@ class BBCInstaller:
             "C/C++": [".c", ".cpp", ".h", "CMakeLists.txt", "Makefile"],
             "Go": [".go", "go.mod"],
             "Rust": [".rs", "Cargo.toml"],
-            "Generic": []  # Her project
+            "Generic": []  # Any project
         }
         
         detected_type = "Generic"
@@ -106,7 +106,7 @@ class BBCInstaller:
         return True
     
     def _copy_bbc_files(self, project_path: Path) -> bool:
-        """BBC files hedef projeye kopyala"""
+        """Copy BBC files into target project."""
         print("[INFO] [Step 2/5] Copying BBC files...")
 
         if not self.embed_core:
@@ -115,7 +115,7 @@ class BBCInstaller:
             return True
         
         try:
-            # Gerekli BBC files
+            # Required BBC files
             bbc_files = [
                 "bbc.py",
                 "run_bbc.py",
@@ -125,13 +125,13 @@ class BBCInstaller:
                 "requirements.txt",
             ]
             
-            # BBC dizinlerini kopyala
+            # Copy BBC directories
             bbc_dirs = [
                 "bbc_core",
                 "01_Engine",
             ]
             
-            # Dosyalari kopyala
+            # Copy files
             for file_name in bbc_files:
                 src = self.bbc_source / file_name
                 if src.exists():
@@ -139,7 +139,7 @@ class BBCInstaller:
                     shutil.copy2(src, dst)
                     print(f"  [OK] Copied: {file_name}")
             
-            # Dizinleri kopyala
+            # Copy directories
             for dir_name in bbc_dirs:
                 src = self.bbc_source / dir_name
                 if src.exists() and src.is_dir():
@@ -156,11 +156,11 @@ class BBCInstaller:
             return False
     
     def _install_dependencies(self, project_path: Path) -> bool:
-        """Bagimliliklari kur"""
+        """Install dependencies."""
         print("[INFO] [Step 3/5] Installing dependencies...")
         
         try:
-            # Virtual environment create
+            # Create virtual environment
             venv_path = project_path / ".venv"
             if not venv_path.exists():
                 print("  [INFO] Creating virtual environment...")
@@ -168,7 +168,7 @@ class BBCInstaller:
                     self.python_exec, "-m", "venv", str(venv_path)
                 ], check=True, capture_output=True)
             
-            # Python path'i belirle
+            # Resolve Python executable path
             if os.name == 'nt':  # Windows
                 python_path = venv_path / "Scripts" / "python.exe"
                 pip_path = venv_path / "Scripts" / "pip.exe"
@@ -176,7 +176,7 @@ class BBCInstaller:
                 python_path = venv_path / "bin" / "python"
                 pip_path = venv_path / "bin" / "pip"
             
-            # Requirements kur
+            # Install requirements
             requirements_file = project_path / "requirements.txt"
             if requirements_file.exists():
                 print("  [INFO] Installing requirements...")
@@ -191,11 +191,11 @@ class BBCInstaller:
             return False
     
     def _adapt_project(self, project_path: Path) -> bool:
-        """Projeyi BBC'ye adapte et"""
+        """Adapt project for BBC."""
         print("[INFO] [Step 4/5] Adapting project...")
         
         try:
-            # Virtual environment'daki python'i kullan
+            # Use Python inside virtual environment
             venv_path = project_path / ".venv"
             if os.name == 'nt':  # Windows
                 python_path = venv_path / "Scripts" / "python.exe"
@@ -249,10 +249,10 @@ class BBCInstaller:
             return False
     
     def _finalize_installation(self, project_path: Path):
-        """Kurulumu tamamla"""
+        """Finalize installation."""
         print("[INFO] [Step 5/5] Finalizing installation...")
         
-        # Kurulum kaydi create
+        # Create installation record
         install_record = {
             "installation_time": datetime.now().isoformat(),
             "bbc_version": "v8.3",
@@ -270,7 +270,7 @@ class BBCInstaller:
         with open(record_file, 'w', encoding='utf-8') as f:
             json.dump(install_record, f, indent=2, ensure_ascii=False)
         
-        # README create
+        # Create README
         readme_content = f"""# BBC Installation Completed
 
 This project is now protected with BBC (Bitter Brain Context).
@@ -304,7 +304,7 @@ Installation date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
         print("  [OK] README file created")
 
 def main():
-    """Ana fonksiyon"""
+    """Main function."""
     if len(sys.argv) < 2:
         print("Usage: python bbc_installer.py install [project_path]")
         print("Example: python bbc_installer.py install /path/to/project")

@@ -1,6 +1,6 @@
 """
 BBC Background Daemon
-Arkaplanda surekli BBC monitoring ve project adaptasyonu
+Continuously runs BBC monitoring and project adaptation in the background.
 """
 
 import os
@@ -30,17 +30,17 @@ class BBCDaemon:
         self.log_file = self.bbc_dir / "daemon.log"
         self.config_file = self.bbc_dir / "config.json"
         
-        # Signal handler'lari ayarla
+        # Configure signal handlers.
         signal.signal(signal.SIGTERM, self._signal_handler)
         signal.signal(signal.SIGINT, self._signal_handler)
         
     def _signal_handler(self, signum, frame):
-        """Daemon sinyal handler'i"""
+        """Daemon signal handler."""
         self._log(f"Received signal {signum}. Shutting down...")
         self.stop()
     
     def _log(self, message: str):
-        """Daemon log'u yaz"""
+        """Write daemon log entry."""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_entry = f"[{timestamp}] {message}"
         
@@ -51,7 +51,7 @@ class BBCDaemon:
             pass  # Silent fail for daemon
     
     def _write_pid(self):
-        """PID file yaz"""
+        """Write PID file."""
         try:
             with open(self.pid_file, "w") as f:
                 f.write(str(os.getpid()))
@@ -59,7 +59,7 @@ class BBCDaemon:
             pass
     
     def _remove_pid(self):
-        """PID file sil"""
+        """Delete PID file."""
         try:
             if self.pid_file.exists():
                 self.pid_file.unlink()
@@ -67,7 +67,7 @@ class BBCDaemon:
             pass
     
     def _is_running(self) -> bool:
-        """Daemon'in calisip calismadigini check et"""
+        """Check whether daemon is running."""
         if not self.pid_file.exists():
             return False
         
@@ -90,7 +90,7 @@ class BBCDaemon:
             return False
     
     def start(self, project_path: str = ".", auto_detect: bool = True):
-        """Daemon'i start"""
+        """Start daemon."""
         # Re-anchor .bbc/ to the target project if provided
         resolved_project = Path(project_path).resolve()
         self.bbc_dir = resolved_project / ".bbc"
@@ -103,7 +103,7 @@ class BBCDaemon:
             print("BBC Daemon is already running")
             return False
         
-        # Fork islemi (Unix/Linux for)
+        # Fork process (Unix/Linux only)
         if os.name != 'nt':
             try:
                 pid = os.fork()
@@ -112,16 +112,16 @@ class BBCDaemon:
                     print(f"BBC Daemon started with PID: {pid}")
                     return True
             except OSError:
-                pass  # Fork basarisiz, foreground'da run
+                pass  # Fork failed; run in foreground.
         
         # Daemon process
         self.running = True
         self._write_pid()
         
-        # Working directory'i ayarla
+        # Set working directory.
         os.chdir(Path(project_path).resolve())
         
-        # Standart I/O'yu yonlendir
+        # Flush standard I/O.
         sys.stdout.flush()
         sys.stderr.flush()
         
@@ -138,7 +138,7 @@ class BBCDaemon:
             self._log("BBC Daemon stopped")
     
     def stop(self):
-        """Daemon'i stop"""
+        """Stop daemon."""
         if not self.pid_file.exists():
             print("BBC Daemon is not running")
             return False
@@ -171,11 +171,11 @@ class BBCDaemon:
             return False
     
     def status(self):
-        """Daemon durumunu goster"""
+        """Show daemon status."""
         if self._is_running():
             print("[OK] BBC Daemon is running")
             
-            # Config from file durum bilgilerini oku
+            # Read status details from config file.
             if self.config_file.exists():
                 try:
                     with open(self.config_file, "r") as f:
@@ -191,7 +191,7 @@ class BBCDaemon:
             print("[ERR] BBC Daemon is not running")
     
     def _scan_project_files(self, project_path: Path) -> set:
-        """Projedeki kaynak files tara, relative path set'i return"""
+        """Scan project source files and return relative-path set."""
         exts = BBCConfig.get_scan_extensions()
         forbidden_dirs = BBCConfig.get_forbidden_scan_dirs()
         found = set()
@@ -207,7 +207,7 @@ class BBCDaemon:
         return found
 
     def _run_reanalysis(self, project_path: str):
-        """Projeyi yeniden analysis et ve AI config'lerini inject et"""
+        """Run project re-analysis and re-inject AI configs."""
         import subprocess as sp
         run_bbc = Path(__file__).resolve().parent / "run_bbc.py"
         if not run_bbc.exists():
@@ -228,7 +228,7 @@ class BBCDaemon:
         try:
             sp.run([sys.executable, str(run_bbc), "analyze", project_path, "--silent"],
                    capture_output=True, text=True, timeout=analyze_timeout, check=True)
-            # analyze adimi zaten calistigi icin inject icinde ikinci analyze tetigini kapat.
+            # Analyze already ran here; disable duplicate analyze trigger inside inject.
             sp.run([sys.executable, str(run_bbc), "inject", project_path, "--silent"],
                    capture_output=True, text=True, timeout=inject_timeout, check=True)
             self._log("Re-analysis and re-injection completed")
@@ -251,7 +251,7 @@ class BBCDaemon:
             return False
 
     def _run_daemon_loop(self, project_path: str, auto_detect: bool):
-        """Ana daemon dongusu — file degisikligi/eklenmesi/silinmesi algilar"""
+        """Main daemon loop; detects file changes/additions/deletions."""
         project_path = Path(project_path).resolve()
         project_str = str(project_path)
         last_project = None
@@ -343,7 +343,7 @@ class BBCDaemon:
                             self._log(f"[WATCH] Deleted files detected: {reason}")
                             needs_reanalysis = True
                         
-                        # 2) Hash degisikligi check (adaptive_mode kullanarak)
+                        # 2) Check hash changes (using adaptive_mode)
                         if not needs_reanalysis and ctx_path.exists():
                             try:
                                 from bbc_core.adaptive_mode import BBCAdaptiveMode
@@ -365,7 +365,7 @@ class BBCDaemon:
                                     freshness_error=str(e)
                                 )
                         
-                        # 3) Yeniden analysis gerekiyorsa run + Aura feedback
+                        # 3) If re-analysis is needed, run it and apply Aura feedback
                         if needs_reanalysis:
                             if now < next_retry_after:
                                 wait_left = int(next_retry_after - now)
@@ -382,11 +382,11 @@ class BBCDaemon:
                                 from bbc_core.hmpu_core import HMPU_Governor
                                 governor = HMPU_Governor()
                                 if success:
-                                    # Basarili reseal → pozitif feedback
+                                    # Successful reseal -> positive feedback
                                     governor.aura_gradient_bend(delta=0.05, stability=True)
                                     self._log("[AURA] Gradient bend: +stability (reseal OK)")
                                 else:
-                                    # Basarisiz → negatif feedback
+                                    # Failed reseal -> negative feedback
                                     governor.aura_gradient_bend(delta=0.1, stability=False)
                                     self._log("[AURA] Gradient bend: -stability (reseal FAIL)")
                             except Exception as e:
@@ -408,7 +408,7 @@ class BBCDaemon:
                             known_files = current_files
                             self._record_watch_health(status="OK")
                     
-                    # 5 saniyede bir dongu
+                    # Loop every 5 seconds
                     time.sleep(5)
                     
                 except Exception as e:

@@ -9,7 +9,7 @@ from .state_manager import StateManager
 from .hmpu_indexer import HMPUIndexer
 from .config import BBCConfig
 
-# Import the Polyglot Quantizer (tek dogruluk kaynagi: bbc_core)
+# Import the Polyglot Quantizer (single source of truth: bbc_core)
 from .hmpu_quantizer import HMPUQuantizer
 
 class BBCNativeAdapter:
@@ -230,7 +230,7 @@ class BBCNativeAdapter:
         index_path = self.indexer.finalize_and_save("bbc_main_memory", len(files_found))
         context_json["index_path"] = index_path
 
-        # ─── SYMBOL PIPELINE (Opsiyonel — error verirse ana akisi bozmaz) ───
+        # ─── SYMBOL PIPELINE (Optional; non-fatal on errors) ───
         if enable_symbol_pipeline:
             try:
                 from .symbol_extractor import SymbolExtractor
@@ -245,10 +245,10 @@ class BBCNativeAdapter:
                 )
 
                 if symbol_results:
-                    # Sembol verilerini dict formatina cevir
+                    # Convert symbol data to dict format.
                     symbols_data = [sr.to_dict() for sr in symbol_results]
 
-                    # Kaynak files topla (only Python — AST call analysis for)
+                    # Collect source files (Python only for AST call analysis).
                     source_mapping = {}
                     for sr in symbol_results:
                         fpath = os.path.join(root_to_scan, sr.file) if not os.path.isabs(sr.file) else sr.file
@@ -269,7 +269,7 @@ class BBCNativeAdapter:
                     graph_data = graph.to_dict()
                     graph_stats = graph_data.get("graph_stats", {})
 
-                    # Context'e symbol analysis sonuclarini ekle
+                    # Add symbol-analysis results into context.
                     context_json["symbol_analysis"] = {
                         "total_symbols": graph_stats.get("total_symbols", len(symbols_data)),
                         "total_calls": graph_stats.get("total_calls", 0),
@@ -279,7 +279,7 @@ class BBCNativeAdapter:
                         "extractor_stats": extractor.get_stats(),
                     }
 
-                    # Kritik symbols tespit et (en cok called ilk 20)
+                    # Detect critical symbols (top 20 by called_by count).
                     symbols_list = graph_data.get("symbols", [])
                     critical = sorted(
                         symbols_list,
@@ -314,7 +314,7 @@ class BBCNativeAdapter:
                 "reason": "disabled_by_default_set_BBC_ENABLE_SYMBOL_PIPELINE=1_to_enable"
             }
 
-        # ── SECRET SIGNAL DETECTION (opsiyonel — flag ile aktif) ───────────
+        # ── SECRET SIGNAL DETECTION (optional; enabled via flag/config) ─────
         detect_secrets = getattr(self, '_detect_secrets', False) or BBCConfig.BBC_ENABLE_SECRET_DETECT
         if detect_secrets:
             try:

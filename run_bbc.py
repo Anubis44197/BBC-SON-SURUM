@@ -1,12 +1,12 @@
 # BBC-VALIDATED/v8.3 (STABLE)
-# --- 1. ORTAM KONTROLU ---
+# --- 1. ENVIRONMENT CHECK ---
 import os
 import sys
 import platform
 import json
 import time
 
-# Platform tespiti
+# Platform detection
 PLATFORM = platform.system().lower()
 PYTHON_CMD = "python" if PLATFORM == "windows" else "python3"
 
@@ -20,7 +20,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 # Add script directory to sys.path (bbc_core should be here)
 if script_dir not in sys.path: sys.path.insert(0, script_dir)
 
-# --- 2. MOTOR YUKLEME (bbc_core) ---
+# --- 2. ENGINE LOADING (bbc_core) ---
 try:
     from bbc_core.cli import main as run_engine_cli
 except ImportError:
@@ -37,7 +37,7 @@ def _env_flag(name: str, default: bool = False) -> bool:
 
 
 def run_post_analysis_checks(project_path=".", emit_console: bool = False):
-    """Analysis sonrasi all BBC verification ve stabilite kontrollerini runs."""
+    """Run all BBC verification and stability checks after analysis."""
     # 1. Verifier — Syntax & Structural Integrity
     try:
         from bbc_core.verifier import BBCVerifier

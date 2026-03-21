@@ -1,15 +1,15 @@
 """
 BBC Secret Signal Detector (v1.0)
-Proje dosyalarındaki hassas bilgi sinyallerini tespit eder.
+Detects sensitive-information signals in project files.
 
-BBC Mimarisi ile Entegrasyon:
-  - Pattern tabanlı algılama (regex, context filtering)
-  - False-positive azaltma (hint listesi, bağlam analizi)
-  - BBC matematiğine sinyal besleme (S/C/P katkısı)
-  - Incremental cache desteği (hash tabanlı drift kontrolü)
-  - Güvenlik: Raw secret maskeleme, fingerprint saklama
+BBC Architecture Integration:
+    - Pattern-based detection (regex, context filtering)
+    - False-positive reduction (hint list, context analysis)
+    - Signal feed into BBC math (S/C/P contribution)
+    - Incremental cache support (hash-based drift checks)
+    - Security: raw secret masking and fingerprint storage
 
-Varsayılan: KAPALI. Sadece --detect-secrets flag veya BBC_ENABLE_SECRET_DETECT=1 ile aktif.
+Default: OFF. Enabled only with the --detect-secrets flag or BBC_ENABLE_SECRET_DETECT=1.
 """
 
 import hashlib
@@ -21,12 +21,12 @@ from collections import Counter
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 
-# ── Pattern Yükleme ─────────────────────────────────────────────────────
+# ── Pattern Loading ─────────────────────────────────────────────────────
 _PATTERNS_FILE = os.path.join(os.path.dirname(__file__), "secret_patterns.json")
 
 
 def _load_patterns(path: str = _PATTERNS_FILE) -> List[Dict[str, Any]]:
-    """Pattern JSON dosyasını yükler ve regex'leri derler."""
+    """Loads pattern JSON and compiles regex rules."""
     if not os.path.isfile(path):
         return []
     with open(path, "r", encoding="utf-8") as f:
@@ -46,45 +46,45 @@ _COMPILED_PATTERNS: Optional[List[Dict[str, Any]]] = None
 
 
 def _get_patterns() -> List[Dict[str, Any]]:
-    """Lazy-load ve cache."""
+    """Lazy-load and cache pattern definitions."""
     global _COMPILED_PATTERNS
     if _COMPILED_PATTERNS is None:
         _COMPILED_PATTERNS = _load_patterns()
     return _COMPILED_PATTERNS
 
 
-# ── Yardımcı Fonksiyonlar ───────────────────────────────────────────────
+# ── Helper Functions ────────────────────────────────────────────────────
 
 def _mask_value(raw: str, visible_chars: int = 4) -> str:
-    """Hassas değerleri maskeler — sadece ilk N karakter görünür."""
+    """Masks sensitive values; only the first N characters are visible."""
     if len(raw) <= visible_chars:
         return "***"
     return raw[:visible_chars] + "*" * min(8, len(raw) - visible_chars)
 
 
 def _fingerprint(raw: str) -> str:
-    """Hassas değerin kısa SHA-256 parmak izi."""
+    """Short SHA-256 fingerprint for a sensitive value."""
     return hashlib.sha256(raw.encode("utf-8", errors="ignore")).hexdigest()[:16]
 
 
 def _is_false_positive(match_text: str, hints: List[str], line: str) -> bool:
-    """Hint listesi ve bağlam bazlı false-positive kontrolü."""
+    """Hint-list and context-based false-positive filtering."""
     lower_line = line.lower()
     lower_match = match_text.lower()
     for hint in hints:
         h = hint.lower()
         if h in lower_match or h in lower_line:
             return True
-    # Yorum satırı kontrolü
+    # Comment-line check
     stripped = line.lstrip()
     if stripped.startswith(("#", "//", "/*", "*", "<!--")):
         return True
-    # Test / mock / fixture dosya yolu ipuçları (caller tarafından line'a eklenir)
+    # Test/mock/fixture path hints can be appended by the caller.
     return False
 
 
 def _shannon_entropy(text: str) -> float:
-    """Shannon entropi hesabı (BBC chaos density formülüyle uyumlu)."""
+    """Shannon entropy calculation (aligned with BBC chaos-density formula)."""
     if not text:
         return 0.0
     cnt = Counter(text)
@@ -93,10 +93,10 @@ def _shannon_entropy(text: str) -> float:
     return entropy if not math.isnan(entropy) else 0.0
 
 
-# ── Dosya Seviyesi Tarama ────────────────────────────────────────────────
+# ── File-Level Scan ─────────────────────────────────────────────────────
 
 class SecretFinding:
-    """Tek bir secret bulgusu."""
+    """Single secret finding."""
     __slots__ = ("pattern_id", "category", "label", "severity",
                  "confidence", "line_number", "masked_value",
                  "fingerprint", "file_path", "entropy")
@@ -136,17 +136,17 @@ def scan_content(content: str, file_path: str = "<unknown>",
                  min_confidence: float = 0.0,
                  entropy_threshold: float = 3.0) -> List[SecretFinding]:
     """
-    Tek bir dosyanın içeriğini tarar.
+    Scans one file's content.
 
     Args:
-        content: Dosya metni
-        file_path: Göreceli dosya yolu (raporlama için)
-        categories: Filtre — sadece bu kategorilerdeki patternler çalışır (None = hepsi)
-        min_confidence: Alt güven eşiği (0.0 – 1.0)
-        entropy_threshold: Eşik altı entropili eşleşmeleri atla (düşük entropi = muhtemelen sabit/test)
+        content: File content
+        file_path: Relative file path (for reporting)
+        categories: Filter; only patterns in these categories are used (None = all)
+        min_confidence: Minimum confidence threshold (0.0 - 1.0)
+        entropy_threshold: Skip matches below threshold (low entropy is likely constants/tests)
 
     Returns:
-        SecretFinding listesi
+        List of SecretFinding
     """
     patterns = _get_patterns()
     findings: List[SecretFinding] = []
@@ -154,10 +154,10 @@ def scan_content(content: str, file_path: str = "<unknown>",
     lines = content.splitlines()
     for line_idx, line in enumerate(lines, start=1):
         for pat in patterns:
-            # Kategori filtresi
+            # Category filter
             if categories and pat["category"] not in categories:
                 continue
-            # Güven eşiği
+            # Confidence threshold
             if pat["confidence"] < min_confidence:
                 continue
 
@@ -165,16 +165,16 @@ def scan_content(content: str, file_path: str = "<unknown>",
             for m in compiled.finditer(line):
                 match_text = m.group(0)
 
-                # False positive kontrolü
+                # False-positive check
                 if _is_false_positive(match_text, pat.get("false_positive_hints", []), line):
                     continue
 
-                # Entropi kontrolü — çok düşük entropili eşleşmeler muhtemelen sabit
+                # Entropy check; very low-entropy matches are likely constants.
                 ent = _shannon_entropy(match_text)
                 if ent < entropy_threshold and pat["severity"] not in ("critical",):
                     continue
 
-                # Eşleşen değerin maskeli + fingerprint hali
+                # Store masked value and fingerprint of matched content.
                 val = m.group(1) if m.lastindex and m.lastindex >= 1 else match_text
                 findings.append(SecretFinding(
                     pattern_id=pat["id"],
@@ -192,10 +192,10 @@ def scan_content(content: str, file_path: str = "<unknown>",
     return findings
 
 
-# ── Proje Seviyesi Tarama ────────────────────────────────────────────────
+# ── Project-Level Scan ──────────────────────────────────────────────────
 
 class SecretScanResult:
-    """Proje genelinde secret tarama özeti."""
+    """Project-wide secret-scan summary."""
 
     def __init__(self):
         self.findings: List[SecretFinding] = []
@@ -219,7 +219,7 @@ class SecretScanResult:
         return dist
 
     def high_risk_files(self, min_severity: str = "high") -> List[str]:
-        """En az belirtilen severity'de bulgu içeren dosyalar."""
+        """Files containing findings at or above the specified severity."""
         sev_order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
         threshold = sev_order.get(min_severity, 2)
         files: Set[str] = set()
@@ -240,7 +240,7 @@ class SecretScanResult:
         }
 
     def to_summary_dict(self) -> Dict[str, Any]:
-        """Hafif özet — findings listesi olmadan."""
+        """Lightweight summary without full findings list."""
         return {
             "total_findings": self.total_findings,
             "files_scanned": self.files_scanned,
@@ -258,14 +258,14 @@ def scan_project(project_root: str,
                  file_list: Optional[List[str]] = None,
                  silent: bool = False) -> SecretScanResult:
     """
-    Proje genelinde secret taraması yapar.
+    Runs a project-wide secret scan.
 
     Args:
-        project_root: Proje kök dizini
-        categories: Sadece bu kategorileri tara (None = hepsi)
-        min_confidence: Alt güven eşiği
-        file_list: Taranacak dosya listesi (None ise tüm kaynak dosyalar otomatik taranır)
-        silent: Çıktı bastırmak için
+        project_root: Project root directory
+        categories: Scan only these categories (None = all)
+        min_confidence: Minimum confidence threshold
+        file_list: Files to scan (None = auto-scan all source files)
+        silent: Suppress output
 
     Returns:
         SecretScanResult
@@ -316,14 +316,14 @@ def scan_project(project_root: str,
     return result
 
 
-# ── BBC Matematik Entegrasyon Yardımcıları ───────────────────────────────
+# ── BBC Math Integration Helpers ────────────────────────────────────────
 
 def compute_secret_risk_score(scan_result: SecretScanResult) -> float:
     """
-    Tarama sonuçlarından 0.0–1.0 aralığında normalize risk skoru üretir.
-    Bu skor S/C/P katkısı olarak HMPU'ya beslenebilir.
+    Produces a normalized risk score in the 0.0-1.0 range from scan results.
+    This score can be fed into HMPU as an S/C/P contribution.
 
-    Formül:
+    Formula:
       base = sum(severity_weight * confidence) / max_possible
       clamped ∈ [0.0, 1.0]
     """
@@ -336,7 +336,7 @@ def compute_secret_risk_score(scan_result: SecretScanResult) -> float:
         w = severity_weights.get(f.severity, 0.3)
         total_weight += w * f.confidence
 
-    # Normalize: en fazla 20 critical bulgu full risk sayılsın
+    # Normalize: treat up to 20 critical findings as full risk.
     max_possible = 20.0 * 1.0 * 1.0
     score = min(1.0, total_weight / max_possible)
     return round(score, 4)
@@ -345,12 +345,12 @@ def compute_secret_risk_score(scan_result: SecretScanResult) -> float:
 def compute_aura_secret_adjustment(risk_score: float,
                                    max_influence: float = 0.10) -> float:
     """
-    Secret risk skorunun Aura Field Score'a maksimum etkisini sınırlar.
-    Regresyon koruması: risk skoru ne olursa olsun aura'yı ±max_influence'den
-    fazla değiştirmez.
+    Bounds the maximum effect of secret risk on Aura Field Score.
+    Regression guard: no matter the risk score, aura is not changed beyond
+    +/-max_influence.
 
     Returns:
-        Negatif bir katkı (aura'yı düşürür): [-max_influence, 0.0]
+        Negative contribution (reduces aura): [-max_influence, 0.0]
     """
     if risk_score <= 0.0:
         return 0.0
