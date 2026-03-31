@@ -15,11 +15,46 @@ Usage:
 """
 import os
 import json
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from .bbc_logger import get_log_dir, get_logger
+from .config import BBCConfig
 
 logger = get_logger("BBC_Telemetry")
+
+
+def _safe_write_log(log_path: str, content: str, silent: bool = False) -> bool:
+    """
+    Safe log writing with temp directory fallback
+    
+    Args:
+        log_path: Target log file path
+        content: Content to write
+        silent: If True, suppress all error messages
+        
+    Returns:
+        True if write succeeded, False otherwise
+    """
+    try:
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
+        
+        if os.name == 'nt':
+            parent_dir = os.path.dirname(log_path)
+            if not os.access(parent_dir, os.W_OK):
+                temp_dir = os.path.join(tempfile.gettempdir(), 'bbc_logs')
+                os.makedirs(temp_dir, exist_ok=True)
+                log_path = os.path.join(temp_dir, os.path.basename(log_path))
+        
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(content)
+        return True
+        
+    except (PermissionError, OSError):
+        if not silent and not hasattr(_safe_write_log, '_warned'):
+            logger.warning(f"Log fallback: {tempfile.gettempdir()}/bbc_logs/")
+            _safe_write_log._warned = True
+        return False
 
 # Supported event types (for documentation, not mandatory)
 EVENT_TYPES = {
@@ -55,9 +90,13 @@ class TelemetryLogger:
     {"ts": "2026-02-20T17:43:00", "event": "HEAL_APPROVED", "data": {...}, "session": "20260220_174300"}
     """
 
-    def __init__(self, log_path=None):
+    def __init__(self, log_path=None, project_root=None):
         if log_path is None:
-            log_path = os.path.join(get_log_dir(), "telemetry.jsonl")
+            if project_root:
+                bbc_dir = BBCConfig.get_bbc_dir(project_root)
+                log_path = os.path.join(bbc_dir, "logs", "telemetry.jsonl")
+            else:
+                log_path = os.path.join(get_log_dir(), "telemetry.jsonl")
         Path(log_path).parent.mkdir(parents=True, exist_ok=True)
         self.log_path = log_path
         self.session_id = None
@@ -85,11 +124,7 @@ class TelemetryLogger:
 
         self._event_count += 1
 
-        try:
-            with open(self.log_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(event, ensure_ascii=False) + "\n")
-        except (OSError, PermissionError) as e:
-            logger.warning(f"Telemetry write failed: {e}")
+        _safe_write_log(self.log_path, json.dumps(event, ensure_ascii=False) + "\n", silent=False)
 
     def get_event_count(self) -> int:
         """Bu instance'in toplam yazdigi event sayisi."""

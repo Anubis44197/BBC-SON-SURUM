@@ -86,7 +86,17 @@ class BBCConfig:
         """Get or create the .bbc isolation directory."""
         bbc_dir = os.path.join(project_root, BBCConfig.BBC_DIR)
         os.makedirs(bbc_dir, exist_ok=True)
+        BBCConfig.ensure_bbc_structure(project_root)
         return bbc_dir
+    
+    @staticmethod
+    def ensure_bbc_structure(project_root: str = ".") -> None:
+        """Ensure all required .bbc subdirectories exist (cache, indices, logs, manifest, skills)"""
+        bbc_dir = os.path.join(project_root, BBCConfig.BBC_DIR)
+        required_subdirs = ["cache", "indices", "logs", "manifest", "skills"]
+        for subdir in required_subdirs:
+            subdir_path = os.path.join(bbc_dir, subdir)
+            os.makedirs(subdir_path, exist_ok=True)
 
     @staticmethod
     def get_context_path(project_root: str = ".") -> str:

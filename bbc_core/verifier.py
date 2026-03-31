@@ -28,6 +28,57 @@ class BBCVerifier:
         if self.project_root:
             self.tracer = AttributionTracer(self.project_root)
 
+    def _count_braces_smart(self, content: str, ext: str) -> tuple:
+        """
+        Smart brace counting - ignores braces in strings, comments, and regex
+        
+        Args:
+            content: File content
+            ext: File extension
+            
+        Returns:
+            (open_count, close_count, error_line)
+        """
+        cleaned = content
+        
+        # Remove multi-line comments (/* ... */)
+        cleaned = re.sub(r'/\*.*?\*/', '', cleaned, flags=re.DOTALL)
+        
+        # Remove single-line comments (//)
+        cleaned = re.sub(r'//.*?$', '', cleaned, flags=re.MULTILINE)
+        
+        # Remove string literals ("..." and '...')
+        cleaned = re.sub(r'"(?:[^"\\]|\\.)*"', '', cleaned)
+        cleaned = re.sub(r"'(?:[^'\\]|\\.)*'", '', cleaned)
+        
+        # Remove template literals (`...`) for JS/TS
+        if ext in ['.js', '.ts', '.jsx', '.tsx']:
+            cleaned = re.sub(r'`(?:[^`\\]|\\.)*`', '', cleaned)
+        
+        # Remove regex literals (/.../) for JS/TS
+        if ext in ['.js', '.ts', '.jsx', '.tsx']:
+            cleaned = re.sub(r'/(?:[^/\\]|\\.)+/[gimsuvy]*', '', cleaned)
+        
+        # Count braces
+        open_braces = cleaned.count('{')
+        close_braces = cleaned.count('}')
+        
+        # Find first imbalance line (for error reporting)
+        error_line = None
+        if open_braces != close_braces:
+            balance = 0
+            for i, line in enumerate(content.splitlines(), 1):
+                # Skip comment lines
+                if line.strip().startswith('//') or line.strip().startswith('/*'):
+                    continue
+                balance += line.count('{') - line.count('}')
+                if balance < 0 and error_line is None:
+                    error_line = i
+            if error_line is None:
+                error_line = len(content.splitlines())
+        
+        return open_braces, close_braces, error_line
+
     def _extract_symbols(self, text, lang_hint=None):
         """Metinden symbols (class/function) regex ile cikarir."""
         # Not: Quantizer zaten bu isi yapiyor ama Standalone mod for burasi yedek (backup).
@@ -136,15 +187,16 @@ class BBCVerifier:
                             errors.append({"file": rel_path, "line": e.lineno, "msg": e.msg, "type": "SYNTAX_ERROR (Python)"})
                     
                     # 2. C-Family Languages (Rust, C, C++, Java, C#, JS, TS, Go, PHP, Swift, Kotlin)
-                    # Check for balanced braces {}
+                    # Check for balanced braces {} with smart counting
                     elif ext in ['.rs', '.c', '.cpp', '.h', '.hpp', '.java', '.cs', '.js', '.ts', '.jsx', '.tsx', '.go', '.php', '.swift', '.kt']:
-                        open_braces = content.count('{')
-                        close_braces = content.count('}')
+                        open_braces, close_braces, error_line = self._count_braces_smart(content, ext)
                         if open_braces != close_braces:
                             errors.append({
-                                "file": rel_path, 
+                                "file": rel_path,
+                                "line": error_line or "unknown",
                                 "msg": f"Unbalanced braces {{}} (Open: {open_braces}, Close: {close_braces})", 
-                                "type": f"SYNTAX_ERROR ({ext[1:].upper()})"
+                                "type": f"SYNTAX_ERROR ({ext[1:].upper()})",
+                                "suggestion": f"Check for missing/extra braces. First imbalance at line {error_line}" if error_line else "Check brace balance manually"
                             })
                             
                     # 3. Ruby (def ... end Check)
@@ -264,7 +316,7 @@ class BBCVerifier:
         if not code_struct:
             return {"mismatch_count": 0, "mismatch_files": [], "mismatch_ratio": 0.0}
 
-        quantizer = HMPUQuantizer()
+        quantizer = HMPUQuantizer(project_root=self.recipe_data.get('project_root', '.'))
         mismatch_files = []
         total_context_symbols = 0
         total_mismatched = 0
@@ -550,7 +602,7 @@ class BBCVerifier:
 
         # --- Symbol mismatch: only degisen dosyalar ---
         code_struct = self.recipe_data.get("code_structure", [])
-        quantizer = HMPUQuantizer()
+        quantizer = HMPUQuantizer(project_root=self.recipe_data.get('project_root', '.'))
         mismatch_files = []
         total_context_symbols = 0
         total_mismatched = 0

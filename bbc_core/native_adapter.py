@@ -16,7 +16,8 @@ class BBCNativeAdapter:
     def __init__(self, project_root: str = "."):
         self.state_manager = StateManager()
         self.engine = HMPUEngine(self.state_manager)
-        self.quantizer = HMPUQuantizer()
+        self.project_root = project_root
+        self.quantizer = HMPUQuantizer(project_root=project_root)
         # Use .bbc/indices/ for isolation; fallback to 02_Indices/ for backward compat
         bbc_index_dir = os.path.join(project_root, ".bbc", "indices")
         os.makedirs(bbc_index_dir, exist_ok=True)
@@ -127,8 +128,8 @@ class BBCNativeAdapter:
                         total_lines += file_total_lines
                         total_code_lines += file_code_lines
                         
-                        # Apply v6.0 Quantization
-                        analysis = self.quantizer.process_content(content, file_ext=ext)
+                        # Apply v6.0 Quantization (with tree-sitter support)
+                        analysis = self.quantizer.process_content(content, file_ext=ext, file_path=rel_path)
                         
                         # [VERIFIER] Compute hash from pre-encoded bytes
                         file_hash = hashlib.sha256(content_bytes).hexdigest()
@@ -437,7 +438,7 @@ class BBCNativeAdapter:
                     if stripped and not stripped.startswith(comment_prefixes):
                         file_code_lines += 1
 
-                analysis = self.quantizer.process_content(content, file_ext=ext)
+                analysis = self.quantizer.process_content(content, file_ext=ext, file_path=rel_path)
                 file_hash = hashlib.sha256(content_bytes).hexdigest()
                 self.indexer.add_to_index(content, {"path": rel_path, "hash": file_hash})
 

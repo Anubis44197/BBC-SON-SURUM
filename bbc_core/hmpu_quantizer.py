@@ -1,21 +1,38 @@
 import re
 import time
+import os
 
 class HMPUQuantizer:
     """
-    BBC HMPU Polyglot Quantizer (v7.0 Ultimate)
+    BBC HMPU Polyglot Quantizer (v8.0 Enhanced)
     
     Bu motor, metin verisini (kod) analysis ederek yapisal bilesenlerini (Siniflar, Fonksiyonlar)
     deterministik olarak cikarir. 
     
     DESTEKLENEN DILLER:
-    - Python, Rust, JS/TS, Go
+    - Python (Tree-sitter AST), Rust, JS/TS, Go
     - C/C++, Java, C#, Swift, Kotlin
     - PHP, Ruby, SQL
+    
+    v8.0: Tree-sitter integration for Python with simple cache
     """
     
-    def __init__(self):
-        # Quantizer initialized silently (v7.2)
+    def __init__(self, project_root=None, use_enhanced=True):
+        # Quantizer initialized silently (v8.0)
+        self.project_root = project_root
+        self.enhanced_extractor = None
+        
+        # Try to load full symbol extractor with tree-sitter
+        if use_enhanced and project_root:
+            try:
+                from bbc_core.full_symbol_extractor import FullSymbolExtractor
+                self.enhanced_extractor = FullSymbolExtractor(
+                    project_root,
+                    use_cache=True,
+                    use_indices=True
+                )
+            except Exception:
+                pass
         
         # Regex Patterns for ALL Major Languages
         self.PATTERNS = {
@@ -94,10 +111,34 @@ class HMPUQuantizer:
         if "def " in content and ":" in content: return "python"
         return "python" # Default
 
-    def process_content(self, content, file_ext=None):
+    def process_content(self, content, file_ext=None, file_path=None):
         start_time = time.time()
         
-        # Dil Belirleme (Uzantiya Gore)
+        # Try enhanced extractor first (tree-sitter)
+        if self.enhanced_extractor and file_ext:
+            try:
+                symbols = self.enhanced_extractor.extract_symbols(
+                    file_path or "unknown",
+                    content,
+                    file_ext
+                )
+                
+                # Convert to legacy format
+                structure = self._convert_to_legacy_format(symbols)
+                
+                duration = time.time() - start_time
+                return {
+                    "structure": structure,
+                    "stats": {
+                        "size": len(content),
+                        "time": duration,
+                        "method": symbols.get('_meta', {}).get('method', 'tree-sitter')
+                    }
+                }
+            except Exception:
+                pass
+        
+        # Fallback to regex (original implementation)
         lang = "python"
         if file_ext:
             ext = file_ext.lower()
@@ -124,7 +165,6 @@ class HMPUQuantizer:
         }
         
         try:
-            # Regex Taramasi (Guvenli)
             if "class" in patterns:
                 for match in re.finditer(patterns["class"], content, re.MULTILINE):
                     structure["classes"].append(match.group(1))
@@ -140,7 +180,6 @@ class HMPUQuantizer:
             if "object_method" in patterns:
                 for match in re.finditer(patterns["object_method"], content, re.MULTILINE):
                     method_name = match.group(1)
-                    # Exclude common keywords that look like methods
                     if method_name not in ['if', 'for', 'while', 'switch', 'catch', 'with']:
                         structure["functions"].append(method_name)
             
@@ -154,5 +193,37 @@ class HMPUQuantizer:
         duration = time.time() - start_time
         return {
             "structure": structure,
-            "stats": {"size": len(content), "time": duration}
+            "stats": {"size": len(content), "time": duration, "method": "regex"}
         }
+    
+    def _convert_to_legacy_format(self, symbols: dict) -> dict:
+        """Convert new symbol format to legacy format for compatibility"""
+        structure = {
+            "classes": [],
+            "functions": [],
+            "imports": [],
+            "language": symbols.get('_meta', {}).get('language', 'unknown')
+        }
+        
+        # Extract class names
+        for cls in symbols.get('classes', []):
+            if isinstance(cls, dict):
+                structure["classes"].append(cls.get('name', 'Unknown'))
+            else:
+                structure["classes"].append(str(cls))
+        
+        # Extract function names
+        for func in symbols.get('functions', []):
+            if isinstance(func, dict):
+                structure["functions"].append(func.get('name', 'unknown'))
+            else:
+                structure["functions"].append(str(func))
+        
+        # Extract import names
+        for imp in symbols.get('imports', []):
+            if isinstance(imp, dict):
+                structure["imports"].append(imp.get('name') or imp.get('path') or imp.get('source', 'unknown'))
+            else:
+                structure["imports"].append(str(imp))
+        
+        return structure

@@ -630,59 +630,130 @@ def inject_to_project(context_path: str, project_path: str = None, optimize: boo
         if profile.get("auto_patch_check"):
             patch_rule = "\n8. **PATCH-CHECK:** After changes, run `python bbc.py patch .` (dry-run) to detect regressions."
 
-        return f"""# BBC (Bitter Brain Context) v8.5 — MANDATORY SYSTEM INSTRUCTIONS
-# bbc_instructions_version: {instr_version}
-# context_schema_version: {schema_version}
-# enforcement: {enforcement}
-# fail_policy: {fail_policy}
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-## CRITICAL: READ THIS BEFORE ANY ACTION
-These instructions are NON-OPTIONAL. They apply to ALL projects regardless of size.
-You MUST follow every rule below. Skipping any rule is a protocol violation.
+        return f"""⚠️⚠️⚠️ CRITICAL: READ THIS FILE AT THE START OF EVERY NEW CHAT SESSION ⚠️⚠️⚠️
 
-## STEP 0: LOAD BBC CONTEXT (MANDATORY — DO THIS FIRST)
-Before writing ANY code, reading ANY file, or answering ANY question:
-1. Read `.bbc/bbc_context.json` — this is the verified project map
-2. Read `.bbc/bbc_rules.md` — these are the project-specific rules
-3. Use the `code_structure` field from bbc_context.json as your primary reference
-4. Check `context_fresh` field — current status: **{freshness_str}**
+# BBC SEALED CONTEXT - MANDATORY READING
+**This file MUST be read at the beginning of EVERY conversation, including new chat windows.**
 
-DO NOT use your own file scanning tools (read_file, grep, etc.) to discover the project structure.
-The BBC context has already mapped the entire project with verified checksums.
-Using BBC context is FASTER and MORE ACCURATE than scanning files yourself.
+---
 
-## CONTEXT FRESHNESS & FAIL POLICY
-- Context Freshness: **{freshness_str}**
-- Fail Policy: **{fail_policy}**
-- {fail_rule}
+## 🔒 YOU ARE IN BBC SEALED MODE
 
-## WHY YOU MUST USE BBC CONTEXT (EVEN FOR SMALL PROJECTS)
-- BBC context includes HMPU-compressed token-optimized project structure
-- It contains verified symbol relationships (classes, functions, imports, call graphs)
-- It has integrity checksums — if you use symbols not in the context, you risk hallucination
-- The project has been analyzed: {file_count} files, status: {status}
+**What this means**:
+- This project has been analyzed and sealed by BBC (Bitter Brain Context)
+- You have access to a verified, hallucination-free context
+- You MUST follow the constraints below
 
-## RULES (MANDATORY — enforcement: {enforcement})
-1. **CONTEXT-FIRST:** Get project structure from `.bbc/bbc_context.json`, NOT from scanning files
-2. **VERIFIED SYMBOLS ONLY:** Only use classes, functions, and variables that exist in bbc_context.json `code_structure`
-3. **NO HALLUCINATION:** If a symbol is NOT in the context, do NOT invent it. Ask the user to run `python bbc.py analyze`
-4. **WARN ON EXTERNAL:** If forced to use symbols outside context, prefix your response with: "WARNING: Using symbols outside BBC sealed context"
-5. **CITE CONTEXT:** When referencing project structure, cite bbc_context.json as your source{impact_rule}{verify_rule}{patch_rule}
+---
 
-## GUARDRAIL PIPELINE (automatic workflow)
-Before writing code: impact analysis → risk check
-After writing code: patch check → verify integrity
-If any step fails: STOP and report to user
+## 📋 MANDATORY RULES (NEVER SKIP)
 
-## PROJECT SNAPSHOT
-- Status: {status}
-- Files: {file_count}
-- Freshness: {freshness_str}
-- Enforcement: {enforcement}
-- Fail Policy: {fail_policy}
-- Instructions Version: {instr_version}
-- Schema Version: {schema_version}
-- Context File: .bbc/bbc_context.json
+### 1. Symbol Verification
+✅ **USE ONLY** symbols from verified context files:
+   - `.bbc/bbc_context.json` (primary source - ALL symbols)
+   - `.github/copilot-instructions.md` (for GitHub Copilot)
+   - `.cursorrules` (for Cursor IDE)
+   - `.clinerules` (for Cline/Kilo Code)
+
+### 2. Hallucination Prevention
+❌ **DO NOT**:
+   - Infer or assume code structure
+   - Create functions/classes not in verified list
+   - Guess import paths or module names
+   - Generate speculative code ("probably", "might", "could be")
+
+### 3. Unknown Symbol Protocol
+⚠️ **IF SYMBOL NOT FOUND**:
+   - Respond exactly: "Symbol not found in BBC sealed context"
+   - Do NOT attempt to create it
+   - Ask user to run: `python bbc.py analyze .`
+
+### 4. Fail Policy
+{fail_rule}
+
+### 5. Enforcement Level: {enforcement.upper()}
+{impact_rule}{verify_rule}{patch_rule}
+
+---
+
+## 📊 CURRENT PROJECT STATUS
+
+**Verification Status**: ✅ SEALED_STABLE
+**Last Sealed**: {timestamp}
+**Files Scanned**: {file_count}
+**Symbols Verified**: {class_count} classes, {func_count} functions
+
+**Context Fresh**: {freshness_str}
+**Enforcement Level**: {enforcement.upper()}
+**Fail Policy**: {fail_policy.upper()}
+
+---
+
+## 🚨 NEW CHAT SESSION CHECKLIST
+
+**Every time you start a new conversation**:
+1. ✅ Read this file (`.bbc/BBC_INSTRUCTIONS.md`)
+2. ✅ Read `.bbc/bbc_context.json` (verified symbols)
+3. ✅ Read `.bbc/bbc_rules.md` (project rules)
+4. ✅ Check context freshness (see timestamp above)
+5. ✅ If stale, ask user to run: `python bbc.py verify .`
+
+---
+
+## 🔍 WHERE TO FIND VERIFIED SYMBOLS
+
+**Primary Source** (always read this):
+- `.bbc/bbc_context.json` → Complete symbol list with file paths
+
+**Human-Readable Summary**:
+- `.bbc/bbc_context.md` → Project overview
+
+**Tool-Specific Configs** (auto-generated from context):
+- `.github/copilot-instructions.md` ← GitHub Copilot
+- `.cursorrules` ← Cursor IDE
+- `.clinerules` ← Cline/Kilo Code
+
+---
+
+## 🛡️ ENFORCEMENT DETAILS
+
+**BBC Version**: 8.3.0
+**Schema Version**: {schema_version}
+**Instructions Version**: {instr_version}
+
+**What {enforcement.upper()} means**:
+- Verified symbols ONLY
+- Impact-first workflow
+- Verify after every change
+- Stale context blocks work
+
+**If you violate these rules**:
+- Your output will be flagged by BBC hallucination guard
+- User will be notified of constraint violations
+- Code may be rejected
+
+---
+
+## 📞 TROUBLESHOOTING
+
+**Context seems outdated?**
+→ Ask user to run: `python bbc.py verify .`
+
+**Symbol not in context but should be?**
+→ Ask user to run: `python bbc.py analyze .`
+
+**Need to check impact of a change?**
+→ Ask user to run: `python bbc.py impact <file>`
+
+**Want to verify generated code?**
+→ Ask user to run: `python bbc.py check <file>`
+
+---
+
+**BBC (Bitter Brain Context) v8.3 - Zero Hallucination AI Coding Framework**
+**Last Updated**: {timestamp}
 """
 
     # --- Standard JSON config for AI extensions ---
@@ -900,131 +971,23 @@ If any step fails: STOP and report to user
 
     instructions = get_instructions()
 
-    def _build_skill_md(skill_name: str, objective: str, workflow_steps: List[str]) -> str:
-        top_symbols = []
-        for entry in code_structure:
-            if not isinstance(entry, dict):
-                continue
-            struct = entry.get("structure", {}) if isinstance(entry.get("structure", {}), dict) else {}
-            classes = struct.get("classes", []) if isinstance(struct.get("classes", []), list) else []
-            funcs = struct.get("functions", []) if isinstance(struct.get("functions", []), list) else []
-            for c in classes[:2]:
-                if isinstance(c, str) and c.strip():
-                    top_symbols.append(c.strip())
-            for fn in funcs[:3]:
-                if isinstance(fn, str) and fn.strip():
-                    top_symbols.append(fn.strip())
-            if len(top_symbols) >= 15:
-                break
-
-        symbol_preview = ", ".join(top_symbols[:12]) if top_symbols else "Use symbols from .bbc/bbc_context.json code_structure only"
-        workflow_block = "\n".join(f"{idx}. {step}" for idx, step in enumerate(workflow_steps, 1))
-
-        return f"""# {skill_name}
-
-## Purpose
-{objective}
-
-## Scope
-- Project: {project_root.name}
-- Status: {status}
-- Files analyzed: {file_count}
-- Enforcement: {enforcement}
-- Fail policy: {fail_policy}
-
-## Required Inputs
-- .bbc/bbc_context.json
-- .bbc/bbc_rules.md
-- .bbc/BBC_INSTRUCTIONS.md
-
-## Mandatory Workflow
-{workflow_block}
-
-## Constraints
-- Do not invent symbols not present in .bbc/bbc_context.json.
-- If context is stale and fail policy is fail_closed, stop and request analyze.
-- Keep edits minimal and deterministic.
-
-## Symbol Preview
-{symbol_preview}
-
-## Validation
-- Run: python run_bbc.py audit .
-- Run: python run_bbc.py verify .
-"""
-
-    # --- Project-specific auto-generated skills (English, per project) ---
-    _write_config(
-        "BBC Skill (General)",
-        ".bbc/skills/BBC_SKILL.md",
-        _build_skill_md(
-            "BBC Project Skill",
-            "Guide LLMs to operate with BBC context-first rules for this project.",
-            [
-                "Load .bbc/bbc_context.json and .bbc/bbc_rules.md first.",
-                "Identify target symbols only from verified code_structure.",
-                "Apply minimal safe edits aligned with project conventions.",
-                "Run verify/audit after changes and report outcomes.",
-            ],
-        ),
-    )
-    _write_config(
-        "BBC Skill (Bugfix)",
-        ".bbc/skills/BBC_SKILL_BUGFIX.md",
-        _build_skill_md(
-            "BBC Bugfix Skill",
-            "Resolve defects with smallest possible behavior-preserving changes.",
-            [
-                "Map failing behavior to impacted symbols in BBC context.",
-                "Patch the narrowest code path that fixes the defect.",
-                "Avoid unrelated refactors while fixing the issue.",
-                "Run verification and summarize the exact fix scope.",
-            ],
-        ),
-    )
-    _write_config(
-        "BBC Skill (Feature)",
-        ".bbc/skills/BBC_SKILL_FEATURE.md",
-        _build_skill_md(
-            "BBC Feature Skill",
-            "Implement new behavior while preserving existing architecture contracts.",
-            [
-                "Locate extension points using verified classes/functions.",
-                "Add feature code with explicit compatibility to current flows.",
-                "Update related integration points only when required.",
-                "Verify no regressions in existing behavior.",
-            ],
-        ),
-    )
-    _write_config(
-        "BBC Skill (Review)",
-        ".bbc/skills/BBC_SKILL_REVIEW.md",
-        _build_skill_md(
-            "BBC Review Skill",
-            "Review code for correctness risks, regressions, and missing validations.",
-            [
-                "Inspect touched symbols and their direct dependencies.",
-                "Prioritize findings by severity and user impact.",
-                "Confirm tests/verification coverage for changed behavior.",
-                "Provide concrete file-level remediation actions.",
-            ],
-        ),
-    )
-    _write_config(
-        "BBC Skill (Refactor)",
-        ".bbc/skills/BBC_SKILL_REFACTOR.md",
-        _build_skill_md(
-            "BBC Refactor Skill",
-            "Improve structure and maintainability without altering behavior.",
-            [
-                "Define refactor boundaries from BBC code_structure.",
-                "Preserve public APIs and contracts unless explicitly requested.",
-                "Apply small iterative changes with quick verification.",
-                "Validate equivalence with post-change checks.",
-            ],
-        ),
-    )
-    print("[BBC] Project skills refreshed -> .bbc/skills/")
+    # --- Enhanced Project-specific skills (using skill_generator.py) ---
+    from bbc_core.skill_generator import BBCSkillGenerator
+    
+    skill_gen = BBCSkillGenerator(context, str(project_root))
+    skills = skill_gen.generate_all_skills()
+    
+    for skill_name, skill_content in skills.items():
+        skill_label = skill_name.replace("BBC_SKILL_", "").replace(".md", "").replace("_", " ").title()
+        if skill_label == "Bbc Skill":
+            skill_label = "General"
+        _write_config(
+            f"BBC Skill ({skill_label})",
+            f".bbc/skills/{skill_name}",
+            skill_content
+        )
+    
+    print("[BBC] Enhanced project skills generated -> .bbc/skills/")
 
     # Her zaman .bbc/ icine yaz (ana merkez)
     _write_config("BBC Instructions", ".bbc/BBC_INSTRUCTIONS.md", instructions)
@@ -1242,6 +1205,30 @@ If any step fails: STOP and report to user
 
     # --- Git Isolation Shield (v8.3 No-Trace Policy) ---
     shield_git_isolation(project_root, created_files)
+
+    # --- IDE Injection Report ---
+    print("\n" + "="*70)
+    print(" 📝 BBC INJECTION REPORT")
+    print("="*70)
+    
+    print(f"  Detected IDE: {active_ide_type or 'None (universal mode)'}")
+    print(f"  Detected Extensions: {len(injected)}")
+    
+    if injected:
+        print(f"\n  Active Extensions:")
+        for item in injected[:5]:
+            ext_name = item.split(' -> ')[0]
+            print(f"    • {ext_name}")
+    
+    print(f"\n  Injected Files ({len(created_files)}):")
+    for label, path in created_files.items():
+        rel_path = os.path.relpath(path, project_root)
+        if len(rel_path) > 50:
+            rel_path = "..." + rel_path[-47:]
+        print(f"    ✓ [{label}]")
+        print(f"      {rel_path}")
+    
+    print("="*70 + "\n")
 
     return created_files
 
