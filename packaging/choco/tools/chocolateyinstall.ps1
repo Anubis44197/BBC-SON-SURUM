@@ -15,6 +15,6 @@ $packageArgs = @{
 
 Install-ChocolateyZipPackage @packageArgs
 
-$bbcRoot = Join-Path $toolsDir 'BBC-8.3.0'
+$bbcRoot = Join-Path $toolsDir 'BBC-SON-SURUM-main'
 Write-Host "BBC extracted to: $bbcRoot"
 Write-Host 'Run install_global.bat from the extracted folder to complete setup.'

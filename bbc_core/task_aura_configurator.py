@@ -1,8 +1,9 @@
 """
-BBC Task-Aware Aura Configurator  
-Adapts Harrier's task-specific instruction to BBC Aura Field mathematics
+BBC Task-Aware Aura Configurator with Task Instructions
+Adapts Harrier's task-specific instruction prompting to BBC Aura Field mathematics
 
 Dynamically configures HMPU Governor's Aura matrix based on task type
+Includes task instructions for Query (has instruction) vs Document (no instruction)
 NO neural networks - pure BBC mathematical matrix operations
 """
 
@@ -15,16 +16,20 @@ from .hmpu_core import HMPU_Governor
 
 @dataclass
 class AuraProfile:
-    """Configuration profile for Aura Field matrix"""
+    """Configuration profile for Aura Field matrix with task instructions"""
     name: str
     base_matrix: List[List[float]]  # 3x3 S/C/P matrix
     description: str
+    # Task instruction for QUERY (Harrier: query gets instruction, document does NOT)
+    query_instruction: str  # e.g., "Given a web search query, retrieve relevant passages..."
     # Weight multipliers for different symbol types
     symbol_weights: Dict[str, float]
     # Chaos tolerance: how much complexity is acceptable
     chaos_tolerance: float  # 0.0-1.0, higher = more tolerant
     # Pulse priority: how important is recency
     pulse_priority: float  # 0.0-1.0
+    # Whether to include instruction in embedding (Harrier: include_prompt: true)
+    include_instruction: bool = True
 
 
 class TaskAwareAuraConfigurator:
@@ -36,6 +41,10 @@ class TaskAwareAuraConfigurator:
     
     This is BBC's adaptation of Harrier's task-specific instruction
     prompting - but using matrix mathematics instead of text prefixes.
+    
+    CRITICAL: Harrier separates Query (with instruction) vs Document (no instruction)
+    - Query: "Instruct: {task}\nQuery: {text}" - gets instruction prefix
+    - Document: "{text}" - NO instruction, raw text only
     """
     
     # Pre-defined Aura profiles for each task type
@@ -44,6 +53,7 @@ class TaskAwareAuraConfigurator:
         "bugfix": AuraProfile(
             name="bugfix",
             description="Optimized for finding and fixing bugs",
+            query_instruction="Given a bug report or error message, retrieve relevant code symbols that are likely sources of the bug",
             base_matrix=[
                 #       S_col    C_col    P_col
                 [0.85, 0.10, 0.05],  # S_row: Structure focused, less chaos
@@ -61,12 +71,14 @@ class TaskAwareAuraConfigurator:
                 "method": 0.85
             },
             chaos_tolerance=0.8,  # High tolerance (bugs often in complex code)
-            pulse_priority=0.7    # Recent changes likely caused bug
+            pulse_priority=0.7,    # Recent changes likely caused bug
+            include_instruction=True
         ),
         
         "feature": AuraProfile(
             name="feature",
             description="Optimized for implementing new features",
+            query_instruction="Given a feature request, retrieve relevant code symbols including patterns, interfaces, and similar implementations",
             base_matrix=[
                 [0.95, 0.03, 0.02],  # S_row: Very high structure (patterns)
                 [0.55, 0.30, 0.15],  # C_row: Moderate chaos (new code complex)
@@ -83,12 +95,14 @@ class TaskAwareAuraConfigurator:
                 "model": 1.3
             },
             chaos_tolerance=0.5,  # Low tolerance (new code should be clean)
-            pulse_priority=0.9    # Very high (new feature = new code)
+            pulse_priority=0.9,    # Very high (new feature = new code)
+            include_instruction=True
         ),
         
         "refactor": AuraProfile(
             name="refactor",
             description="Optimized for code refactoring",
+            query_instruction="Given refactoring goals, retrieve code symbols that need refactoring including duplicates, long functions, and complex classes",
             base_matrix=[
                 [0.88, 0.08, 0.04],  # S_row: High structure (refactoring targets)
                 [0.80, 0.12, 0.08],  # C_row: High chaos (complex code to refactor)
@@ -104,12 +118,14 @@ class TaskAwareAuraConfigurator:
                 "function": 1.1  # Functions often need refactoring
             },
             chaos_tolerance=0.9,  # Very high (refactor = target complex code)
-            pulse_priority=0.4     # Low (refactor old code too)
+            pulse_priority=0.4,   # Low (refactor old code too)
+            include_instruction=True
         ),
         
         "review": AuraProfile(
             name="review",
             description="Optimized for code review",
+            query_instruction="Given code changes, retrieve security-sensitive, performance-critical, and API-related symbols for review",
             base_matrix=[
                 [0.90, 0.06, 0.04],  # S_row: High structure
                 [0.70, 0.20, 0.10],  # C_row: Medium-high chaos (complex code)
@@ -125,12 +141,14 @@ class TaskAwareAuraConfigurator:
                 "test": 1.2
             },
             chaos_tolerance=0.7,
-            pulse_priority=0.8     # Recent changes need review
+            pulse_priority=0.8,     # Recent changes need review
+            include_instruction=True
         ),
         
         "test": AuraProfile(
             name="test",
             description="Optimized for test generation",
+            query_instruction="Given untested or critical code, retrieve symbols that need test coverage including branching logic and edge cases",
             base_matrix=[
                 [0.92, 0.05, 0.03],  # S_row: Very high structure
                 [0.65, 0.25, 0.10],  # C_row: Medium chaos (edge cases)
@@ -145,12 +163,14 @@ class TaskAwareAuraConfigurator:
                 "complex_logic": 1.4
             },
             chaos_tolerance=0.6,
-            pulse_priority=0.5
+            pulse_priority=0.5,
+            include_instruction=True
         ),
         
         "general": AuraProfile(
             name="general",
             description="Balanced configuration for general tasks",
+            query_instruction="Retrieve relevant code symbols for the given context",
             base_matrix=[
                 [1.00, 0.00, 0.00],  # S_row: Pure structural (default HMPU)
                 [0.75, 0.15, 0.10],  # C_row: Default chaos
@@ -163,7 +183,8 @@ class TaskAwareAuraConfigurator:
                 "variable": 0.3
             },
             chaos_tolerance=0.6,
-            pulse_priority=0.5
+            pulse_priority=0.5,
+            include_instruction=False
         )
     }
     
@@ -245,6 +266,41 @@ class TaskAwareAuraConfigurator:
             return False
         
         return True
+    
+    def get_query_instruction(self, task_type: str, query_text: str) -> str:
+        """
+        Get formatted instruction for QUERY (Harrier style).
+        
+        Harrier format: "Instruct: {task}\nQuery: {query}"
+        
+        Args:
+            task_type: Task type string
+            query_text: The actual query text
+            
+        Returns:
+            Formatted instruction string
+        """
+        profile = self.get_profile(task_type)
+        
+        if not profile.include_instruction:
+            return query_text
+        
+        # Harrier format: "Instruct: {task}\nQuery: {query}"
+        return f"Instruct: {profile.query_instruction}\nQuery: {query_text}"
+    
+    def get_document_representation(self, document_text: str) -> str:
+        """
+        Get document representation (NO instruction, raw text only).
+        
+        Harrier: Documents get NO instruction prefix, only raw text.
+        
+        Args:
+            document_text: Document text
+            
+        Returns:
+            Raw document text (no instruction)
+        """
+        return document_text
     
     def get_task_description(self, task_type: str) -> str:
         """Get human-readable description of task profile"""

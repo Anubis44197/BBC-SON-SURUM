@@ -12,6 +12,11 @@ from .config import BBCConfig
 # Import the Polyglot Quantizer (single source of truth: bbc_core)
 from .hmpu_quantizer import HMPUQuantizer
 
+# Import Harrier-adapted BBC modules (BBC Mathematics - NO neural networks)
+from .symbol_state_encoder import SymbolStateEncoder, SymbolSignature
+from .task_aura_configurator import TaskAwareAuraConfigurator
+from .symbol_similarity import BBCSymbolSimilarity
+
 class BBCNativeAdapter:
     def __init__(self, project_root: str = "."):
         self.state_manager = StateManager()
@@ -22,6 +27,10 @@ class BBCNativeAdapter:
         bbc_index_dir = os.path.join(project_root, ".bbc", "indices")
         os.makedirs(bbc_index_dir, exist_ok=True)
         self.indexer = HMPUIndexer(index_dir=bbc_index_dir)
+        # Harrier-adapted BBC modules for semantic symbol encoding
+        self.symbol_encoder = SymbolStateEncoder()
+        self.task_configurator = TaskAwareAuraConfigurator()
+        self.similarity_engine = BBCSymbolSimilarity()
 
     def compute_hash(self, content: str) -> str:
         """Computes SHA-256 hash of content for hallucination detection."""
@@ -302,6 +311,32 @@ class BBCNativeAdapter:
                         call_count = graph_stats.get("total_calls", 0)
                         crit_count = len(context_json["symbol_analysis"]["critical_symbols"])
                         print(f"[*] Symbol Pipeline: {sym_count} symbols, {call_count} calls, {crit_count} critical")
+
+                    # ─── BBC HARRIER INTEGRATION ───
+                    # Encode critical symbols as BBCScalar [S,C,P] vectors
+                    try:
+                        if not silent:
+                            print("[*] BBC Harrier: Encoding symbol states...")
+                        encoded_signatures = []
+                        for sym in critical[:10]:  # Top 10 critical symbols
+                            symbol_dict = {
+                                'name': sym.get('symbol', ''),
+                                'type': sym.get('type', 'unknown'),
+                                'references': sym.get('called_by', []),
+                                'file': sym.get('file', '')
+                            }
+                            sig = self.symbol_encoder.encode_symbol(symbol_dict)
+                            encoded_signatures.append({
+                                'name': sig.name,
+                                'vector': [float(sig.s_component), float(sig.c_component), float(sig.p_component)],
+                                'states': [sig.s_component.state, sig.c_component.state, sig.p_component.state]
+                            })
+                        context_json["symbol_analysis"]["bbc_encoded_signatures"] = encoded_signatures
+                        if not silent:
+                            print(f"[*] BBC Harrier: {len(encoded_signatures)} symbols encoded with BBCScalar [S,C,P]")
+                    except Exception as e:
+                        if not silent:
+                            print(f"[WARN] BBC Harrier encoding skipped: {e}")
 
             except ImportError as e:
                 if not silent:

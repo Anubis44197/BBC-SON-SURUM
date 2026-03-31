@@ -119,6 +119,84 @@ class SymbolStateEncoder:
         """Encode multiple symbols efficiently"""
         return [self.encode_symbol(sym) for sym in symbols]
     
+    def last_state_pool(self, symbol_states: List[SymbolSignature]) -> SymbolSignature:
+        """
+        BBC adaptation of Harrier's last-token pooling.
+        
+        Harrier: Uses embedding of last non-padding token as sentence representation
+        BBC: Uses the last symbol's [S, C, P] as the representative state
+        
+        When multiple symbols exist (e.g., a class with many methods),
+        the last symbol represents the "final state" of that context.
+        
+        Args:
+            symbol_states: List of symbol signatures
+            
+        Returns:
+            Representative SymbolSignature (last state)
+        """
+        if not symbol_states:
+            # Return empty/default signature
+            return SymbolSignature(
+                name="__empty__",
+                s_component=BBCScalar(0.0, state=DEGENERATE, origin="math"),
+                c_component=BBCScalar(0.0, state=DEGENERATE, origin="math"),
+                p_component=BBCScalar(0.0, state=DEGENERATE, origin="math"),
+                metadata={}
+            )
+        
+        if len(symbol_states) == 1:
+            return symbol_states[0]
+        
+        # BBC adaptation of last-token pooling:
+        # Take the last symbol as representative
+        # But also consider the "attention" - which symbols are most important
+        
+        # Weighted combination based on structural importance
+        # This is like attention mechanism but using BBC math
+        total_weight = BBCScalar(0.0, state=STABLE, origin="math")
+        weighted_s = BBCScalar(0.0, state=STABLE, origin="math")
+        weighted_c = BBCScalar(0.0, state=STABLE, origin="math")
+        weighted_p = BBCScalar(0.0, state=STABLE, origin="math")
+        
+        for i, sig in enumerate(symbol_states):
+            # Weight: last symbol gets higher weight (like last-token pooling)
+            # But also consider structural importance
+            position_weight = (i + 1) / len(symbol_states)  # Linear increase
+            structural_weight = float(sig.s_component)
+            
+            # Combined BBCScalar weight
+            weight_val = position_weight * structural_weight
+            weight = BBCScalar(weight_val, state=sig.s_component.state, origin="math")
+            
+            # Accumulate weighted components
+            weighted_s = weighted_s + (sig.s_component * weight)
+            weighted_c = weighted_c + (sig.c_component * weight)
+            weighted_p = weighted_p + (sig.p_component * weight)
+            total_weight = total_weight + weight
+        
+        # Normalize by total weight
+        if float(total_weight) > 0:
+            pooled_s = weighted_s / total_weight
+            pooled_c = weighted_c / total_weight
+            pooled_p = weighted_p / total_weight
+        else:
+            # Fallback to last symbol
+            return symbol_states[-1]
+        
+        # Create pooled signature
+        return SymbolSignature(
+            name=f"__pooled_{len(symbol_states)}_symbols__",
+            s_component=pooled_s,
+            c_component=pooled_c,
+            p_component=pooled_p,
+            metadata={
+                'pooled_count': len(symbol_states),
+                'pooled_names': [s.name for s in symbol_states],
+                'pooling_method': 'weighted_last_state'
+            }
+        )
+    
     def _calculate_structural_score(self, symbol: Dict[str, Any]) -> float:
         """
         Calculate structural importance score (S component).

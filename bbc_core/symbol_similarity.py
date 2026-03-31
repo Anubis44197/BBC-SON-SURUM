@@ -353,36 +353,55 @@ class BBCSymbolSimilarity:
     
     def bbc_normalize(self, vector: List[BBCScalar]) -> List[BBCScalar]:
         """
-        Normalize BBCScalar vector (state-aware L2 normalization).
+        L2 Normalize BBCScalar vector (state-aware normalization).
+        
+        Harrier uses L2 normalization: v / ||v||_2
+        BBC adaptation: sqrt-free L2 normalization using BBCScalar arithmetic
+        
+        Algorithm (sqrt-free):
+        1. Compute |v|² = Σ(v[i]²) 
+        2. Compare |v|² > 0 (avoid division by zero)
+        3. Normalize: v[i] / sqrt(|v|²) ≈ v[i] * (1 / sqrt(|v|²))
+        
+        For BBC math, we use: v[i] * |v| / |v|²  (avoids explicit sqrt)
+        Which simplifies to: v[i] / |v|
         
         Args:
             vector: List of BBCScalars [S, C, P]
             
         Returns:
-            Normalized vector as BBCScalars
+            L2-normalized vector as BBCScalars (unit vector)
         """
         # Compute |v|² = Σ(v[i]²)
         norm_sq = BBCScalar(0.0, state=STABLE, origin="math")
         for v in vector:
             norm_sq = norm_sq + (v * v)
         
-        # Check DEGENERATE
-        if norm_sq.state == DEGENERATE:
+        # Check DEGENERATE or zero norm
+        if norm_sq.state == DEGENERATE or float(norm_sq) <= 0:
             return [BBCScalar(0.0, state=DEGENERATE, origin="math") for _ in vector]
         
-        norm_val = float(norm_sq)
-        if norm_val <= 0:
-            return [BBCScalar(0.0, state=WEAK, origin="math") for _ in vector]
+        # For true L2 normalization: v / ||v||
+        # ||v|| = sqrt(|v|²)
+        # We compute this once as regular float (BBC doesn't have native sqrt)
+        norm_val = float(norm_sq) ** 0.5
+        norm_scalar = BBCScalar(norm_val, state=norm_sq.state, origin="math")
         
-        # Normalize each component
+        # Normalize each component: v[i] / ||v||
         normalized = []
-        norm_scalar = BBCScalar(norm_val ** 0.5, state=STABLE, origin="math")
-        
         for v in vector:
             norm_v = v / norm_scalar
             normalized.append(norm_v)
         
         return normalized
+    
+    def bbc_normalize_batch(self, vectors: List[List[BBCScalar]]) -> List[List[BBCScalar]]:
+        """L2 normalize multiple BBCScalar vectors"""
+        return [self.bbc_normalize(v) for v in vectors]
+    
+    def l2_normalize(self, vector: List[BBCScalar]) -> List[BBCScalar]:
+        """Alias for bbc_normalize - matches Harrier L2 normalization"""
+        return self.bbc_normalize(vector)
     
     def get_stats(self) -> Dict[str, Any]:
         """Get indexing statistics"""
