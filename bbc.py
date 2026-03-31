@@ -440,6 +440,18 @@ def main():
         if getattr(args, "detect_secrets", False):
             cmd.append("--detect-secrets")
         cli.run_command(cmd)
+        
+        # Auto-inject skills after analysis
+        project_resolved = str(Path(args.path).resolve())
+        ctx_file = str(Path(project_resolved) / ".bbc" / "bbc_context.json")
+        if Path(ctx_file).exists():
+            from bbc_core.agent_adapter import inject_to_project
+            inject_to_project(
+                ctx_file,
+                project_resolved,
+                optimize=True,
+                active_command="analyze",
+            )
     elif args.command == "verify":
         project_resolved = str(Path(args.path).resolve())
         ctx_file = str(Path(project_resolved) / ".bbc" / "bbc_context.json")
