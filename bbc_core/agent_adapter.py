@@ -710,6 +710,13 @@ def inject_to_project(context_path: str, project_path: str = None, optimize: boo
 **Human-Readable Summary**:
 - `.bbc/bbc_context.md` → Project overview
 
+**Project-Specific Skills** (read for task-specific workflows):
+- `.bbc/skills/BBC_SKILL.md` → General BBC workflow
+- `.bbc/skills/BBC_SKILL_BUGFIX.md` → Bugfix workflow (stack-specific)
+- `.bbc/skills/BBC_SKILL_FEATURE.md` → Feature implementation workflow
+- `.bbc/skills/BBC_SKILL_REVIEW.md` → Code review workflow
+- `.bbc/skills/BBC_SKILL_REFACTOR.md` → Refactoring workflow
+
 **Tool-Specific Configs** (auto-generated from context):
 - `.github/copilot-instructions.md` ← GitHub Copilot
 - `.cursorrules` ← Cursor IDE
@@ -977,6 +984,7 @@ def inject_to_project(context_path: str, project_path: str = None, optimize: boo
     skill_gen = BBCSkillGenerator(context, str(project_root))
     skills = skill_gen.generate_all_skills()
     
+    skills_created = []
     for skill_name, skill_content in skills.items():
         skill_label = skill_name.replace("BBC_SKILL_", "").replace(".md", "").replace("_", " ").title()
         if skill_label == "Bbc Skill":
@@ -986,8 +994,18 @@ def inject_to_project(context_path: str, project_path: str = None, optimize: boo
             f".bbc/skills/{skill_name}",
             skill_content
         )
+        skills_created.append(skill_name)
     
-    print("[BBC] Enhanced project skills generated -> .bbc/skills/")
+    # Validate skills were created
+    skills_dir = project_root / ".bbc" / "skills"
+    if skills_dir.exists():
+        actual_skills = [f.name for f in skills_dir.glob("BBC_SKILL*.md")]
+        if len(actual_skills) >= 5:
+            print(f"[BBC] Enhanced project skills generated -> .bbc/skills/ ({len(actual_skills)} skills)")
+        else:
+            print(f"[BBC] WARNING: Only {len(actual_skills)}/5 skills created. Expected: {', '.join(skills_created)}")
+    else:
+        print("[BBC] WARNING: Skills directory not created!")
 
     # Her zaman .bbc/ icine yaz (ana merkez)
     _write_config("BBC Instructions", ".bbc/BBC_INSTRUCTIONS.md", instructions)

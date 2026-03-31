@@ -228,10 +228,12 @@ class BBCDaemon:
         try:
             sp.run([sys.executable, str(run_bbc), "analyze", project_path, "--silent"],
                    capture_output=True, text=True, timeout=analyze_timeout, check=True)
+            self._log("Re-analysis completed, regenerating skills...")
             # Analyze already ran here; disable duplicate analyze trigger inside inject.
+            # Inject will regenerate all skills based on updated context
             sp.run([sys.executable, str(run_bbc), "inject", project_path, "--silent"],
                    capture_output=True, text=True, timeout=inject_timeout, check=True)
-            self._log("Re-analysis and re-injection completed")
+            self._log("Re-injection completed (skills regenerated)")
             return True
         except sp.TimeoutExpired as e:
             self._log(

@@ -36,6 +36,15 @@ if errorlevel 1 (
     echo [BBC] CLI check passed: bbc command is available.
 )
 
+echo [BBC] Validating tree-sitter installation...
+python -c "from bbc_core.full_symbol_extractor import FullSymbolExtractor; e = FullSymbolExtractor('.'); print(f'Tree-sitter: {e.tree_sitter_available}, Languages: {len(e.parsers)}')" 2>nul
+if errorlevel 1 (
+    echo [WARN] Tree-sitter validation failed. Symbol extraction may use regex fallback.
+    echo [WARN] To fix: pip install tree-sitter tree-sitter-python tree-sitter-javascript
+) else (
+    echo [BBC] Tree-sitter validation passed.
+)
+
 echo [BBC] Global install complete
 echo [BBC] Open a new terminal, then run: bbc --help
 exit /b 0
