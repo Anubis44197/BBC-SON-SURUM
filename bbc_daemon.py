@@ -251,6 +251,46 @@ class BBCDaemon:
         except Exception as e:
             self._log(f"Re-analysis error: {e}")
             return False
+    
+    def _cleanup_old_logs(self, max_age_days: int = 30):
+        """
+        Eski log dosyalarını temizle.
+        
+        Args:
+            max_age_days: Bu günden eski loglar silinir (default: 30)
+        """
+        try:
+            log_dir = self.bbc_dir / "logs"
+            if not log_dir.exists():
+                return
+            
+            import time
+            cutoff_time = time.time() - (max_age_days * 24 * 60 * 60)
+            cleaned_count = 0
+            
+            # .log dosyalarını temizle
+            for log_file in log_dir.glob("*.log"):
+                try:
+                    if log_file.stat().st_mtime < cutoff_time:
+                        log_file.unlink()
+                        cleaned_count += 1
+                except (OSError, PermissionError):
+                    continue
+            
+            # Rotated telemetry logs da temizle
+            for log_file in log_dir.glob("telemetry.*.jsonl"):
+                try:
+                    if log_file.stat().st_mtime < cutoff_time:
+                        log_file.unlink()
+                        cleaned_count += 1
+                except (OSError, PermissionError):
+                    continue
+            
+            if cleaned_count > 0:
+                self._log(f"Cleaned up {cleaned_count} old log file(s) (>{max_age_days} days)")
+                
+        except Exception as e:
+            self._log(f"Log cleanup error: {e}")
 
     def _run_daemon_loop(self, project_path: str, auto_detect: bool):
         """Main daemon loop; detects file changes/additions/deletions."""
@@ -300,6 +340,11 @@ class BBCDaemon:
             if not known_files:
                 known_files = self._scan_project_files(project_path)
                 self._log(f"Initial scan: {len(known_files)} files")
+            
+            # Günlük log cleanup (ilk başta bir kere çalıştır)
+            self._cleanup_old_logs(max_age_days=30)
+            last_cleanup_time = time.time()
+            CLEANUP_INTERVAL = 24 * 60 * 60  # 24 saat
             
             while self.running:
                 try:
@@ -367,7 +412,12 @@ class BBCDaemon:
                                     freshness_error=str(e)
                                 )
                         
-                        # 3) If re-analysis is needed, run it and apply Aura feedback
+                        # 3) Periyodik log cleanup (günde bir)
+                        if time.time() - last_cleanup_time > CLEANUP_INTERVAL:
+                            self._cleanup_old_logs(max_age_days=30)
+                            last_cleanup_time = time.time()
+                        
+                        # 4) If re-analysis is needed, run it and apply Aura feedback
                         if needs_reanalysis:
                             if now < next_retry_after:
                                 wait_left = int(next_retry_after - now)

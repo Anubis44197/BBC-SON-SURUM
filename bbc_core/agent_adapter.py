@@ -1255,12 +1255,27 @@ def shield_git_isolation(project_root: Path, created_files: dict):
     """
     Automatically updates .gitignore to prevent BBC-injected files 
     from being tracked/pushed to GitHub.
+    
+    Enhanced with explicit .bbc/ subdirectories for maximum protection.
     """
     gitignore_path = project_root / ".gitignore"
     
     # Files/folders to isolate
-    # Always include .bbc directory and core context
-    to_ignore = {".bbc/", "ai-context.json", "bbc_context.json", "bbc_rules.md", "BBC_CONTEXT.md", "BBC_INSTRUCTIONS.md", "BBC_README.md"}
+    # Always include .bbc directory and all subdirectories
+    to_ignore = {
+        ".bbc/",
+        ".bbc/logs/",
+        ".bbc/cache/",
+        ".bbc/indices/",
+        ".bbc/manifest/",
+        ".bbc/skills/",
+        "ai-context.json",
+        "bbc_context.json",
+        "bbc_rules.md",
+        "BBC_CONTEXT.md",
+        "BBC_INSTRUCTIONS.md",
+        "BBC_README.md"
+    }
     
     # Add all files created during injection
     for label, path_str in created_files.items():
@@ -1303,6 +1318,8 @@ def shield_git_isolation(project_root: Path, created_files: dict):
                 f.write("\n# --- BBC Isolation Shield (No-Trace) ---\n")
                 for entry in sorted(new_entries):
                     f.write(f"{entry}\n")
+            print(f"\n[BBC] 🛡️ Git Isolation: {len(new_entries)} entries added to .gitignore")
+            print("[BBC] Safe to push to GitHub - no BBC traces will be included")
     except Exception:
         pass
 

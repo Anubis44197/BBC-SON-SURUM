@@ -88,7 +88,12 @@ class TelemetryLogger:
 
     Her event su formatta .bbc/logs/telemetry.jsonl dosyasina yazilir:
     {"ts": "2026-02-20T17:43:00", "event": "HEAL_APPROVED", "data": {...}, "session": "20260220_174300"}
+    
+    Log rotation: Dosya 10MB'ı geçerse otomatik rotate edilir (max 5 dosya).
     """
+    
+    MAX_LOG_SIZE = 10 * 1024 * 1024  # 10 MB
+    MAX_LOG_FILES = 5  # Son 5 log dosyası saklanır
 
     def __init__(self, log_path=None, project_root=None):
         if log_path is None:
@@ -105,6 +110,46 @@ class TelemetryLogger:
     def set_session(self, session_id: str):
         """Aktif session ID'yi ayarla."""
         self.session_id = session_id
+    
+    def _rotate_logs_if_needed(self):
+        """
+        Log rotation - dosya MAX_LOG_SIZE'ı geçerse rotate et.
+        
+        Rotation şeması:
+        - telemetry.jsonl → telemetry.1.jsonl
+        - telemetry.1.jsonl → telemetry.2.jsonl
+        - ...
+        - telemetry.4.jsonl → telemetry.5.jsonl (en eski)
+        - telemetry.5.jsonl → silinir
+        """
+        if not os.path.exists(self.log_path):
+            return
+        
+        try:
+            # Dosya boyutu kontrolü
+            if os.path.getsize(self.log_path) < self.MAX_LOG_SIZE:
+                return
+            
+            log_dir = Path(self.log_path).parent
+            base_name = Path(self.log_path).stem  # "telemetry"
+            
+            # En eski log'u sil (5.jsonl)
+            oldest = log_dir / f"{base_name}.{self.MAX_LOG_FILES}.jsonl"
+            if oldest.exists():
+                oldest.unlink()
+            
+            # Eski logları kaydır (4→5, 3→4, 2→3, 1→2)
+            for i in range(self.MAX_LOG_FILES - 1, 0, -1):
+                old_file = log_dir / f"{base_name}.{i}.jsonl"
+                new_file = log_dir / f"{base_name}.{i+1}.jsonl"
+                if old_file.exists():
+                    old_file.rename(new_file)
+            
+            # Aktif log'u .1 yap
+            Path(self.log_path).rename(log_dir / f"{base_name}.1.jsonl")
+            
+        except (OSError, PermissionError) as e:
+            logger.warning(f"Log rotation failed: {e}")
 
     def log_event(self, event_type: str, data: dict = None):
         """
@@ -114,6 +159,9 @@ class TelemetryLogger:
             event_type: Event turu (SESSION_START, HEAL_APPROVED, vb.)
             data: Event'e ozel ek veriler (opsiyonel)
         """
+        # Log rotation kontrolü
+        self._rotate_logs_if_needed()
+        
         event = {
             "ts": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
             "event": event_type,

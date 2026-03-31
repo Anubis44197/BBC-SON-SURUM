@@ -351,3 +351,59 @@ class FullSymbolExtractor:
                 pass
         
         return stats
+    
+    def cleanup_old_cache(self, max_age_days: int = 30, max_cache_size_mb: int = 100):
+        """
+        Eski cache dosyalarını temizle ve toplam cache boyutunu kontrol et.
+        
+        Args:
+            max_age_days: Bu günden eski cache'ler silinir (default: 30)
+            max_cache_size_mb: Maksimum toplam cache boyutu MB (default: 100)
+        
+        Returns:
+            int: Silinen dosya sayısı
+        """
+        if not self.cache_dir.exists():
+            return 0
+        
+        import time
+        cutoff_time = time.time() - (max_age_days * 24 * 60 * 60)
+        
+        # Eski cache dosyalarını sil
+        cleaned_count = 0
+        for cache_file in self.cache_dir.glob("*.json"):
+            try:
+                if cache_file.stat().st_mtime < cutoff_time:
+                    cache_file.unlink()
+                    cleaned_count += 1
+            except (OSError, PermissionError):
+                continue
+        
+        # Toplam cache boyutunu kontrol et
+        total_size = 0
+        cache_files = []
+        for cache_file in self.cache_dir.glob("*.json"):
+            try:
+                size = cache_file.stat().st_size
+                mtime = cache_file.stat().st_mtime
+                total_size += size
+                cache_files.append((cache_file, size, mtime))
+            except (OSError, PermissionError):
+                continue
+        
+        # Boyut limiti aşıldıysa en eski dosyaları sil
+        max_size_bytes = max_cache_size_mb * 1024 * 1024
+        if total_size > max_size_bytes:
+            # En eski dosyalardan başla
+            cache_files.sort(key=lambda x: x[2])  # mtime'a göre sırala
+            
+            while total_size > max_size_bytes and cache_files:
+                oldest_file, size, _ = cache_files.pop(0)
+                try:
+                    oldest_file.unlink()
+                    total_size -= size
+                    cleaned_count += 1
+                except (OSError, PermissionError):
+                    continue
+        
+        return cleaned_count
