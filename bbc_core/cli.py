@@ -167,8 +167,8 @@ class BBCCLI:
         context["metrics"]["unified_updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
         try:
             _write_json_atomic(output_file, context)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Failed to write atomic JSON: {e}")
 
         bbc_time = time.time() - start_time
         m = context.get("metrics", {})
@@ -219,7 +219,8 @@ def _is_context_stale(project_root: str, context_path: str) -> bool:
                     if int(old.get("size", -1)) != int(meta.get("size", -1)):
                         return True
                 return False
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Failed to check snapshot staleness: {e}")
             pass
 
     try:
@@ -239,7 +240,8 @@ def _is_context_stale(project_root: str, context_path: str) -> bool:
                         mtime = os.path.getmtime(os.path.join(root, file))
                         if mtime > newest_mtime:
                             newest_mtime = mtime
-                    except Exception:
+                    except Exception as e:
+                        logger.debug(f"Failed to get mtime for {file}: {e}")
                         continue
     except Exception:
         return False
@@ -269,7 +271,8 @@ def _collect_project_fingerprint(project_root: str) -> Dict[str, Dict[str, Any]]
                 st = os.stat(abs_path)
                 rel_path = os.path.relpath(abs_path, project_root)
                 fingerprint[rel_path] = {"mtime": float(st.st_mtime), "size": int(st.st_size)}
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Failed to stat file {abs_path}: {e}")
                 continue
 
     return fingerprint
@@ -293,7 +296,8 @@ def _write_project_snapshot(project_root: str, context_path: str) -> str:
         try:
             if os.path.exists(legacy_snapshot):
                 os.remove(legacy_snapshot)
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Failed to remove legacy snapshot: {e}")
             pass
 
     return snapshot_path
@@ -418,7 +422,8 @@ def clean_system():
             os.remove(pyc)
             cleaned += 1
             print(f"  [OK] Removed: {pyc}")
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Failed to remove {pyc}: {e}")
             pass
     
     # 3. Remove old BBC log files (older than 7 days) - ONLY from .bbc/logs/
@@ -434,7 +439,8 @@ def clean_system():
                     os.remove(log)
                     cleaned += 1
                     print(f"  [OK] Removed old log: {log}")
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Failed to remove old log {log}: {e}")
                 pass
     
     print(f"\n[CLEAN] Cleanup complete. {cleaned} items removed.")

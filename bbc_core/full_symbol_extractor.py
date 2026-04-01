@@ -129,10 +129,12 @@ class FullSymbolExtractor:
                     
                 except Exception as e:
                     # Language not available, skip
+                    logger.debug(f"Tree-sitter language {lang} not available: {e}")
                     pass
         
-        except Exception:
+        except Exception as e:
             # Tree-sitter not available at all
+            logger.debug(f"Tree-sitter initialization failed: {e}")
             pass
     
     def extract_symbols(self, file_path: str, content: str, ext: str) -> Dict[str, Any]:
@@ -249,10 +251,9 @@ class FullSymbolExtractor:
             if cache_file.exists():
                 with open(cache_file, 'r', encoding='utf-8') as f:
                     return json.load(f)
-        except Exception:
-            pass
-        
-        return None
+        except Exception as e:
+            logger.debug(f"Failed to load cached symbols: {e}")
+            return None
     
     def _save_to_cache(self, file_path: str, content: str, symbols: Dict[str, Any]) -> None:
         """Save symbols to cache"""
@@ -323,9 +324,13 @@ class FullSymbolExtractor:
         try:
             if self.cache_dir.exists():
                 for cache_file in self.cache_dir.glob('*.json'):
-                    cache_file.unlink()
-                    count += 1
-        except Exception:
+                    try:
+                        cache_file.unlink()
+                        count += 1
+                    except Exception as e:
+                        logger.debug(f"Failed to delete cache file {cache_file}: {e}")
+        except Exception as e:
+            logger.debug(f"Failed to clear cache: {e}")
             pass
         
         return count
@@ -347,7 +352,8 @@ class FullSymbolExtractor:
                 cache_files = list(self.cache_dir.glob('*.json'))
                 stats["cache_files"] = len(cache_files)
                 stats["cache_size_bytes"] = sum(f.stat().st_size for f in cache_files)
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Failed to get cache stats: {e}")
                 pass
         
         return stats

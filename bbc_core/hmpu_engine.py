@@ -77,6 +77,8 @@ class BaseRecipe:
         return result
 
     async def execute(self, data: Any) -> Dict[str, Any]:
+        """Execute recipe - must be implemented by subclasses."""
+        logger.error("BaseRecipe.execute() called directly - subclass must implement execute()")
         raise NotImplementedError("Recipes must implement execute()")
 
 class CodeStructureRecipe(BaseRecipe):

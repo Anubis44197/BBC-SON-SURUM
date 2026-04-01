@@ -835,12 +835,14 @@ def inject_to_project(context_path: str, project_path: str = None, optimize: boo
                 try:
                     if legacy_path.exists():
                         legacy_path.unlink()
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"Failed to cleanup legacy path: {e}")
                     pass
 
             optimized_context_paths[task] = str(out_path)
             return str(out_path)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to get optimized context path: {e}")
             return str(context_file)
 
     def _adapter_for_format(format_type: str) -> BBCAgentAdapter:
@@ -853,7 +855,8 @@ def inject_to_project(context_path: str, project_path: str = None, optimize: boo
         ctx_abs = _get_optimized_context_path(format_type)
         try:
             return os.path.relpath(ctx_abs, str(project_root)).replace("\\", "/")
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Failed to get relative path: {e}")
             return ".bbc/bbc_context.json"
 
     def _render_tool_content(format_type: str, label: str) -> str:
@@ -967,7 +970,8 @@ def inject_to_project(context_path: str, project_path: str = None, optimize: boo
         from bbc_core.ide_auto_config import IDEAutoConfigurator
         configurator = IDEAutoConfigurator()
         active_ide_type = configurator.detect_active_ide()
-    except Exception:
+    except Exception as e:
+        logger.debug(f"IDE detection failed: {e}")
         active_ide_type = None
 
     ide_types = {active_ide_type} if active_ide_type else set()
@@ -1212,7 +1216,8 @@ def inject_to_project(context_path: str, project_path: str = None, optimize: boo
                 _write_config(e_label, e_rel_path, content)
                 written_paths.add(e_rel_path)
                 injected.append(f"{e_label} -> {e_rel_path}")
-    except Exception:
+    except Exception as e:
+        logger.debug(f"Extension detection failed: {e}")
         pass
 
     if injected:
@@ -1293,7 +1298,8 @@ def shield_git_isolation(project_root: Path, created_files: dict):
                 parent = rel_path.split('/')[0]
                 if parent in [".agent", ".context", ".continue", ".codiumai", ".codeium", ".tabnine", ".amazonq", ".blackbox", ".codegpt", ".pieces", ".codegeex", ".cody", ".supermaven", ".mintlify", ".askcodi", ".fauxpilot", ".warp", ".replit", ".antigravity", ".roo-code", ".refact", ".mutableai", ".codiga", ".intellicode", ".deepseek", ".qodo"]:
                     to_ignore.add(parent + "/")
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Failed to get relative path for gitignore {path_str}: {e}")
             continue
 
     if not gitignore_path.exists():
@@ -1320,7 +1326,8 @@ def shield_git_isolation(project_root: Path, created_files: dict):
                     f.write(f"{entry}\n")
             print(f"\n[BBC] 🛡️ Git Isolation: {len(new_entries)} entries added to .gitignore")
             print("[BBC] Safe to push to GitHub - no BBC traces will be included")
-    except Exception:
+    except Exception as e:
+        logger.debug(f"Extension detection failed during injection: {e}")
         pass
 
 

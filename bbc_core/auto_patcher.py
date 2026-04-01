@@ -167,7 +167,8 @@ class AutoPatcher:
             try:
                 with open(full_path, "r", encoding="utf-8") as f:
                     current_content = f.read()
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Failed to read file for drift detection {full_path}: {e}")
                 continue
 
             # Functions/classes from context
@@ -211,7 +212,8 @@ class AutoPatcher:
             try:
                 with open(full_path, "r", encoding="utf-8") as f:
                     content = f.read()
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Failed to read file for patching {full_path}: {e}")
                 continue
 
             # Issue detections

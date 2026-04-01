@@ -158,7 +158,10 @@ class BBCNativeAdapter:
                         count = len(files_found)
                         if count % 1000 == 0 and not silent:
                             print(f"[*] Progress: {count:,} files processed...")
-                    except Exception: continue
+                    except Exception as e:
+                        if not silent:
+                            print(f"[WARN] Error processing file {file_path}: {e}", file=sys.stderr)
+                        continue
                 else:
                     skipped_non_source_files += 1
                 if len(files_found) >= max_scan_files:
@@ -266,7 +269,9 @@ class BBCNativeAdapter:
                             try:
                                 with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
                                     source_mapping[sr.file] = f.read()
-                            except Exception:
+                            except Exception as e:
+                                if not silent:
+                                    print(f"[WARN] Failed to read source file {sr.file}: {e}", file=sys.stderr)
                                 pass
 
                     # Symbol Graph create
@@ -483,7 +488,9 @@ class BBCNativeAdapter:
                     "stats": {**analysis["stats"], "lines": file_total_lines,
                               "code_lines": file_code_lines, "hash": file_hash}
                 })
-            except Exception:
+            except Exception as e:
+                if not silent:
+                    print(f"[WARN] Error re-analyzing {rel_path}: {e}", file=sys.stderr)
                 continue
 
         if not silent:

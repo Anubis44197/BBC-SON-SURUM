@@ -703,7 +703,8 @@ class BBCVerifier:
                 conf_val = min(max(conf_val, 0.0), 1.0)
                 conf_state = STABLE if conf_val >= 0.7 else WEAK if conf_val >= 0.4 else UNSTABLE
                 confidence_scalar = BBCScalar(conf_val, state=conf_state, metadata={"origin": "math"})
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Governor fallback in verify_changed_only: {e}")
             w_s = BBCScalar(0.6, state=STABLE, metadata={"origin": "math"})
             w_c = BBCScalar(0.2, state=STABLE, metadata={"origin": "math"})
             w_p = BBCScalar(0.2, state=STABLE, metadata={"origin": "math"})
