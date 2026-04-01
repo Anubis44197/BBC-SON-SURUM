@@ -19,7 +19,15 @@ class IDEAutoConfigurator:
         self.detected_ides = []
         self.detected_plugins = []
         self.configs_created = []
-    
+
+    @staticmethod
+    def _extract_vscode_extension_id(folder_name: str) -> str:
+        parts = folder_name.split("-")
+        # Last part is usually version, drop it
+        if len(parts) >= 2:
+            return "-".join(parts[:-1])
+        return folder_name
+
     def detect_active_ide(self) -> Optional[str]:
         """Aktif operation ortamindaki IDE'yi tespit eder."""
         # 1. Ortam Degiskenleri ile Kesin Tespit
@@ -43,6 +51,10 @@ class IDEAutoConfigurator:
                 p_name = parent.name().lower()
                 if "cursor" in p_name:
                     return "cursor"
+                elif "cline" in p_name or "claude-dev" in p_name:
+                    return "cline"
+                elif "kilo" in p_name:
+                    return "cline"
                 elif "windsurf" in p_name:
                     return "windsurf"
                 elif "code" in p_name or "vscode" in p_name:
@@ -417,7 +429,7 @@ class IDEAutoConfigurator:
             if ext_path.exists():
                 for folder in ext_path.iterdir():
                     if folder.is_dir():
-                        ext_id = folder.name.split("-")[0]  # publisher.name-1.2.3 formati
+                        ext_id = self._extract_vscode_extension_id(folder.name)
                         if ext_id in ai_extensions:
                             extensions.append({
                                 "name": ai_extensions[ext_id],

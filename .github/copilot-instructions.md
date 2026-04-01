@@ -1,0 +1,90 @@
+# [BBC_SEALED_CONTEXT v8.3]
+> **Status:** LOCKED VERIFIED
+> **Compression:** 0.0% | **Files:** 15
+> **Source:** `C:\Users\90535\Desktop\BBC-SON-SURUM-1`
+
+## PROJECT STRUCTURE
+
+### `bbc.py`
+- **Classes:** `BBCCLI`
+- **Functions:** `_update_context_freshness()`, `__init__()`, `_signal_handler()`, `run_command()`, `start()`, `_watch_and_report()`, `watch()`, `stop()`, `purge()`, `uninstall()`
+
+### `bbc_core/agent_adapter.py`
+- **Classes:** `BBCAgentAdapter`
+- **Functions:** `__init__()`, `extract_symbols()`, `to_copilot_prompt()`, `to_cursor_context()`, `to_gemini_context()`, `to_kilo_context()`, `to_vscode_context()`, `to_generic_context()`, `compute_hash()`, `verify_determinism()`
+
+### `bbc_core/cli.py`
+- **Classes:** `BBCCLI`
+- **Functions:** `_write_json_atomic()`, `estimate_tokens_from_bytes()`, `__init__()`, `run_analysis()`, `run_analysis_incremental()`, `ntext_stale(proje()`, `roject_snapshot_path(proje()`, `ct_project_fingerprint(proje()`, `_project_snapshot(proje()`, `bbc_traces(proje()`
+
+### `bbc_core/context_optimizer.py`
+- **Classes:** `ImpactLevel`, `ContextOptimizerError`, `ContextReductionError`, `SymbolResolver`, `BlastRadiusAnalyzer`
+- **Functions:** `__init__()`, `_build_short_name_index()`, `_build_graph_metrics()`, `resolve()`, `_resolve_by_graph_score()`, `get_all_short_names()`, `__init__()`, `_build_called_by_index()`, `analyze()`, `_calculate_impact_score()`
+
+### `bbc_core/hmpu_engine.py`
+- **Classes:** `BaseRecipe`, `CodeStructureRecipe`, `LogTelemetryRecipe`, `ConfigJsonRecipe`, `DocumentationRecipe`
+- **Functions:** `__init__()`, `_trigger_cvp()`, `validate_output()`, `filter_output()`, `execute()`, `__init__()`, `execute()`, `__init__()`, `execute()`, `__init__()`
+
+### `bbc_core/ide_auto_config.py`
+- **Classes:** `IDEAutoConfigurator`
+- **Functions:** `__init__()`, `detect_active_ide()`, `detect_vscode()`, `detect_cursor()`, `detect_windsurf()`, `detect_jetbrains()`, `detect_vim()`, `detect_trae()`, `detect_eclipse_theia()`, `detect_fleet()`
+
+### `bbc_core/native_adapter.py`
+- **Classes:** `BBCNativeAdapter`
+- **Functions:** `__init__()`, `compute_hash()`, `_summarize_hierarchy()`, `analyze_project()`, `l(self, target_root, output()`, ` list, files_found: lis()`, `   line =()`
+
+### `bbc_core/symbol_graph.py`
+- **Classes:** `CallType`, `SymbolType`, `ImportResolver`, `ractor(ast.NodeV`, `""
+    Semb`
+- **Functions:** `elf):
+  ()`, `ports(self, tre()`, `port(self, nod()`, `port_from(self, nod()`, `mbol(self, nam()`, `imported(self, mod()`, `rce_code()`, `ist[Dic()`, `f, node: ast.C()`, `self, node: ast.F()`
+
+### `bbc_core/verifier.py`
+- **Classes:** `BBCVerifier`
+- **Functions:** `__init__()`, `_count_braces_smart()`, `_extract_symbols()`, `_load_recipe()`, `verify_syntax_only()`, `rify_freshness(s()`, `fy_symbol_mismatch(sel()`, `late_chaos(self,()`, `ull(self):
+()`, ` None):
+        """()`
+
+### `bbc_core/adaptive_mode.py`
+- **Classes:** `(Enu`, `iolation(Exc`, `daptiveMode:
+  `
+- **Functions:** `it__(sel()`, `it__(sel()`, `d_context(sel()`, `ct_mode(sel()`, `fy_file_hash(sel()`, `k_context_freshness(sel()`, `impact_radius(sel()`, `_symbol(sel()`, `date_statement(sel()`, `er(
+  ()`
+
+### `bbc_core/skill_generator.py`
+- **Classes:** `BBCSkillGenerator`
+- **Functions:** `__init__()`, `_detect_stacks()`, `_detect_project_type()`, `_get_top_symbols()`, `_get_stack_specific_bugfix_guidance()`, `_get_stack_specific_patterns()`, `generate_bugfix_skill()`, `ll(self) -> str:
+     ()`, `  """Generate code re()`, `""
+        return f"""-()`
+
+### `bbc_core/symbol_extractor.py`
+- **Classes:** `SymbolType`, `PythonSymbolExtractor`, `RegexSymbolExtractor`, `SymbolExtractor`
+- **Functions:** `__init__()`, `extract()`, `visit_ClassDef()`, `visit_FunctionDef()`, `visit_AsyncFunctionDef()`, `_process_function()`, `_get_function_signature()`, `_get_decorator_name()`, `_extract_variables()`, `__init__()`
+
+### `bbc_daemon.py`
+- **Classes:** `BBCDaemon`
+- **Functions:** `__init__()`, `_signal_handler()`, `_log()`, `_write_pid()`, `_remove_pid()`, `_is_running()`, `start()`, `stop()`, `status()`, `_scan_project_files()`
+
+### `bbc_core/auto_patcher.py`
+- **Classes:** `hAction:
+  `, `Patcher:
+  `
+- **Functions:** `it__(sel()`, `ict(sel()`, `__(self,()`, `context(self)()`, `haos Density — B()`, `split("\n")
+        i()`, `tches = []
+        lines =()`, ` context but no lon()`, `.join(self.proje()`, `name = f"{os()`
+
+## HARD CONSTRAINTS (Evidence-Only Mode)
+
+```
++-------------------------------------------------------------+
+|  WARNING: YOU ARE IN "SEALED CONTEXT" MODE                  |
++-------------------------------------------------------------+
+|  [OK] USE ONLY symbols listed above                         |
+|  [X]  DO NOT infer or assume code structure                 |
+|  [X]  DO NOT hallucinate functions or classes               |
+|  [!]  If symbol not found, respond: "Not in sealed context" |
++-------------------------------------------------------------+
+```
+
+---
+*Generated by BBC HMPU {BBC_VERSION_TAG} - Deterministic Context Engine*

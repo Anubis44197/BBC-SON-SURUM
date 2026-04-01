@@ -44,15 +44,22 @@ build/
 .bbc/bbc_context.md
 .bbc/bbc_rules.md
 .continue/
-.continue/config.json
-.github/copilot-instructions.md
-.windsurf/bbc_rules.md
+!.continue/config.json
+!.github/copilot-instructions.md
+!.windsurf/bbc_rules.md
 BBC_CONTEXT.md
 BBC_INSTRUCTIONS.md
 BBC_README.md
 ai-context.json
 bbc_context.json
 bbc_rules.md
+
+# --- Assistant integration files that must stay visible ---
+!.github/copilot-instructions.md
+!.clinerules
+!.cursorrules
+!.windsurf/bbc_rules.md
+!.continue/config.json
 
 # --- BBC Isolation Shield (No-Trace) ---
 .codiumai/
