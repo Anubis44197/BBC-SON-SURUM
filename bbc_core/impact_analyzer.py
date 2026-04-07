@@ -5,9 +5,9 @@ Calculates project-wide effects with BBC mathematics when a file/symbol changes.
 BBC Mathematics:
     - Call Graph: dependency map from imports and symbol relations
     - Focus Projection: filters related symbols with cos²(theta)
-    - Shannon Chaos Density: chaos impact of change
-    - Aura Impact Score: BBCScalar state-aware impact radius
-    - Pulse Perturbation: risk of destabilization caused by change
+    - Text Entropy: entropy impact of change
+    - Matrix Impact Score: BBCScalar state-aware impact radius
+    - Change Impact Prediction: risk of destabilization caused by change
 """
 
 import json
@@ -107,10 +107,10 @@ class ImpactAnalyzer:
                             if o not in self.call_graph[f]["shared_symbols"]:
                                 self.call_graph[f]["shared_symbols"].append(o)
 
-    # ─── BBC Mathematics: Shannon Chaos ────────────────────────────
+    # ─── BBC Mathematics: Text Entropy ────────────────────────────
 
     def _calculate_chaos(self, text: str) -> BBCScalar:
-        """Shannon Chaos Density — BBCScalar native."""
+        """Text entropy density — BBCScalar native."""
         if not text or not isinstance(text, str):
             return BBCScalar(0.0, state=STABLE, metadata={"origin": "math"})
         cnt = Counter(text)
@@ -209,9 +209,9 @@ class ImpactAnalyzer:
                 BBC Mathematics:
                     1. Direct/indirect affected files via call graph
                     2. Semantic similarity via Focus Projection (cos²theta)
-                    3. Shannon Chaos: chaos impact of change
-                    4. Pulse Perturbation: stability risk
-                    5. Aura Impact Score: BBCScalar state-aware result
+                    3. Text Entropy: entropy impact of change
+                    4. Change Impact Prediction: stability risk
+                    5. Matrix Impact Score: BBCScalar state-aware result
 
         Args:
             changed_file: Changed file path
@@ -224,10 +224,15 @@ class ImpactAnalyzer:
         # Normalize path
         changed_file = changed_file.replace("/", "\\").replace("\\", os.sep)
         # If an absolute path is provided, convert to context-relative path
+        matched_path = None
         for path in self.file_symbols:
             if changed_file.endswith(path) or path.endswith(changed_file):
-                changed_file = path
+                matched_path = path
                 break
+        if matched_path is not None:
+            changed_file = matched_path
+        elif changed_file not in self.file_symbols:
+            raise ValueError(f"Changed file not found in BBC context: {changed_file}")
 
         # 1. Direct and indirect dependents
         direct = self._get_direct_dependents(changed_file)
@@ -263,7 +268,7 @@ class ImpactAnalyzer:
                 })
         semantic_similar.sort(key=lambda x: x["similarity"]["value"], reverse=True)
 
-        # 4. Shannon Chaos: total chaos density across affected files
+        # 4. Text Entropy: total entropy across affected files
         all_affected = list(set(direct + indirect_only))
         affected_symbols_text = ""
         for af in all_affected:
@@ -271,7 +276,7 @@ class ImpactAnalyzer:
             affected_symbols_text += " ".join(syms.get("classes", []) + syms.get("functions", []))
         chaos = self._calculate_chaos(affected_symbols_text)
 
-        # 5. Aura Impact Score: BBCScalar state-aware
+        # 5. Matrix Impact Score: BBCScalar state-aware
         total_files = len(self.file_symbols)
         impact_ratio = len(all_affected) / total_files if total_files > 0 else 0.0
 
@@ -280,17 +285,17 @@ class ImpactAnalyzer:
         ir_state = STABLE if ir_val <= 0.1 else WEAK if ir_val <= 0.3 else UNSTABLE if ir_val <= 0.5 else DEGENERATE
         impact_scalar = BBCScalar(ir_val, state=ir_state, metadata={"origin": "semantic"})
 
-        # 6. Pulse Perturbation: destabilization risk from the change
+        # 6. Change Impact Prediction: destabilization risk from the change
         pulse_risk = BBCScalar(0.0, state=STABLE, metadata={"origin": "math"})
         try:
-            from .hmpu_core import HMPU_Governor
-            governor = HMPU_Governor()
-            pulse = governor.pulse_perturbation_sim(
-                current_aura=1.0 - ir_val,
+            from .hmpu_core import QualityMonitor
+            monitor = QualityMonitor()
+            pulse = monitor.change_impact_prediction(
+                current_score=1.0 - ir_val,
                 intent_magnitude=float(chaos) / 8.0,
                 op_type=op_type
             )
-            pr_val = 1.0 - pulse["predicted_pulse"] if pulse["predicted_pulse"] < 1.0 else 0.0
+            pr_val = 1.0 - pulse["predicted_score"] if pulse["predicted_score"] < 1.0 else 0.0
             pr_state = STABLE if pulse["is_stable"] else UNSTABLE
             pulse_risk = BBCScalar(pr_val, state=pr_state, metadata={"origin": "math"})
         except Exception:
@@ -335,7 +340,7 @@ class ImpactAnalyzer:
             "total_affected": len(all_affected),
             "symbol_impacts": symbol_impacts,
             "semantic_similar": semantic_similar[:10],
-            "aura_impact": {
+            "matrix_impact": {
                 "impact_ratio": {"value": round(float(impact_scalar), 3), "state": impact_scalar.state},
                 "chaos_density": {"value": round(float(chaos), 3), "state": chaos.state},
                 "pulse_risk": {"value": round(float(pulse_risk), 3), "state": pulse_risk.state},

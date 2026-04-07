@@ -21,6 +21,13 @@ import os
 from typing import Dict, Any, List
 from pathlib import Path
 
+try:
+    from .caveman_compressor import compress_text, get_compression_stats, is_available as compression_available
+    COMPRESSION_AVAILABLE = True
+except ImportError:
+    COMPRESSION_AVAILABLE = False
+    compression_available = lambda: False
+
 
 BBC_VERSION = "8.3.0"
 BBC_VERSION_SHORT = "8.3"
@@ -522,11 +529,14 @@ USAGE
         return exports
 
 
-def inject_to_project(context_path: str, project_path: str = None, optimize: bool = True, active_command: str = None) -> Dict[str, str]:
+def inject_to_project(context_path: str, project_path: str = None, optimize: bool = True, active_command: str = None, compress: bool = False) -> Dict[str, str]:
     """
     BBC Smart Context Injection - Detects installed IDEs and AI extensions,
     then injects BBC config to each one. Uses ide_auto_config.py for detection.
     Only creates config folders for IDEs/extensions that are actually installed.
+    
+    Args:
+        compress: If True, apply caveman compression to reduce context size by 30-40%
     """
     from pathlib import Path
     from datetime import datetime
@@ -631,8 +641,12 @@ def inject_to_project(context_path: str, project_path: str = None, optimize: boo
             patch_rule = "\n8. **PATCH-CHECK:** After changes, run `python bbc.py patch .` (dry-run) to detect regressions."
 
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        compression_note = ""
+        if compress and COMPRESSION_AVAILABLE:
+            compression_note = "\n\n**Note**: This context uses caveman compression for efficiency. Grammar removed, facts preserved."
 
-        return f"""⚠️⚠️⚠️ CRITICAL: READ THIS FILE AT THE START OF EVERY NEW CHAT SESSION ⚠️⚠️⚠️
+        return f"""⚠️⚠️⚠️ CRITICAL: READ THIS FILE AT THE START OF EVERY NEW CHAT SESSION ⚠️⚠️⚠️{compression_note}
 
 # BBC SEALED CONTEXT - MANDATORY READING
 **This file MUST be read at the beginning of EVERY conversation, including new chat windows.**
@@ -963,8 +977,6 @@ def inject_to_project(context_path: str, project_path: str = None, optimize: boo
 ## 3. Workflow
 - Run `python run_bbc.py audit .` before commits.
 """
-    _write_config("Agent Rules", ".bbc/bbc_rules.md", rules_md)
-
     # --- Detect installed IDEs and extensions ---
     try:
         from bbc_core.ide_auto_config import IDEAutoConfigurator
@@ -1011,8 +1023,23 @@ def inject_to_project(context_path: str, project_path: str = None, optimize: boo
     else:
         print("[BBC] WARNING: Skills directory not created!")
 
+    # Apply compression if enabled
+    final_instructions = instructions
+    final_rules = rules_md
+    if compress and COMPRESSION_AVAILABLE:
+        try:
+            final_instructions = compress_text(instructions, use_nlp=compression_available())
+            final_rules = compress_text(rules_md, use_nlp=compression_available())
+            stats = get_compression_stats(instructions, final_instructions)
+            print(f"[BBC] Compression applied: {stats['reduction_pct']}% reduction ({stats['original_tokens']}→{stats['compressed_tokens']} tokens)")
+        except Exception as e:
+            print(f"[BBC] Compression failed, using original: {e}")
+            final_instructions = instructions
+            final_rules = rules_md
+    
     # Her zaman .bbc/ icine yaz (ana merkez)
-    _write_config("BBC Instructions", ".bbc/BBC_INSTRUCTIONS.md", instructions)
+    _write_config("BBC Instructions", ".bbc/BBC_INSTRUCTIONS.md", final_instructions)
+    _write_config("Agent Rules", ".bbc/bbc_rules.md", final_rules)
 
     # ----------------------------------------------------------------
     # AKTIF IDE + KURULU AI EKLENTI TESPITI VE ENJEKSIYON
@@ -1192,26 +1219,21 @@ def inject_to_project(context_path: str, project_path: str = None, optimize: boo
         injected.append(f"{label} -> {rel_path}")
 
     # ------------------------------------------------------------
-    # STEP 2: Scan installed AI extensions and write config for them too
-    # Example: VS Code + Copilot + Cline installed => 2 files are created
-    # If IDE cannot be detected, VS Code extension directory is used as fallback
+    # STEP 2: ONLY write to detected extensions if active IDE is VS Code family
+    # NO GHOST INJECTION - only write if extension is actually installed
     # ------------------------------------------------------------
     try:
-        if configurator:
-            if active_ide_type in ["vscode", "cursor", "windsurf", "cline", "trae", "theia", None]:
-                extensions = configurator.detect_vscode_extensions()
-            elif active_ide_type in ["jetbrains", "fleet"]:
-                extensions = configurator.detect_jetbrains_plugins()
-            else:
-                extensions = configurator.detect_vscode_extensions()
-
+        if configurator and active_ide_type in ["vscode", "cursor", "windsurf", "cline", "trae", "theia"]:
+            extensions = configurator.detect_vscode_extensions()
+            
+            # Only inject to extensions that are actually installed
             for ext in extensions:
                 ext_id = ext.get("id", "")
                 if ext_id not in EXTENSION_CONFIG_MAP:
                     continue
                 e_label, e_rel_path, e_type = EXTENSION_CONFIG_MAP[ext_id]
                 if e_rel_path in written_paths:
-                    continue  # Zaten yazildi, tekrar yazma
+                    continue  # Already written
                 content = _render_tool_content(e_type, e_label)
                 _write_config(e_label, e_rel_path, content)
                 written_paths.add(e_rel_path)
@@ -1231,7 +1253,7 @@ def inject_to_project(context_path: str, project_path: str = None, optimize: boo
 
     # --- IDE Injection Report ---
     print("\n" + "="*70)
-    print(" 📝 BBC INJECTION REPORT")
+    print(" BBC INJECTION REPORT")
     print("="*70)
     
     print(f"  Detected IDE: {active_ide_type or 'None (universal mode)'}")
@@ -1241,14 +1263,14 @@ def inject_to_project(context_path: str, project_path: str = None, optimize: boo
         print(f"\n  Active Extensions:")
         for item in injected[:5]:
             ext_name = item.split(' -> ')[0]
-            print(f"    • {ext_name}")
+            print(f"    - {ext_name}")
     
     print(f"\n  Injected Files ({len(created_files)}):")
     for label, path in created_files.items():
         rel_path = os.path.relpath(path, project_root)
         if len(rel_path) > 50:
             rel_path = "..." + rel_path[-47:]
-        print(f"    ✓ [{label}]")
+        print(f"    [OK] [{label}]")
         print(f"      {rel_path}")
     
     print("="*70 + "\n")
@@ -1264,6 +1286,15 @@ def shield_git_isolation(project_root: Path, created_files: dict):
     Enhanced with explicit .bbc/ subdirectories for maximum protection.
     """
     gitignore_path = project_root / ".gitignore"
+    legacy_entries = {
+        "ai-context.json",
+        "bbc_context.json",
+        "bbc_rules.md",
+        "BBC_CONTEXT.md",
+        "BBC_INSTRUCTIONS.md",
+        "BBC_README.md",
+    }
+    block_header = "# --- BBC Isolation Shield (No-Trace) ---"
     
     # Files/folders to isolate
     # Always include .bbc directory and all subdirectories
@@ -1274,12 +1305,10 @@ def shield_git_isolation(project_root: Path, created_files: dict):
         ".bbc/indices/",
         ".bbc/manifest/",
         ".bbc/skills/",
-        "ai-context.json",
-        "bbc_context.json",
-        "bbc_rules.md",
-        "BBC_CONTEXT.md",
-        "BBC_INSTRUCTIONS.md",
-        "BBC_README.md"
+        ".bbc/BBC_INSTRUCTIONS.md",
+        ".bbc/bbc_context.json",
+        ".bbc/bbc_context.md",
+        ".bbc/bbc_rules.md",
     }
     
     # Add all files created during injection
@@ -1303,28 +1332,44 @@ def shield_git_isolation(project_root: Path, created_files: dict):
             continue
 
     if not gitignore_path.exists():
-        content = "# BBC Isolation Shield\n" + "\n".join(sorted(to_ignore)) + "\n"
+        content = block_header + "\n" + "\n".join(sorted(to_ignore)) + "\n"
         gitignore_path.write_text(content, encoding="utf-8")
         return
 
-    # Append to existing gitignore if not already there
+    # Rewrite the BBC isolation block and drop legacy root-level entries
     try:
         current_content = gitignore_path.read_text(encoding="utf-8")
         lines = current_content.splitlines()
-        
-        new_entries = []
-        for item in to_ignore:
-            if item not in lines:
-                new_entries.append(item)
-        
-        if new_entries:
-            with open(gitignore_path, "a", encoding="utf-8") as f:
-                if not current_content.endswith("\n"):
-                    f.write("\n")
-                f.write("\n# --- BBC Isolation Shield (No-Trace) ---\n")
-                for entry in sorted(new_entries):
-                    f.write(f"{entry}\n")
-            print(f"\n[BBC] 🛡️ Git Isolation: {len(new_entries)} entries added to .gitignore")
+
+        preserved_lines = []
+        in_bbc_block = False
+        for line in lines:
+            stripped = line.strip()
+            if stripped == block_header:
+                in_bbc_block = True
+                continue
+            if in_bbc_block:
+                if stripped.startswith("# ---") and stripped != block_header:
+                    in_bbc_block = False
+                    preserved_lines.append(line)
+                continue
+            if stripped in legacy_entries:
+                continue
+            preserved_lines.append(line)
+
+        while preserved_lines and preserved_lines[-1] == "":
+            preserved_lines.pop()
+
+        updated_lines = preserved_lines[:]
+        if updated_lines:
+            updated_lines.append("")
+        updated_lines.append(block_header)
+        updated_lines.extend(sorted(to_ignore))
+        updated_content = "\n".join(updated_lines) + "\n"
+
+        if updated_content != current_content:
+            gitignore_path.write_text(updated_content, encoding="utf-8")
+            print(f"\n[BBC] 🛡️ Git Isolation: normalized {len(to_ignore)} entries in .gitignore")
             print("[BBC] Safe to push to GitHub - no BBC traces will be included")
     except Exception as e:
         logger.debug(f"Extension detection failed during injection: {e}")
@@ -1402,6 +1447,9 @@ def cleanup_injected_configs(project_path: str, dry_run: bool = True) -> list:
     # Fallback: all BBC-written FILES (never delete IDE-owned folders themselves)
     bbc_paths = [
         # Always-created
+        ".bbc/bbc_context.json",
+        ".bbc/bbc_context.md",
+        ".bbc/bbc_rules.md",
         ".context/bbc_context.md",
         ".agent/rules/bbc_rules.md",
 
@@ -1443,6 +1491,9 @@ def cleanup_injected_configs(project_path: str, dry_run: bool = True) -> list:
         # Universal Fallback (v8.3: .bbc/ isolation)
         ".bbc/BBC_INSTRUCTIONS.md",
         # Legacy root files (may exist from older versions)
+        "ai-context.json",
+        "bbc_context.json",
+        "bbc_rules.md",
         "BBC_CONTEXT.md",
         "BBC_INSTRUCTIONS.md",
         "BBC_README.md",

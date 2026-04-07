@@ -133,6 +133,21 @@ class BBCVerifier:
         if os.environ.get("BBC_VERIFIER_VERBOSE", "0").strip().lower() in {"1", "true", "yes", "on"}:
             print(f"[*] Knowledge Base Loaded: {len(all_symbols)} known symbols (Ultimate Polyglot Mode).")
 
+    def _should_ignore_verification_path(self, file_path: str) -> bool:
+        """Skip BBC-generated runtime artifacts during freshness/mismatch checks."""
+        normalized = (file_path or "").replace("\\", "/").lower()
+        ignored_prefixes = (
+            ".bbc/",
+            ".windsurf/",
+            ".github/copilot-instructions.md",
+            ".clinerules",
+            ".continue/",
+            ".codiumai/",
+            ".cursor",
+            ".cursorrules",
+        )
+        return normalized.startswith(ignored_prefixes)
+
     def verify_syntax_only(self):
         """
         Polyglot Syntax Checker.
@@ -263,7 +278,10 @@ class BBCVerifier:
             if not isinstance(file_obj, dict):
                 continue
             file_path = file_obj.get("path", "")
-            stored_hash = file_obj.get("hash", "")
+            if self._should_ignore_verification_path(file_path):
+                continue
+            stats = file_obj.get("stats", {})
+            stored_hash = stats.get("hash", file_obj.get("hash", ""))
             if not file_path or not stored_hash:
                 continue
 
@@ -316,7 +334,7 @@ class BBCVerifier:
         if not code_struct:
             return {"mismatch_count": 0, "mismatch_files": [], "mismatch_ratio": 0.0}
 
-        quantizer = HMPUQuantizer(project_root=self.recipe_data.get('project_root', '.'))
+        quantizer = HMPUQuantizer(project_root=self.project_root or self.recipe_data.get('project_root', '.'))
         mismatch_files = []
         total_context_symbols = 0
         total_mismatched = 0
@@ -325,6 +343,8 @@ class BBCVerifier:
             if not isinstance(file_obj, dict):
                 continue
             file_path = file_obj.get("path", "")
+            if self._should_ignore_verification_path(file_path):
+                continue
             if not file_path:
                 continue
 
@@ -394,8 +414,8 @@ class BBCVerifier:
         
         Tum hesaplar BBC matematigiyle yapilir:
           - S, C, P → BBCScalar (origin="semantic", state-aware)
-          - Shannon chaos density ile mismatch kaos olcumu
-          - HMPU Governor aura_field_score(S, C, P) → iteratif alan donusumu
+          - Text entropy ile mismatch kaos olcumu
+          - Quality Monitor matrix_stability_score(S, C, P) → iteratif matrix donusumu
           - Condition number (κ) → confidence = 1 / (1 + log10(κ))
           - State propagation ile verdict (STABLE/WEAK/UNSTABLE/DEGENERATE)
         
@@ -449,20 +469,20 @@ class BBCVerifier:
         governor_used = False
 
         try:
-            from .hmpu_core import HMPU_Governor
-            governor = HMPU_Governor()
-            aura_raw = governor.aura_field_score(float(S), float(C), float(P))
-            field_stability = governor.get_field_stability()
+            from .hmpu_core import QualityMonitor
+            monitor = QualityMonitor()
+            score_raw = monitor.matrix_stability_score(float(S), float(C), float(P))
+            matrix_stability = monitor.get_matrix_stability()
             governor_used = True
 
-            # Aura score → BBCScalar (state propagated from S, C, P)
+            # Quality score → BBCScalar (state propagated from S, C, P)
             combined_state = S._determine_new_state(C.state)
             combined_state_2 = BBCScalar(0, state=combined_state)._determine_new_state(P.state)
-            aura_score_scalar = BBCScalar(aura_raw, state=combined_state_2, metadata={"origin": "math"})
+            aura_score_scalar = BBCScalar(score_raw, state=combined_state_2, metadata={"origin": "math"})
 
             # Confidence → BBCScalar (condition number'dan)
-            if not math.isinf(field_stability) and field_stability > 0:
-                conf_val = 1.0 / (1.0 + math.log10(field_stability))
+            if not math.isinf(matrix_stability) and matrix_stability > 0:
+                conf_val = 1.0 / (1.0 + math.log10(matrix_stability))
                 conf_val = min(max(conf_val, 0.0), 1.0)
                 conf_state = STABLE if conf_val >= 0.7 else WEAK if conf_val >= 0.4 else UNSTABLE
                 confidence_scalar = BBCScalar(conf_val, state=conf_state, metadata={"origin": "math"})
@@ -490,6 +510,9 @@ class BBCVerifier:
         if final_state == STABLE and len(syntax_errors) == 0 and freshness["context_fresh"]:
             verdict = "SEALED_STABLE"
             verdict_icon = "💎"
+        elif final_state == STABLE and len(syntax_errors) == 0:
+            verdict = "STALE_RESEAL_REQUIRED"
+            verdict_icon = "⚠️"
         elif final_state == WEAK:
             verdict = "WEAK"
             verdict_icon = "⚠️"
@@ -602,7 +625,7 @@ class BBCVerifier:
 
         # --- Symbol mismatch: only degisen dosyalar ---
         code_struct = self.recipe_data.get("code_structure", [])
-        quantizer = HMPUQuantizer(project_root=self.recipe_data.get('project_root', '.'))
+        quantizer = HMPUQuantizer(project_root=self.project_root or self.recipe_data.get('project_root', '.'))
         mismatch_files = []
         total_context_symbols = 0
         total_mismatched = 0
@@ -611,6 +634,8 @@ class BBCVerifier:
             if not isinstance(file_obj, dict):
                 continue
             file_path = file_obj.get("path", "")
+            if self._should_ignore_verification_path(file_path):
+                continue
             if not file_path or file_path not in changed_set:
                 continue
 
@@ -688,18 +713,18 @@ class BBCVerifier:
         governor_used = False
 
         try:
-            from .hmpu_core import HMPU_Governor
-            governor = HMPU_Governor()
-            aura_raw = governor.aura_field_score(float(S), float(C), float(P))
-            field_stability = governor.get_field_stability()
+            from .hmpu_core import QualityMonitor
+            monitor = QualityMonitor()
+            score_raw = monitor.matrix_stability_score(float(S), float(C), float(P))
+            matrix_stability = monitor.get_matrix_stability()
             governor_used = True
 
             combined_state = S._determine_new_state(C.state)
             combined_state_2 = BBCScalar(0, state=combined_state)._determine_new_state(P.state)
-            aura_score_scalar = BBCScalar(aura_raw, state=combined_state_2, metadata={"origin": "math"})
+            aura_score_scalar = BBCScalar(score_raw, state=combined_state_2, metadata={"origin": "math"})
 
-            if not math.isinf(field_stability) and field_stability > 0:
-                conf_val = 1.0 / (1.0 + math.log10(field_stability))
+            if not math.isinf(matrix_stability) and matrix_stability > 0:
+                conf_val = 1.0 / (1.0 + math.log10(matrix_stability))
                 conf_val = min(max(conf_val, 0.0), 1.0)
                 conf_state = STABLE if conf_val >= 0.7 else WEAK if conf_val >= 0.4 else UNSTABLE
                 confidence_scalar = BBCScalar(conf_val, state=conf_state, metadata={"origin": "math"})
@@ -723,6 +748,9 @@ class BBCVerifier:
         if final_state == STABLE and len(syntax_errors) == 0 and freshness.get("context_fresh", False):
             verdict = "SEALED_STABLE"
             verdict_icon = "💎"
+        elif final_state == STABLE and len(syntax_errors) == 0:
+            verdict = "STALE_RESEAL_REQUIRED"
+            verdict_icon = "⚠️"
         elif final_state == WEAK:
             verdict = "WEAK"
             verdict_icon = "⚠️"

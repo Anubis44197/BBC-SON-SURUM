@@ -52,6 +52,29 @@ class BBCNativeAdapter:
             return sorted_files, False, len(sorted_files), preview_limit
         return sorted_files[:preview_limit], True, len(sorted_files), preview_limit
 
+    def _detect_project_type(self, root_to_scan: str, project_recipes: list) -> str:
+        """Infer a stable project type for downstream compiler and skill generation."""
+        root_name = os.path.basename(os.path.abspath(root_to_scan)).lower()
+        paths = [str(recipe.get("path", "")).replace("\\", "/").lower() for recipe in project_recipes if isinstance(recipe, dict)]
+        path_blob = " ".join(paths)
+
+        memory_markers = (
+            "mcp_server", "layers", "knowledge_graph", "entity_registry",
+            "convo_miner", "miner.py", "searcher.py", "mempalace",
+        )
+        if root_name == "mempalace" or any(marker in path_blob for marker in memory_markers):
+            return "memory_system"
+
+        cli_markers = ("cli.py", "__main__.py")
+        if any(marker in path_blob for marker in cli_markers):
+            return "cli"
+
+        web_markers = ("react", "vue", "angular", "svelte", "fastapi", "flask", "django")
+        if any(marker in path_blob for marker in web_markers):
+            return "web"
+
+        return "general"
+
     async def analyze_project(self, target_root, output_file=None, silent: bool = False):
         root_to_scan = os.path.abspath(target_root) if target_root else os.getcwd()
         output_file_abs = os.path.abspath(output_file) if output_file else None
@@ -182,6 +205,7 @@ class BBCNativeAdapter:
         _generated_at = _time.strftime("%Y-%m-%dT%H:%M:%S")
 
         hierarchy_preview, hierarchy_truncated, hierarchy_total, preview_limit = self._summarize_hierarchy(files_found)
+        project_type = self._detect_project_type(root_to_scan, project_recipes)
 
         context_json = {
             "bbc_instructions_version": "1.0",
@@ -190,6 +214,7 @@ class BBCNativeAdapter:
             "context_fresh": True,
             "fail_policy": "fail_closed",
             "enforcement_level": "strict",
+            "project_type": project_type,
             "project_skeleton": {
                 "root": root_to_scan,
                 "file_count": len(files_found),
@@ -515,6 +540,7 @@ class BBCNativeAdapter:
             total_code_lines += stats.get("code_lines", 0)
 
         hierarchy_preview, hierarchy_truncated, hierarchy_total, preview_limit = self._summarize_hierarchy(all_files)
+        project_type = self._detect_project_type(root_to_scan, all_recipes)
 
         context_json = {
             "bbc_instructions_version": "1.0",
@@ -523,6 +549,7 @@ class BBCNativeAdapter:
             "context_fresh": True,
             "fail_policy": "fail_closed",
             "enforcement_level": "strict",
+            "project_type": project_type,
             "project_skeleton": {
                 "root": root_to_scan,
                 "file_count": len(all_files),
